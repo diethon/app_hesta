@@ -1,0 +1,5 @@
+{
+  "API_BASE_URL": "https://staging-api.example.com",
+  "EDGE_API_BASE_URL": "http://10.0.2.2:8080",
+  "WS_URL": "wss://staging-api.example.com/ws"
+}
