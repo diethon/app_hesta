@@ -9,6 +9,7 @@ import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/register_screen.dart';
 import '../../features/automation/presentation/automation_screen.dart';
 import '../../features/camera/presentation/camera_screen.dart';
+import '../../features/devices/presentation/add_device_screen.dart';
 import '../../features/devices/presentation/device_detail_screen.dart';
 import '../../features/energy/presentation/energy_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -51,6 +52,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'register',
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        name: 'add-device',
+        path: '/add-device',
+        builder: (context, state) => const AddDeviceScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

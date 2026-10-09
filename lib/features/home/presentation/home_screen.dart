@@ -61,6 +61,11 @@ class HomeScreen extends ConsumerWidget {
               title: l10n.appName,
               actions: [
                 GlassIconButton(
+                  icon: Icons.add_rounded,
+                  tooltip: 'Add Device',
+                  onTap: () => context.push('/add-device'),
+                ),
+                GlassIconButton(
                   icon: Icons.notifications_outlined,
                   tooltip: l10n.notifications,
                   onTap: () => context.go('/profile/notifications'),

@@ -56,5 +56,11 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>SYNA cần quyền truy cập máy ảnh để quét mã QR thiết bị.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>SYNA cần Bluetooth để tìm và cấu hình thiết bị ESP32.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>SYNA cần Bluetooth để tìm và cấu hình thiết bị ESP32.</string>
 </dict>
 </plist>
