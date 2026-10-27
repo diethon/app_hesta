@@ -8,6 +8,9 @@ import '../../features/authentication/presentation/auth_state.dart';
 import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/register_screen.dart';
 import '../../features/automation/presentation/automation_screen.dart';
+import '../../features/automation/presentation/automation_rules_screen.dart';
+import '../../features/recommendation/presentation/recommendations_screen.dart';
+import '../../features/scene/presentation/scenes_screen.dart';
 import '../../features/camera/presentation/camera_screen.dart';
 import '../../features/devices/presentation/add_device_screen.dart';
 import '../../features/devices/presentation/device_detail_screen.dart';
@@ -57,6 +60,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'add-device',
         path: '/add-device',
         builder: (context, state) => const AddDeviceScreen(),
+      ),
+      GoRoute(
+        name: 'scenes',
+        path: '/scenes',
+        builder: (context, state) => const ScenesScreen(),
+      ),
+      GoRoute(
+        name: 'automation-rules',
+        path: '/automation-rules',
+        builder: (context, state) => const AutomationRulesScreen(),
+      ),
+      GoRoute(
+        name: 'recommendations',
+        path: '/recommendations',
+        builder: (context, state) => const RecommendationsScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
