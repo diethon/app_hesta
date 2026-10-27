@@ -225,7 +225,7 @@ class MlModelStatusNotifier extends AsyncNotifier<MlModelStatus> {
 
     try {
       final repo = ref.read(recommendationRepositoryProvider);
-      return repo.getModelStatus(homeId);
+      return await repo.getModelStatus(homeId);
     } catch (_) {
       return _mockStatus();
     }

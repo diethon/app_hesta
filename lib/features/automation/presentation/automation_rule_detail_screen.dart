@@ -49,10 +49,10 @@ class _AutomationRuleDetailScreenState
       final repo = ref.read(automationRepositoryProvider);
       final result = await repo.testRule(homeId, _rule.id);
 
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
             backgroundColor:
                 isDark ? AppColors.auroraCanvasMid : AppColors.surface,
             title: const Row(
@@ -75,7 +75,6 @@ class _AutomationRuleDetailScreenState
             ],
           ),
         );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,11 +150,13 @@ class _AutomationRuleDetailScreenState
                               AutomationRuleEditorScreen(rule: _rule),
                         ),
                       );
-                      if (updated == true && mounted) {
-                        ref
+                      if (updated == true && context.mounted) {
+                        await ref
                             .read(automationRulesListProvider.notifier)
                             .refresh();
-                        Navigator.of(context).pop();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
                       }
                     },
                   ),

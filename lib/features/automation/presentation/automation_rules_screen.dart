@@ -45,7 +45,7 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
                 builder: (_) => const AutomationRuleEditorScreen(),
               ),
             );
-            ref.read(automationRulesListProvider.notifier).refresh();
+            await ref.read(automationRulesListProvider.notifier).refresh();
           },
           radius: AppRadius.pill,
           fill: accent,
@@ -254,7 +254,7 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
                                           ),
                                         ),
                                       );
-                                      ref
+                                      await ref
                                           .read(
                                             automationRulesListProvider.notifier,
                                           )

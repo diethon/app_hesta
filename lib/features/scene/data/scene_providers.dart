@@ -265,7 +265,7 @@ final sceneExecutionsProvider =
 
     try {
       final repo = ref.read(sceneRepositoryProvider);
-      return repo.getExecutions(homeId, sceneId);
+      return await repo.getExecutions(homeId, sceneId);
     } catch (_) {
       return [];
     }
@@ -290,7 +290,7 @@ final sceneSchedulesProvider =
 
     try {
       final repo = ref.read(sceneRepositoryProvider);
-      return repo.getSchedules(homeId, sceneId);
+      return await repo.getSchedules(homeId, sceneId);
     } catch (_) {
       return [];
     }

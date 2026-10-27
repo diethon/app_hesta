@@ -197,7 +197,7 @@ final automationRuleExecutionsProvider =
 
     try {
       final repo = ref.read(automationRepositoryProvider);
-      return repo.getExecutions(homeId, ruleId);
+      return await repo.getExecutions(homeId, ruleId);
     } catch (_) {
       return [];
     }

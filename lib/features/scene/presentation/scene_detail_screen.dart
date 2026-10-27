@@ -128,9 +128,11 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                           builder: (_) => SceneEditorScreen(scene: _scene),
                         ),
                       );
-                      if (updated == true) {
-                        ref.read(scenesListProvider.notifier).refresh();
-                        Navigator.of(context).pop();
+                      if (updated == true && context.mounted) {
+                        await ref.read(scenesListProvider.notifier).refresh();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
                       }
                     },
                   ),

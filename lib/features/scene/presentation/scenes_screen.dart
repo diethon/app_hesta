@@ -195,7 +195,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                                       final success = await ref
                                           .read(scenesListProvider.notifier)
                                           .executeScene(scene.id);
-                                      if (!mounted) return;
+                                      if (!context.mounted) return;
                                       setState(() =>
                                           _executingSceneId = null);
                                       ScaffoldMessenger.of(context)
