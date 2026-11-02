@@ -14,7 +14,8 @@ enum AppEnvironment {
   String get baseUrl => switch (this) {
     AppEnvironment.development => const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:8080',
+      // defaultValue: 'ws://10.0.2.2:8080',
+      defaultValue: 'http://127.0.0.1:8080',
     ),
     AppEnvironment.staging => const String.fromEnvironment(
       'API_BASE_URL',
@@ -30,7 +31,8 @@ enum AppEnvironment {
   String get wsUrl => switch (this) {
     AppEnvironment.development => const String.fromEnvironment(
       'WS_URL',
-      defaultValue: 'ws://10.0.2.2:8080/ws',
+      // defaultValue: 'ws://10.0.2.2:8080/ws',
+      defaultValue: 'ws://127.0.0.1:8080/ws',
     ),
     AppEnvironment.staging => const String.fromEnvironment(
       'WS_URL',

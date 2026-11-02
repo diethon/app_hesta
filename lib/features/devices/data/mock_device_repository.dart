@@ -179,6 +179,18 @@ class MockDeviceRepository implements DeviceRepository {
       energyWatts: 25.0,
       subtitle: 'Watering Active',
     ),
+    const Device(
+      id: 'garden-water-pump',
+      name: 'Water Pump',
+      roomId: 'garden',
+      type: DeviceType.waterPump,
+      rawType: 'WATER_PUMP',
+      status: DeviceStatus.online,
+      isOn: false,
+      energyWatts: 35.0,
+      subtitle: 'Garden Water Pump',
+      isFavorite: true,
+    ),
   ];
 
   @override

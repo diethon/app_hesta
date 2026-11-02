@@ -52,6 +52,7 @@ dependencies:
   shared_preferences: ^2.5.3
   mobile_scanner: ^7.4.2
   flutter_blue_plus: ^2.3.14
+  flutter_dotenv: ^6.0.1
 
 dev_dependencies:
   flutter_test:

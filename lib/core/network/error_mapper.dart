@@ -6,7 +6,7 @@ import '../exceptions/app_exception.dart';
 /// `{ code: 1006, message: "...", result: null }`
 /// và fallback cho format cũ `{ success: false, error: { code, message } }`.
 ({String? code, String? message}) readBackendError(Object? data) {
-  if (data is Map<String, dynamic>) {
+  if (data is Map) {
     if (data.containsKey('code')) {
       return (
         code: data['code']?.toString(),
@@ -14,7 +14,7 @@ import '../exceptions/app_exception.dart';
       );
     }
     final error = data['error'];
-    if (error is Map<String, dynamic>) {
+    if (error is Map) {
       return (
         code: error['code']?.toString(),
         message: error['message'] as String?,
@@ -30,7 +30,8 @@ AppException mapDioException(DioException error) {
       error.type == DioExceptionType.sendTimeout) {
     return const RequestTimeoutException();
   }
-  if (error.type == DioExceptionType.connectionError) {
+  if (error.type == DioExceptionType.connectionError ||
+      error.type == DioExceptionType.unknown && error.response == null) {
     return const NetworkException();
   }
 

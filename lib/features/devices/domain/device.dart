@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum DeviceType { light, ledRgb, thermostat, lock, speaker, camera, fan, sensor }
+enum DeviceType { light, ledRgb, thermostat, lock, speaker, camera, fan, sensor, waterPump }
 
 enum DeviceStatus { online, offline }
 
@@ -28,6 +28,7 @@ class Device {
     this.timerHour,
     this.timerHalfHour,
     this.rawType,
+    this.gateState,
   });
 
   final String id;
@@ -57,6 +58,17 @@ class Device {
   final bool? timerHalfHour;
   final String? rawType;
 
+  // Thuộc tính Cổng / Cửa cuốn (Gate / Rolling Door)
+  final String? gateState;
+
+  bool get isGate {
+    final raw = (rawType ?? '').toUpperCase();
+    if (raw.contains('GATE') || raw.contains('ROLLING_DOOR')) return true;
+    final n = name.toLowerCase();
+    final i = id.toLowerCase();
+    return n.contains('cổng') || n.contains('gate') || i.contains('gate');
+  }
+
   Color? get rgbColor {
     if (r == null || g == null || b == null) return null;
     return Color.fromARGB(255, r!.clamp(0, 255), g!.clamp(0, 255), b!.clamp(0, 255));
@@ -81,6 +93,7 @@ class Device {
     int? timerHour,
     bool? timerHalfHour,
     String? rawType,
+    String? gateState,
   }) {
     return Device(
       id: id,
@@ -105,6 +118,7 @@ class Device {
       timerHour: timerHour ?? this.timerHour,
       timerHalfHour: timerHalfHour ?? this.timerHalfHour,
       rawType: rawType ?? this.rawType,
+      gateState: gateState ?? this.gateState,
     );
   }
 }
@@ -127,6 +141,7 @@ class DeviceCommand {
     this.cancelTimer,
     this.customAction,
     this.customParams,
+    this.gateAction,
   });
 
   final bool? isOn;
@@ -149,5 +164,9 @@ class DeviceCommand {
   final bool? cancelTimer;
   final String? customAction;
   final Map<String, dynamic>? customParams;
+
+  // Gate / Door (Cổng / Cửa cuốn)
+  final String? gateAction;
 }
+
 

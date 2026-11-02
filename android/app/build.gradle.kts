@@ -103,3 +103,21 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
+
+// Tự động chạy adb reverse tcp:8080 tcp:8080 mỗi khi build/chạy app trên thiết bị thật
+tasks.matching {
+    it.name.contains("DevelopmentDebug", ignoreCase = true) || it.name.startsWith("assembleDevelopment")
+}.configureEach {
+    doFirst {
+        try {
+            val adb = android.adbExecutable
+            if (adb.exists()) {
+                project.exec {
+                    commandLine(adb.absolutePath, "reverse", "tcp:8080", "tcp:8080")
+                    isIgnoreExitValue = true
+                }
+            }
+        } catch (_: Exception) {}
+    }
+}
+

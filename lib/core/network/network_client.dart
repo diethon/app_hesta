@@ -24,7 +24,7 @@ final edgeApiClientProvider = Provider<NetworkClient>((ref) {
   return NetworkClient(
     baseUrl: const String.fromEnvironment(
       'EDGE_API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:8080',
+      defaultValue: 'http://127.0.0.1:8080',
     ),
     enableLogs: true,
     tokenStorage: ref.watch(tokenStorageProvider),

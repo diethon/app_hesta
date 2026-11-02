@@ -605,7 +605,15 @@ class DeviceCard extends ConsumerWidget {
               _DeviceThumb(device: device, accent: accent),
               if (device.type == DeviceType.lock)
                 Text(
-                  device.isOn ? l10n.locked : l10n.unlocked,
+                  device.isGate
+                      ? (device.gateState == 'OPENING'
+                          ? 'Đang mở'
+                          : (device.gateState == 'CLOSING'
+                              ? 'Đang đóng'
+                              : (device.gateState == 'CLOSED' || (device.gateState == null && device.isOn)
+                                  ? 'Đã đóng'
+                                  : 'Đang mở')))
+                      : (device.isOn ? l10n.locked : l10n.unlocked),
                   style: theme.textTheme.labelSmall?.copyWith(color: accent),
                 )
               else
@@ -788,6 +796,18 @@ class _DeviceCardFooter extends ConsumerWidget {
     }
 
     if (device.type == DeviceType.lock) {
+      if (device.isGate) {
+        final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
+        final isOpening = device.gateState == 'OPENING';
+        final isClosing = device.gateState == 'CLOSING';
+        return GlassStatusPill(
+          icon: isClosed ? Icons.door_front_door_rounded : Icons.meeting_room_rounded,
+          label: isOpening
+              ? 'Đang mở'
+              : (isClosing ? 'Đang đóng' : (isClosed ? 'Đã đóng' : 'Đang mở')),
+          color: isClosed ? AppColors.auroraMint : (isOpening || isClosing ? AppColors.auroraWarning : AppColors.orbTeal),
+        );
+      }
       return GlassStatusPill(
         icon: device.isOn ? Icons.lock_rounded : Icons.lock_open_rounded,
         label: device.isOn ? l10n.secured : l10n.unlocked,
