@@ -16,6 +16,9 @@ import '../../authentication/presentation/auth_controller.dart';
 import '../../devices/data/device_providers.dart';
 import '../../devices/domain/device.dart';
 import '../../devices/presentation/device_visuals.dart';
+import '../../scene/data/scene_providers.dart';
+import '../../scene/domain/scene.dart';
+import '../../scene/presentation/scene_icons.dart';
 import 'widgets/hero_house_model.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -241,7 +244,7 @@ class _DashboardContent extends ConsumerWidget {
         _StatusPillsRow(devices: devices),
         const SizedBox(height: AppSpacing.lg),
 
-        // Lối vào Automation & Camera.
+        // Lối vào Automation, Recommendation, Scenes, Camera.
         _SectionLabel(label: l10n.quickAccess),
         const SizedBox(height: AppSpacing.md),
         LayoutBuilder(
@@ -258,6 +261,26 @@ class _DashboardContent extends ConsumerWidget {
                     label: l10n.automations,
                     subtitle: l10n.automationsSubtitle,
                     onTap: () => context.push('/automation'),
+                  ),
+                ),
+                SizedBox(
+                  width: tileWidth,
+                  child: GlassIconTile(
+                    icon: Icons.psychology_rounded,
+                    label: 'Gợi ý AI',
+                    subtitle: 'Phân tích thói quen',
+                    color: AppColors.orbViolet,
+                    onTap: () => context.push('/recommendations'),
+                  ),
+                ),
+                SizedBox(
+                  width: tileWidth,
+                  child: GlassIconTile(
+                    icon: Icons.layers_rounded,
+                    label: 'Ngữ cảnh',
+                    subtitle: 'Kịch bản thiết bị',
+                    color: theme.colorScheme.primary,
+                    onTap: () => context.push('/scenes'),
                   ),
                 ),
                 SizedBox(
@@ -493,35 +516,90 @@ class _StatusPillsRow extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────
 // Quick Scenes
 // ─────────────────────────────────────────────────────────────────────
-class _QuickScenes extends StatelessWidget {
+class _QuickScenes extends ConsumerStatefulWidget {
   const _QuickScenes();
+
+  @override
+  ConsumerState<_QuickScenes> createState() => _QuickScenesState();
+}
+
+class _QuickScenesState extends ConsumerState<_QuickScenes> {
+  String? _executingSceneId;
+
+  Future<void> _executeScene(Scene scene) async {
+    setState(() => _executingSceneId = scene.id);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final success =
+        await ref.read(scenesListProvider.notifier).executeScene(scene.id);
+
+    if (mounted) {
+      setState(() => _executingSceneId = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Đã kích hoạt kịch bản: ${scene.name}'
+                : 'Kích hoạt thất bại',
+          ),
+          backgroundColor: success
+              ? (isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight)
+              : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final scenes = [
-      (Icons.power_settings_new_rounded, l10n.sceneAllOff, false),
-      (Icons.home_rounded, l10n.sceneArriveHome, true),
-      (Icons.movie_rounded, l10n.sceneMovieNight, false),
-      (Icons.bedtime_rounded, l10n.sceneGoodNight, false),
-      (Icons.add_rounded, l10n.sceneAdd, false),
-    ];
+    final scenesAsync = ref.watch(scenesListProvider);
 
-    return SizedBox(
-      height: 100,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        itemCount: scenes.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
-        itemBuilder: (context, index) {
-          final scene = scenes[index];
-          return _SceneButton(
-            icon: scene.$1,
-            label: scene.$2,
-            isActive: scene.$3,
-          );
-        },
+    return scenesAsync.when(
+      data: (scenes) {
+        final enabledScenes = scenes.where((s) => s.enabled).toList();
+
+        return SizedBox(
+          height: 104,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            itemCount: enabledScenes.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+            itemBuilder: (context, index) {
+              if (index == enabledScenes.length) {
+                return _AddSceneButton(
+                  onTap: () => context.push('/scenes'),
+                  label: l10n.sceneAdd,
+                );
+              }
+              final scene = enabledScenes[index];
+              return _SceneButton(
+                icon: SceneIcons.getIcon(scene.icon),
+                label: scene.name,
+                isExecuting: _executingSceneId == scene.id,
+                onTap: () => _executeScene(scene),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        height: 104,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, __) => SizedBox(
+        height: 104,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            _AddSceneButton(
+              onTap: () => context.push('/scenes'),
+              label: 'Mở Ngữ cảnh',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -531,12 +609,14 @@ class _SceneButton extends StatelessWidget {
   const _SceneButton({
     required this.icon,
     required this.label,
-    required this.isActive,
+    required this.isExecuting,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
-  final bool isActive;
+  final bool isExecuting;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -546,30 +626,85 @@ class _SceneButton extends StatelessWidget {
     return Column(
       children: [
         GlassCard(
-          onTap: () => context.push('/scenes'),
-          active: isActive,
+          onTap: isExecuting ? null : onTap,
           radius: AppRadius.lg + 2,
           padding: EdgeInsets.zero,
-          fill: isActive ? accent : null,
-          shadows: isActive ? GlassTokens.glow(accent, intensity: 0.6) : null,
+          semanticLabel: label,
+          child: SizedBox.square(
+            dimension: 64,
+            child: isExecuting
+                ? Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: accent,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    icon,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                    size: 26,
+                  ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: 72,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AddSceneButton extends StatelessWidget {
+  const _AddSceneButton({required this.onTap, required this.label});
+
+  final VoidCallback onTap;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        GlassCard(
+          onTap: onTap,
+          radius: AppRadius.lg + 2,
+          padding: EdgeInsets.zero,
           semanticLabel: label,
           child: SizedBox.square(
             dimension: 64,
             child: Icon(
-              icon,
-              color: isActive
-                  ? Colors.white
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              size: 26,
+              Icons.add_rounded,
+              color: theme.colorScheme.primary,
+              size: 28,
             ),
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(
-              alpha: isActive ? 1 : 0.6,
+        SizedBox(
+          width: 72,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
