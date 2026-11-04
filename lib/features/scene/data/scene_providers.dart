@@ -21,7 +21,7 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
   Future<List<Scene>> build() async {
     final homeId = ref.watch(currentHomeIdProvider);
     if (homeId == null) {
-      return _mockScenes();
+      return kUseMockData ? _mockScenes() : const [];
     }
 
     if (kUseMockData) {
@@ -30,13 +30,9 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
 
     try {
       final repo = ref.read(sceneRepositoryProvider);
-      final scenes = await repo.getScenes(homeId);
-      if (scenes.isEmpty) {
-        return _mockScenes();
-      }
-      return scenes;
+      return await repo.getScenes(homeId);
     } catch (_) {
-      return _mockScenes();
+      return const [];
     }
   }
 
@@ -44,7 +40,7 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final homeId = ref.read(currentHomeIdProvider);
-      if (homeId == null) return _mockScenes();
+      if (homeId == null) return kUseMockData ? _mockScenes() : const [];
       final repo = ref.read(sceneRepositoryProvider);
       return repo.getScenes(homeId);
     });
@@ -59,8 +55,10 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
       await repo.executeScene(homeId, sceneId);
       return true;
     } catch (e) {
-      // In mock mode or network error, still indicate feedback
-      return true;
+      if (kUseMockData) {
+        return true;
+      }
+      return false;
     }
   }
 
