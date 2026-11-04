@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_radius.dart';
@@ -7,6 +9,7 @@ import '../../../../app/theme/app_spacing.dart';
 import '../../../../app/theme/glass_tokens.dart';
 import '../../../../core/widgets/glass/glass_card.dart';
 import '../../../../core/widgets/glass/glass_status_pill.dart';
+import '../../../../core/widgets/state_views.dart';
 import '../../data/recommendation_providers.dart';
 
 class MlModelStatusCard extends ConsumerStatefulWidget {
@@ -20,12 +23,14 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
   bool _isRetraining = false;
 
   Future<void> _handleRetrain() async {
-    setState(() => _isRetraining = true);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final result =
-        await ref.read(mlModelStatusProvider.notifier).retrain();
+    await HapticFeedback.lightImpact();
+    if (!mounted) return;
+    setState(() => _isRetraining = true);
+
+    final result = await ref.read(mlModelStatusProvider.notifier).retrain();
 
     if (mounted) {
       setState(() => _isRetraining = false);
@@ -35,12 +40,17 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
             content: Text(
               result.isReady
                   ? 'Huấn luyện lại mô hình thành công! Độ chính xác: ${result.accuracyPercent}%'
-                  : 'Trạng thái mô hình: ${result.status}',
+                  : result.isUnavailable
+                      ? 'Dịch vụ Machine Learning hiện chưa khả dụng hoặc đang ngoại tuyến.'
+                      : 'Trạng thái mô hình: ${result.status}',
             ),
             backgroundColor: result.isReady
                 ? (isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight)
                 : AppColors.auroraWarning,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
           ),
         );
       }
@@ -62,11 +72,21 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
 
         if (model.isColdStart) {
           badgeColor = AppColors.auroraWarning;
-          statusLabel = 'KHỞI ĐỘNG (COLD START)';
+          statusLabel = 'TÍCH LŨY DỮ LIỆU';
         } else if (model.isTraining) {
           badgeColor = accent;
           statusLabel = 'ĐANG HUẤN LUYỆN';
+        } else if (model.isUnavailable) {
+          badgeColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+          statusLabel = 'CHƯA KẾT NỐI ML';
+        } else if (model.isNotTrained) {
+          badgeColor = AppColors.auroraWarning;
+          statusLabel = 'CHƯA HUẤN LUYỆN';
         }
+
+        final formattedDate = model.trainedAt != null
+            ? DateFormat('dd/MM/yyyy HH:mm').format(model.trainedAt!)
+            : 'Mới khởi tạo';
 
         return GlassCard(
           radius: AppRadius.card,
@@ -74,54 +94,77 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: (isDark
-                                  ? AppColors.orbViolet
-                                  : Colors.purple)
-                              .withValues(alpha: 0.2),
-                          boxShadow: GlassTokens.glow(
-                            isDark ? AppColors.orbViolet : Colors.purple,
-                            intensity: 0.4,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.psychology_rounded,
-                          size: 20,
-                          color: isDark ? AppColors.orbViolet : Colors.purple,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'AI & Machine Learning Engine',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                (isDark ? AppColors.orbViolet : Colors.purple)
+                                    .withValues(alpha: 0.28),
+                                (isDark ? AppColors.orbViolet : Colors.purple)
+                                    .withValues(alpha: 0.08),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                              color:
+                                  (isDark ? AppColors.orbViolet : Colors.purple)
+                                      .withValues(alpha: 0.35),
+                            ),
+                            boxShadow: GlassTokens.glow(
+                              isDark ? AppColors.orbViolet : Colors.purple,
+                              intensity: 0.35,
                             ),
                           ),
-                          Text(
-                            'Phiên bản: ${model.version}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: isDark
-                                  ? AppColors.onDarkMuted
-                                  : AppColors.onSurfaceVariant,
-                              fontSize: 11,
-                            ),
+                          child: Icon(
+                            Icons.psychology_rounded,
+                            size: 24,
+                            color: isDark ? AppColors.orbViolet : Colors.purple,
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Mô hình AI & Machine Learning',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${model.modelType} • v${model.version}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isDark
+                                      ? AppColors.onDarkMuted
+                                      : AppColors.onSurfaceVariant,
+                                  fontSize: 11.5,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: AppSpacing.xs),
                   GlassStatusPill(
                     label: statusLabel,
                     color: badgeColor,
@@ -130,14 +173,72 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
               ),
               const SizedBox(height: AppSpacing.md),
 
+              // Cold-start notification if learning period is active
+              if (model.isColdStart) ...[
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.auroraWarning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: AppColors.auroraWarning.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.insights_rounded,
+                        size: 20,
+                        color: AppColors.auroraWarning,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Đang quan sát thói quen sinh hoạt',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.auroraWarning,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Hệ thống đang tích lũy dữ liệu bật/tắt thiết bị để đưa ra đề xuất tự động chính xác nhất cho bạn.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 11.5,
+                                color: isDark
+                                    ? AppColors.onDarkMuted
+                                    : AppColors.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+
               // Metrics Row
               Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.md,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.15),
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.2)
+                      : Colors.white.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.black.withValues(alpha: 0.05),
                   ),
                 ),
                 child: Row(
@@ -148,37 +249,62 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
                       value: '${model.accuracyPercent}%',
                       color: mint,
                     ),
-                    Container(width: 1, height: 28, color: Colors.white10),
+                    Container(
+                      width: 1,
+                      height: 28,
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.black.withValues(alpha: 0.1),
+                    ),
                     _MetricItem(
                       label: 'Mẫu học',
                       value: '${model.trainSamples ?? 0}',
                       color: accent,
                     ),
-                    Container(width: 1, height: 28, color: Colors.white10),
+                    Container(
+                      width: 1,
+                      height: 28,
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.black.withValues(alpha: 0.1),
+                    ),
                     _MetricItem(
                       label: 'Ngưỡng tin cậy',
-                      value:
-                          '${(model.confidenceThreshold * 100).round()}%',
-                      color: isDark
-                          ? AppColors.orbViolet
-                          : Colors.purple,
+                      value: '${(model.confidenceThreshold * 100).round()}%',
+                      color: isDark ? AppColors.orbViolet : Colors.purple,
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Retrain Action
+              // Bottom Info & Retrain Action
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Mô hình tự động học theo thói quen bật/tắt thiết bị.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDark
-                          ? AppColors.onDarkFaint
-                          : Colors.grey.shade600,
-                      fontSize: 11,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.update_rounded,
+                          size: 14,
+                          color: AppColors.onDarkFaint,
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Cập nhật: $formattedDate',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: isDark
+                                  ? AppColors.onDarkFaint
+                                  : Colors.grey.shade600,
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   InkWell(
@@ -187,9 +313,10 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.sm,
-                        vertical: 4,
+                        vertical: 6,
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           if (_isRetraining)
                             SizedBox(
@@ -201,13 +328,17 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
                               ),
                             )
                           else
-                            Icon(Icons.refresh_rounded, size: 16, color: accent),
+                            Icon(
+                              Icons.refresh_rounded,
+                              size: 16,
+                              color: accent,
+                            ),
                           const SizedBox(width: 4),
                           Text(
-                            _isRetraining ? 'Đang train...' : 'Huấn luyện lại',
+                            _isRetraining ? 'Đang học...' : 'Huấn luyện lại',
                             style: TextStyle(
                               color: accent,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                               fontSize: 12,
                             ),
                           ),
@@ -221,13 +352,32 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
           ),
         );
       },
-      loading: () => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: CircularProgressIndicator(),
+      loading: () => const GlassCardSkeleton(height: 160),
+      error: (e, _) => GlassCard(
+        radius: AppRadius.card,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              color: AppColors.auroraWarning,
+              size: 24,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                'Không thể kết nối dịch vụ ML: $e',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              onPressed: () =>
+                  ref.read(mlModelStatusProvider.notifier).refresh(),
+            ),
+          ],
         ),
       ),
-      error: (_, __) => const SizedBox(),
     );
   }
 }
@@ -246,13 +396,15 @@ class _MetricItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           value,
           style: TextStyle(
             color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            letterSpacing: -0.3,
           ),
         ),
         const SizedBox(height: 2),
@@ -260,7 +412,8 @@ class _MetricItem extends StatelessWidget {
           label,
           style: const TextStyle(
             fontSize: 11,
-            color: Colors.grey,
+            color: AppColors.onDarkMuted,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],

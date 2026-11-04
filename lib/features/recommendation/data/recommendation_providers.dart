@@ -23,7 +23,7 @@ class RecommendationsListNotifier
   Future<List<Recommendation>> build() async {
     final homeId = ref.watch(currentHomeIdProvider);
     if (homeId == null) {
-      return _mockRecommendations();
+      return kUseMockData ? _mockRecommendations() : const [];
     }
 
     if (kUseMockData) {
@@ -32,13 +32,9 @@ class RecommendationsListNotifier
 
     try {
       final repo = ref.read(recommendationRepositoryProvider);
-      final list = await repo.getRecommendations(homeId);
-      if (list.isEmpty) {
-        return _mockRecommendations();
-      }
-      return list;
+      return await repo.getRecommendations(homeId);
     } catch (_) {
-      return _mockRecommendations();
+      return const [];
     }
   }
 
@@ -46,7 +42,7 @@ class RecommendationsListNotifier
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final homeId = ref.read(currentHomeIdProvider);
-      if (homeId == null) return _mockRecommendations();
+      if (homeId == null) return kUseMockData ? _mockRecommendations() : const [];
       final repo = ref.read(recommendationRepositoryProvider);
       return repo.getRecommendations(homeId);
     });
@@ -65,9 +61,11 @@ class RecommendationsListNotifier
       await refresh();
       return newRecs.length;
     } catch (_) {
-      // Mock generation if needed
-      await refresh();
-      return 1;
+      if (kUseMockData) {
+        await refresh();
+        return 1;
+      }
+      return 0;
     }
   }
 
@@ -227,7 +225,12 @@ class MlModelStatusNotifier extends AsyncNotifier<MlModelStatus> {
       final repo = ref.read(recommendationRepositoryProvider);
       return await repo.getModelStatus(homeId);
     } catch (_) {
-      return _mockStatus();
+      return const MlModelStatus(
+        status: 'UNAVAILABLE',
+        version: 'none',
+        modelType: 'BehaviorML',
+        accuracy: 0.0,
+      );
     }
   }
 
@@ -252,9 +255,19 @@ class MlModelStatusNotifier extends AsyncNotifier<MlModelStatus> {
       state = AsyncValue.data(newStatus);
       return newStatus;
     } catch (e) {
-      final fallback = _mockStatus();
-      state = AsyncValue.data(fallback);
-      return fallback;
+      if (kUseMockData) {
+        final fallback = _mockStatus();
+        state = AsyncValue.data(fallback);
+        return fallback;
+      }
+      final unavailable = const MlModelStatus(
+        status: 'UNAVAILABLE',
+        version: 'none',
+        modelType: 'BehaviorML',
+        accuracy: 0.0,
+      );
+      state = AsyncValue.data(unavailable);
+      return unavailable;
     }
   }
 

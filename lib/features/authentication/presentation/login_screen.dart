@@ -19,14 +19,36 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController(text: 'test@gmail.com');
-  final _passwordController = TextEditingController(text: '123123123');
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _localError;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _handleLogin() {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty) {
+      setState(() => _localError = 'Vui lòng nhập địa chỉ email.');
+      return;
+    }
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() => _localError = 'Địa chỉ email không hợp lệ.');
+      return;
+    }
+    if (password.isEmpty) {
+      setState(() => _localError = 'Vui lòng nhập mật khẩu.');
+      return;
+    }
+
+    setState(() => _localError = null);
+    ref.read(authControllerProvider.notifier).login(email, password);
   }
 
   @override
@@ -101,7 +123,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             prefixIcon: Icons.mail_outline_rounded,
-                            hintText: 'test@gmail.com',
+                            hintText: 'example@gmail.com',
                             textInputAction: TextInputAction.next,
                           ),
                           const SizedBox(height: AppSpacing.md),
@@ -131,10 +153,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ],
                           ),
-                          if (auth.errorMessage != null) ...[
+                          if (_localError != null || auth.errorMessage != null) ...[
                             const SizedBox(height: AppSpacing.md),
                             Text(
-                              auth.errorMessage!,
+                              _localError ?? auth.errorMessage!,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.error,
                               ),
@@ -144,14 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           AppButton(
                             label: l10n.signIn,
                             isLoading: auth.isSubmitting,
-                            onPressed: () {
-                              ref
-                                  .read(authControllerProvider.notifier)
-                                  .login(
-                                    _emailController.text.trim(),
-                                    _passwordController.text,
-                                  );
-                            },
+                            onPressed: _handleLogin,
                           ),
                           Padding(
                             padding: const EdgeInsets.symmetric(

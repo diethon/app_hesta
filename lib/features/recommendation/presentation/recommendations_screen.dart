@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_colors.dart';
@@ -11,11 +12,14 @@ import '../../../core/widgets/glass/glass_card.dart';
 import '../../../core/widgets/glass/glass_filter_chip.dart';
 import '../../../core/widgets/state_views.dart';
 import '../data/recommendation_providers.dart';
+import '../domain/recommendation_models.dart';
 import 'widgets/ml_model_status_card.dart';
 import 'widgets/recommendation_item_card.dart';
 
 class RecommendationsScreen extends ConsumerStatefulWidget {
-  const RecommendationsScreen({super.key});
+  const RecommendationsScreen({this.isEmbedded = false, super.key});
+
+  final bool isEmbedded;
 
   @override
   ConsumerState<RecommendationsScreen> createState() =>
@@ -24,14 +28,17 @@ class RecommendationsScreen extends ConsumerStatefulWidget {
 
 class _RecommendationsScreenState
     extends ConsumerState<RecommendationsScreen> {
-  String _selectedTab = 'pending'; // pending, history
+  String _selectedTab = 'pending'; // pending, approved, rejected, all_history
   bool _isGenerating = false;
 
   Future<void> _generate() async {
-    setState(() => _isGenerating = true);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+
+    await HapticFeedback.mediumImpact();
+    if (!mounted) return;
+    setState(() => _isGenerating = true);
 
     final count =
         await ref.read(recommendationsListProvider.notifier).generate();
@@ -40,16 +47,265 @@ class _RecommendationsScreenState
       setState(() => _isGenerating = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            count > 0
-                ? 'Mô hình ML đã phát hiện và tạo $count đề xuất mới!'
-                : 'Không có hành vi nào đạt ngưỡng tin cậy >= 80% lúc này.',
+          content: Row(
+            children: [
+              Icon(
+                count > 0 ? Icons.auto_awesome_rounded : Icons.info_outline_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  count > 0
+                      ? 'BehaviorML đã phát hiện và tạo $count đề xuất mới!'
+                      : 'Chưa có thói quen lặp lại nào đạt ngưỡng tin cậy >= 80% lúc này.',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
           backgroundColor: count > 0 ? mint : AppColors.auroraWarning,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
         ),
       );
     }
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    AsyncValue<List<Recommendation>> recsAsync,
+    bool isDark,
+    Color mint,
+    Color accent,
+  ) {
+    final theme = Theme.of(context);
+    final allItems = recsAsync.valueOrNull ?? [];
+    final pendingCount = allItems.where((r) => r.isPending).length;
+    final approvedCount =
+        allItems.where((r) => r.status.toUpperCase() == 'APPROVED').length;
+    final rejectedCount =
+        allItems.where((r) => r.status.toUpperCase() == 'REJECTED').length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ML Neural Model Status Card
+        const MlModelStatusCard(),
+        const SizedBox(height: AppSpacing.md),
+
+        // Generate AI Recommendations Tactile Button
+        GlassCard(
+          onTap: _isGenerating ? null : _generate,
+          radius: AppRadius.card,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md + 2,
+          ),
+          fill: (isDark ? AppColors.orbViolet : Colors.purple)
+              .withValues(alpha: 0.16),
+          borderGradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              (isDark ? AppColors.orbViolet : Colors.purple)
+                  .withValues(alpha: 0.45),
+              Colors.white.withValues(alpha: 0.08),
+            ],
+          ),
+          shadows: GlassTokens.glow(
+            isDark ? AppColors.orbViolet : Colors.purple,
+            intensity: 0.28,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_isGenerating)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: Colors.white,
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: (isDark ? AppColors.orbViolet : Colors.purple)
+                        .withValues(alpha: 0.25),
+                  ),
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 18,
+                    color: isDark ? AppColors.orbViolet : Colors.purple,
+                  ),
+                ),
+              const SizedBox(width: AppSpacing.md),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isGenerating
+                          ? 'Đang phân tích dữ liệu 30 ngày qua...'
+                          : 'Phân tích hành vi & Quét đề xuất mới',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                        color: isDark ? AppColors.onDark : AppColors.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (!_isGenerating)
+                      Text(
+                        'Quét chu kỳ bật/tắt thiết bị để tối ưu hóa điện năng và sinh hoạt',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isDark
+                              ? AppColors.onDarkMuted
+                              : AppColors.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+
+        // Sub-filter tabs
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              GlassFilterChip(
+                label: 'Chờ duyệt ($pendingCount)',
+                selected: _selectedTab == 'pending',
+                onTap: () => setState(() => _selectedTab = 'pending'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              GlassFilterChip(
+                label: 'Đã duyệt ($approvedCount)',
+                selected: _selectedTab == 'approved',
+                onTap: () => setState(() => _selectedTab = 'approved'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              GlassFilterChip(
+                label: 'Đã từ chối ($rejectedCount)',
+                selected: _selectedTab == 'rejected',
+                onTap: () => setState(() => _selectedTab = 'rejected'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              GlassFilterChip(
+                label: 'Tất cả lịch sử',
+                selected: _selectedTab == 'all_history',
+                onTap: () => setState(() => _selectedTab = 'all_history'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        // Recommendations List
+        recsAsync.when(
+          data: (items) {
+            final filtered = items.where((r) {
+              if (_selectedTab == 'pending') return r.isPending;
+              if (_selectedTab == 'approved') {
+                return r.status.toUpperCase() == 'APPROVED';
+              }
+              if (_selectedTab == 'rejected') {
+                return r.status.toUpperCase() == 'REJECTED';
+              }
+              return !r.isPending; // all_history
+            }).toList();
+
+            if (filtered.isEmpty) {
+              String emptyMsg =
+                  'Hiện không có đề xuất nào đang chờ duyệt.\nNhấn nút phân tích ở trên để tìm thói quen mới!';
+              if (_selectedTab == 'approved') {
+                emptyMsg = 'Chưa có đề xuất nào được chấp thuận.';
+              } else if (_selectedTab == 'rejected') {
+                emptyMsg = 'Chưa có đề xuất nào bị từ chối.';
+              } else if (_selectedTab == 'all_history') {
+                emptyMsg = 'Lịch sử giải quyết đề xuất đang trống.';
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 36, bottom: 44),
+                child: EmptyView(
+                  message: emptyMsg,
+                  icon: Icons.psychology_rounded,
+                ),
+              );
+            }
+
+            return Column(
+              children: filtered
+                  .map(
+                    (rec) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: RecommendationItemCard(
+                        recommendation: rec,
+                        onApprove: () async {
+                          final success = await ref
+                              .read(recommendationsListProvider.notifier)
+                              .approve(rec.id);
+                          if (context.mounted && success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Đã duyệt đề xuất "${rec.deviceName ?? "Thiết bị"}" và tạo quy tắc tự động!',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                backgroundColor: mint,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.md),
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        onReject: () async {
+                          await ref
+                              .read(recommendationsListProvider.notifier)
+                              .reject(rec.id);
+                        },
+                        onDismiss: () async {
+                          await ref
+                              .read(recommendationsListProvider.notifier)
+                              .dismiss(rec.id);
+                        },
+                      ),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+          loading: () => const GlassListSkeleton(itemCount: 3, itemHeight: 180),
+          error: (e, _) => Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: ErrorView(
+              message: 'Không thể tải danh sách đề xuất: $e',
+              onRetry: () =>
+                  ref.read(recommendationsListProvider.notifier).refresh(),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -57,6 +313,12 @@ class _RecommendationsScreenState
     final recsAsync = ref.watch(recommendationsListProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    final accent = theme.colorScheme.primary;
+
+    if (widget.isEmbedded) {
+      return _buildContent(context, recsAsync, isDark, mint, accent);
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -96,139 +358,7 @@ class _RecommendationsScreenState
               ),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  // ML Model Status
-                  const MlModelStatusCard(),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Generate AI Button
-                  GlassCard(
-                    onTap: _isGenerating ? null : _generate,
-                    radius: AppRadius.card,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                      vertical: AppSpacing.md,
-                    ),
-                    fill: (isDark ? AppColors.orbViolet : Colors.purple)
-                        .withValues(alpha: 0.15),
-                    shadows: GlassTokens.glow(
-                      isDark ? AppColors.orbViolet : Colors.purple,
-                      intensity: 0.3,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (_isGenerating)
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        else
-                          Icon(
-                            Icons.auto_awesome_rounded,
-                            size: 20,
-                            color: isDark ? AppColors.orbViolet : Colors.purple,
-                          ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          _isGenerating
-                              ? 'Đang phân tích dữ liệu 30 ngày qua...'
-                              : 'Phân tích hành vi & Tạo đề xuất mới',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.onDark : AppColors.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Tabs: Pending vs History
-                  Row(
-                    children: [
-                      GlassFilterChip(
-                        label: 'Chờ duyệt',
-                        selected: _selectedTab == 'pending',
-                        onTap: () =>
-                            setState(() => _selectedTab = 'pending'),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      GlassFilterChip(
-                        label: 'Lịch sử giải quyết',
-                        selected: _selectedTab == 'history',
-                        onTap: () =>
-                            setState(() => _selectedTab = 'history'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-
-                  // Recommendations List
-                  recsAsync.when(
-                    data: (items) {
-                      final filtered = items.where((r) {
-                        if (_selectedTab == 'pending') return r.isPending;
-                        return !r.isPending;
-                      }).toList();
-
-                      if (filtered.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 40),
-                          child: EmptyView(
-                            message: _selectedTab == 'pending'
-                                ? 'Hiện không có đề xuất nào đang chờ duyệt.\nNhấn nút phân tích ở trên để tìm thói quen mới!'
-                                : 'Chưa có lịch sử đề xuất nào được xử lý.',
-                            icon: Icons.psychology_rounded,
-                          ),
-                        );
-                      }
-
-                      return Column(
-                        children: filtered
-                            .map((rec) => Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: AppSpacing.md,
-                                  ),
-                                  child: RecommendationItemCard(
-                                    recommendation: rec,
-                                    onApprove: () => ref
-                                        .read(
-                                          recommendationsListProvider.notifier,
-                                        )
-                                        .approve(rec.id),
-                                    onReject: () => ref
-                                        .read(
-                                          recommendationsListProvider.notifier,
-                                        )
-                                        .reject(rec.id),
-                                    onDismiss: () => ref
-                                        .read(
-                                          recommendationsListProvider.notifier,
-                                        )
-                                        .dismiss(rec.id),
-                                  ),
-                                ))
-                            .toList(),
-                      );
-                    },
-                    loading: () => const Padding(
-                      padding: EdgeInsets.only(top: 40),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                    error: (e, _) => Padding(
-                      padding: const EdgeInsets.only(top: 40),
-                      child: ErrorView(
-                        message: 'Không thể tải đề xuất: $e',
-                        onRetry: () => ref
-                            .read(recommendationsListProvider.notifier)
-                            .refresh(),
-                      ),
-                    ),
-                  ),
+                  _buildContent(context, recsAsync, isDark, mint, accent),
                 ]),
               ),
             ),

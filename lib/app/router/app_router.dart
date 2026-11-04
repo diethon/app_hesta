@@ -139,7 +139,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 name: 'automation',
                 path: '/automation',
-                builder: (context, state) => const AutomationScreen(),
+                builder: (context, state) {
+                  final tabStr = state.uri.queryParameters['tab'];
+                  int initialTab = 0;
+                  if (tabStr == 'scenes' || tabStr == '1') initialTab = 1;
+                  if (tabStr == 'recommendations' || tabStr == '2') {
+                    initialTab = 2;
+                  }
+                  return AutomationScreen(initialTab: initialTab);
+                },
               ),
             ],
           ),
