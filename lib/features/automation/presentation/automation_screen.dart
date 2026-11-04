@@ -88,7 +88,7 @@ class _AutomationScreenState extends State<AutomationScreen> {
       backgroundColor: Colors.transparent,
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.xl * 2),
-        child: _CreateRuleFab(onPressed: () {}),
+        child: _CreateRuleFab(onPressed: () => context.push('/automation-rules')),
       ),
       body: CustomScrollView(
         slivers: [
@@ -103,6 +103,11 @@ class _AutomationScreenState extends State<AutomationScreen> {
               title: l10n.automations,
               onBack: () => Navigator.of(context).maybePop(),
               actions: [
+                GlassIconButton(
+                  icon: Icons.auto_awesome_rounded,
+                  tooltip: 'Gợi ý AI',
+                  onTap: () => context.push('/recommendations'),
+                ),
                 GlassIconButton(
                   icon: Icons.notifications_outlined,
                   tooltip: l10n.notifications,
@@ -216,7 +221,7 @@ class _AutomationScreenState extends State<AutomationScreen> {
                       style: theme.textTheme.headlineMedium,
                     ),
                     GestureDetector(
-                      onTap: () {},
+                      onTap: () => context.push('/scenes'),
                       child: Text(
                         l10n.viewAll,
                         style: theme.textTheme.labelMedium?.copyWith(
@@ -664,7 +669,7 @@ class _NewSceneCard extends StatelessWidget {
     final l10n = context.l10n;
 
     return GlassCard(
-      onTap: () {},
+      onTap: () => context.push('/scenes'),
       radius: AppRadius.hero,
       padding: EdgeInsets.zero,
       semanticLabel: l10n.newScene,

@@ -546,7 +546,7 @@ class _SceneButton extends StatelessWidget {
     return Column(
       children: [
         GlassCard(
-          onTap: () {},
+          onTap: () => context.push('/scenes'),
           active: isActive,
           radius: AppRadius.lg + 2,
           padding: EdgeInsets.zero,
