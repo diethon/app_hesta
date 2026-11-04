@@ -167,9 +167,11 @@ class MlModelStatus {
   bool get isReady => status.toUpperCase() == 'READY';
   bool get isColdStart => status.toUpperCase() == 'COLD_START';
   bool get isTraining => status.toUpperCase() == 'TRAINING';
+  bool get isUnavailable => status.toUpperCase() == 'UNAVAILABLE';
+  bool get isNotTrained => status.toUpperCase() == 'NOT_TRAINED';
 
   int get accuracyPercent =>
-      accuracy != null ? (accuracy! * 100).round() : 88;
+      accuracy != null ? (accuracy! * 100).round() : 0;
 
   factory MlModelStatus.fromJson(Map<String, dynamic> json) {
     return MlModelStatus(
