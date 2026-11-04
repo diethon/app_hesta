@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
 import '../../../core/widgets/glass/glass_card.dart';
-import '../../../core/widgets/glass/glass_filter_chip.dart';
 import '../../../core/widgets/glass/glass_toggle.dart';
 import '../../devices/data/device_providers.dart';
 import '../../devices/domain/device.dart';
@@ -60,6 +61,29 @@ class _AutomationRuleEditorScreenState
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_actions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Vui lòng thêm ít nhất 1 hành động (THEN) cho quy tắc.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_triggerType == 'SENSOR' && _conditions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Quy tắc cảm biến cần ít nhất 1 điều kiện kích hoạt (IF).'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final homeId = ref.read(currentHomeIdProvider);
     if (homeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -370,6 +394,145 @@ class _AutomationRuleEditorScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Live Rule Flow Preview
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'XEM TRƯỚC QUY TRÌNH',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Builder(
+                              builder: (context) {
+                                final isSensor = _triggerType == 'SENSOR';
+                                final isSchedule = _triggerType == 'SCHEDULE';
+                                final trigColor = isSchedule
+                                    ? const Color(0xFFFBBF24)
+                                    : (isSensor
+                                        ? const Color(0xFF38BDF8)
+                                        : const Color(0xFFA855F7));
+                                final mint = isDark
+                                    ? AppColors.auroraMint
+                                    : AppColors.auroraMintOnLight;
+
+                                return GlassCard(
+                                  radius: AppRadius.card,
+                                  padding: const EdgeInsets.all(AppSpacing.md),
+                                  borderGradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      trigColor.withValues(alpha: 0.45),
+                                      Colors.white.withValues(alpha: 0.08),
+                                    ],
+                                  ),
+                                  shadows: GlassTokens.glow(
+                                    trigColor,
+                                    intensity: 0.2,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 34,
+                                            height: 34,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: trigColor
+                                                  .withValues(alpha: 0.2),
+                                              border: Border.all(
+                                                color: trigColor
+                                                    .withValues(alpha: 0.4),
+                                              ),
+                                            ),
+                                            child: Icon(
+                                              isSchedule
+                                                  ? Icons.schedule_rounded
+                                                  : (isSensor
+                                                      ? Icons.sensors_rounded
+                                                      : Icons.flash_on_rounded),
+                                              color: trigColor,
+                                              size: 18,
+                                            ),
+                                          ),
+                                          const SizedBox(width: AppSpacing.sm),
+                                          Expanded(
+                                            child: Text(
+                                              _nameController.text.trim().isEmpty
+                                                  ? 'Tên quy tắc mới'
+                                                  : _nameController.text.trim(),
+                                              style: theme.textTheme.titleSmall
+                                                  ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: -0.2,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: AppSpacing.sm),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.sm,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? Colors.black
+                                                  .withValues(alpha: 0.22)
+                                              : Colors.white
+                                                  .withValues(alpha: 0.6),
+                                          borderRadius: BorderRadius.circular(
+                                            AppRadius.sm,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'KHI: ${_conditions.isEmpty ? (_triggerType == "SCHEDULE" ? "Theo lịch định sẵn" : "Luôn kích hoạt khi có sự kiện") : _conditions.map((c) => "${c.deviceName ?? c.attribute} ${c.operatorSymbol} ${c.expectedValue}").join(" VÀ ")}',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                color: trigColor,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 11.5,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              'THÌ: ${_actions.isEmpty ? "Chưa chọn hành động" : _actions.map((a) => "${a.deviceName ?? a.sceneName ?? 'Thiết bị'}: ${a.action}").join(", ")}',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                color: mint,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 11.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
                       // Info Card
                       GlassCard(
                         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -388,7 +551,8 @@ class _AutomationRuleEditorScreenState
                               controller: _nameController,
                               decoration: const InputDecoration(
                                 labelText: 'Tên quy tắc',
-                                hintText: 'Ví dụ: Bật điều hòa khi phòng quá nóng...',
+                                hintText:
+                                    'Ví dụ: Bật điều hòa khi phòng quá nóng...',
                               ),
                               validator: (v) {
                                 if (v == null || v.trim().isEmpty) {
@@ -430,7 +594,7 @@ class _AutomationRuleEditorScreenState
                       ),
                       const SizedBox(height: AppSpacing.lg),
 
-                      // Trigger Type Card
+                      // Trigger Type Selector Card
                       GlassCard(
                         padding: const EdgeInsets.all(AppSpacing.lg),
                         radius: AppRadius.card,
@@ -438,7 +602,7 @@ class _AutomationRuleEditorScreenState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Loại Trigger (Nguồn kích hoạt)',
+                              'Nguồn kích hoạt (Trigger Type)',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -446,25 +610,43 @@ class _AutomationRuleEditorScreenState
                             const SizedBox(height: AppSpacing.md),
                             Row(
                               children: [
-                                GlassFilterChip(
-                                  label: 'Cảm biến (Sensor)',
-                                  selected: _triggerType == 'SENSOR',
-                                  onTap: () =>
-                                      setState(() => _triggerType = 'SENSOR'),
+                                Expanded(
+                                  child: _TriggerOptionCard(
+                                    label: 'Cảm biến',
+                                    icon: Icons.sensors_rounded,
+                                    color: const Color(0xFF38BDF8),
+                                    selected: _triggerType == 'SENSOR',
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      setState(() => _triggerType = 'SENSOR');
+                                    },
+                                  ),
                                 ),
                                 const SizedBox(width: AppSpacing.sm),
-                                GlassFilterChip(
-                                  label: 'Lịch (Schedule)',
-                                  selected: _triggerType == 'SCHEDULE',
-                                  onTap: () =>
-                                      setState(() => _triggerType = 'SCHEDULE'),
+                                Expanded(
+                                  child: _TriggerOptionCard(
+                                    label: 'Lịch biểu',
+                                    icon: Icons.schedule_rounded,
+                                    color: const Color(0xFFFBBF24),
+                                    selected: _triggerType == 'SCHEDULE',
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      setState(() => _triggerType = 'SCHEDULE');
+                                    },
+                                  ),
                                 ),
                                 const SizedBox(width: AppSpacing.sm),
-                                GlassFilterChip(
-                                  label: 'Sự kiện (Event)',
-                                  selected: _triggerType == 'EVENT',
-                                  onTap: () =>
-                                      setState(() => _triggerType = 'EVENT'),
+                                Expanded(
+                                  child: _TriggerOptionCard(
+                                    label: 'Sự kiện',
+                                    icon: Icons.flash_on_rounded,
+                                    color: const Color(0xFFA855F7),
+                                    selected: _triggerType == 'EVENT',
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      setState(() => _triggerType = 'EVENT');
+                                    },
+                                  ),
                                 ),
                               ],
                             ),
@@ -670,3 +852,80 @@ class _AutomationRuleEditorScreenState
     );
   }
 }
+
+class _TriggerOptionCard extends StatelessWidget {
+  const _TriggerOptionCard({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.md,
+        ),
+        decoration: BoxDecoration(
+          color: selected
+              ? color.withValues(alpha: 0.18)
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.black.withValues(alpha: 0.03)),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: selected
+                ? color.withValues(alpha: 0.6)
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.08)),
+            width: selected ? 1.5 : 1,
+          ),
+          boxShadow: selected ? GlassTokens.glow(color, intensity: 0.25) : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: selected
+                  ? color
+                  : (isDark ? AppColors.onDarkFaint : Colors.grey),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected
+                    ? color
+                    : (isDark ? AppColors.onDarkMuted : AppColors.onSurfaceVariant),
+                fontSize: 12,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

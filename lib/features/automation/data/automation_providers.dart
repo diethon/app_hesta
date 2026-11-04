@@ -22,7 +22,7 @@ class AutomationRulesListNotifier
   Future<List<AutomationRule>> build() async {
     final homeId = ref.watch(currentHomeIdProvider);
     if (homeId == null) {
-      return _mockRules();
+      return kUseMockData ? _mockRules() : const [];
     }
 
     if (kUseMockData) {
@@ -31,13 +31,9 @@ class AutomationRulesListNotifier
 
     try {
       final repo = ref.read(automationRepositoryProvider);
-      final rules = await repo.getRules(homeId);
-      if (rules.isEmpty) {
-        return _mockRules();
-      }
-      return rules;
+      return await repo.getRules(homeId);
     } catch (_) {
-      return _mockRules();
+      return const [];
     }
   }
 
@@ -45,7 +41,7 @@ class AutomationRulesListNotifier
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final homeId = ref.read(currentHomeIdProvider);
-      if (homeId == null) return _mockRules();
+      if (homeId == null) return kUseMockData ? _mockRules() : const [];
       final repo = ref.read(automationRepositoryProvider);
       return repo.getRules(homeId);
     });
