@@ -91,6 +91,8 @@ class ApiAuthRepository implements AuthRepository {
     final data = await _post('/api/v1/auth/login', {
       'email': email,
       'password': password,
+      'deviceId': 'FLUTTER_MOBILE',
+      'deviceType': 'APP',
     });
     return _saveSession(AuthResponseDto.fromJson(data));
   }

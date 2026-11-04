@@ -19,11 +19,12 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final _nameController = TextEditingController(text: 'Alex');
-  final _emailController = TextEditingController(text: 'alex@syna.local');
-  final _passwordController = TextEditingController(text: '123456');
-  final _confirmController = TextEditingController(text: '123456');
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
   bool _termsAccepted = false;
+  String? _localError;
 
   @override
   void dispose() {
@@ -32,6 +33,39 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
+  }
+
+  void _handleRegister() {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirm = _confirmController.text;
+
+    if (name.isEmpty) {
+      setState(() => _localError = 'Vui lòng nhập họ và tên.');
+      return;
+    }
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      setState(() => _localError = 'Địa chỉ email không hợp lệ.');
+      return;
+    }
+    if (password.length < 6) {
+      setState(() => _localError = 'Mật khẩu phải từ 6 ký tự trở lên.');
+      return;
+    }
+    if (password != confirm) {
+      setState(() => _localError = 'Mật khẩu xác nhận không khớp.');
+      return;
+    }
+    if (!_termsAccepted) {
+      setState(() => _localError = 'Vui lòng đồng ý với điều khoản sử dụng.');
+      return;
+    }
+
+    setState(() => _localError = null);
+    ref
+        .read(authControllerProvider.notifier)
+        .register(name, email, password);
   }
 
   @override
@@ -121,6 +155,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             label: l10n.fullName,
                             controller: _nameController,
                             prefixIcon: Icons.person_outline_rounded,
+                            hintText: 'Nguyễn Văn A',
                             textInputAction: TextInputAction.next,
                           ),
                           const SizedBox(height: AppSpacing.md),
@@ -129,6 +164,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             prefixIcon: Icons.mail_outline_rounded,
+                            hintText: 'example@gmail.com',
                             textInputAction: TextInputAction.next,
                           ),
                           const SizedBox(height: AppSpacing.md),
@@ -140,6 +176,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 controller: _passwordController,
                                 obscureText: true,
                                 prefixIcon: Icons.lock_outline_rounded,
+                                hintText: '••••••••',
                                 textInputAction: TextInputAction.next,
                               );
                               final confirmField = AppTextField(
@@ -147,6 +184,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 controller: _confirmController,
                                 obscureText: true,
                                 prefixIcon: Icons.lock_reset_rounded,
+                                hintText: '••••••••',
                                 textInputAction: TextInputAction.done,
                               );
                               if (isWide) {
@@ -191,10 +229,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             ],
                           ),
 
-                          if (auth.errorMessage != null) ...[
+                          if (_localError != null || auth.errorMessage != null) ...[
                             const SizedBox(height: AppSpacing.md),
                             Text(
-                              auth.errorMessage!,
+                              _localError ?? auth.errorMessage!,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.error,
                               ),
@@ -206,17 +244,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             label: l10n.createAccount,
                             icon: Icons.arrow_forward_rounded,
                             isLoading: auth.isSubmitting,
-                            onPressed: _termsAccepted
-                                ? () {
-                                    ref
-                                        .read(authControllerProvider.notifier)
-                                        .register(
-                                          _nameController.text.trim(),
-                                          _emailController.text.trim(),
-                                          _passwordController.text,
-                                        );
-                                  }
-                                : null,
+                            onPressed: _handleRegister,
                           ),
                           const SizedBox(height: AppSpacing.lg),
 
