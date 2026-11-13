@@ -86,7 +86,7 @@ class _RecommendationsScreenState
     final allItems = recsAsync.valueOrNull ?? [];
     final pendingCount = allItems.where((r) => r.isPending).length;
     final approvedCount =
-        allItems.where((r) => r.status.toUpperCase() == 'APPROVED').length;
+        allItems.where((r) => r.status.toUpperCase() == 'ACCEPTED').length;
     final rejectedCount =
         allItems.where((r) => r.status.toUpperCase() == 'REJECTED').length;
 
@@ -220,7 +220,7 @@ class _RecommendationsScreenState
             final filtered = items.where((r) {
               if (_selectedTab == 'pending') return r.isPending;
               if (_selectedTab == 'approved') {
-                return r.status.toUpperCase() == 'APPROVED';
+                return r.status.toUpperCase() == 'ACCEPTED';
               }
               if (_selectedTab == 'rejected') {
                 return r.status.toUpperCase() == 'REJECTED';

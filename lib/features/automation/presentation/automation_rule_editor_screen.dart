@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,7 @@ import '../../../core/widgets/glass/glass_app_bar.dart';
 import '../../../core/widgets/glass/glass_card.dart';
 import '../../../core/widgets/glass/glass_filter_chip.dart';
 import '../../../core/widgets/glass/glass_toggle.dart';
+import '../../../core/network/error_mapper.dart';
 import '../../devices/data/device_providers.dart';
 import '../../devices/domain/device.dart';
 import '../../home/data/home_providers.dart';
@@ -39,6 +41,17 @@ class _AutomationRuleEditorScreenState
   late List<RuleAction> _actions;
   bool _isSaving = false;
 
+  /// Time of a new schedule. A rule saved as SCHEDULE keeps its existing times, so it is optional then.
+  TimeOfDay? _scheduleTime;
+
+  /// ISO weekdays 1 (Mon) .. 7 (Sun); empty means every day.
+  final Set<int> _repeatDays = {};
+
+  static const _dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+  bool get _needsScheduleTime =>
+      _triggerType == 'SCHEDULE' && widget.rule?.triggerType != 'SCHEDULE';
+
   @override
   void initState() {
     super.initState();
@@ -58,8 +71,36 @@ class _AutomationRuleEditorScreenState
     super.dispose();
   }
 
+  List<Map<String, dynamic>>? get _schedulePayload {
+    final time = _scheduleTime;
+    if (_triggerType != 'SCHEDULE' || time == null) return null;
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    return [
+      {
+        'scheduledTime': '$hh:$mm',
+        'repeatDays': (_repeatDays.toList()..sort()),
+        'active': true,
+      }
+    ];
+  }
+
+  Future<void> _pickScheduleTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _scheduleTime ?? const TimeOfDay(hour: 7, minute: 0),
+    );
+    if (picked != null) setState(() => _scheduleTime = picked);
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_needsScheduleTime && _scheduleTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chọn giờ chạy cho quy tắc hẹn giờ.')),
+      );
+      return;
+    }
     final homeId = ref.read(currentHomeIdProvider);
     if (homeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,8 +122,10 @@ class _AutomationRuleEditorScreenState
               : _descController.text.trim(),
           triggerType: _triggerType,
           enabled: _enabled,
-          conditions: _conditions,
+          // SCHEDULE rules run at their times only; the backend rejects conditions on them.
+          conditions: _triggerType == 'SCHEDULE' ? const [] : _conditions,
           actions: _actions,
+          schedules: _schedulePayload,
         );
       } else {
         await repo.updateRule(
@@ -94,16 +137,26 @@ class _AutomationRuleEditorScreenState
               : _descController.text.trim(),
           triggerType: _triggerType,
           enabled: _enabled,
-          conditions: _conditions,
+          // SCHEDULE rules run at their times only; the backend rejects conditions on them.
+          conditions: _triggerType == 'SCHEDULE' ? const [] : _conditions,
           actions: _actions,
+          // A list here would replace the saved times, so it is only sent when the rule becomes SCHEDULE.
+          schedules: _needsScheduleTime ? _schedulePayload : null,
         );
+        final added = _schedulePayload;
+        if (!_needsScheduleTime && added != null) {
+          await repo.addSchedule(homeId, widget.rule!.id, added.first);
+        }
       }
 
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
+        final reason = e is DioException
+            ? readBackendError(e.response?.data).message ?? e.message
+            : e.toString();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lưu quy tắc thất bại: $e')),
+          SnackBar(content: Text('Lưu quy tắc thất bại: $reason')),
         );
       }
     } finally {
@@ -473,7 +526,13 @@ class _AutomationRuleEditorScreenState
                       ),
                       const SizedBox(height: AppSpacing.lg),
 
-                      // IF Conditions Card
+                      if (_triggerType == 'SCHEDULE') ...[
+                        _buildScheduleCard(theme),
+                        const SizedBox(height: AppSpacing.lg),
+                      ],
+
+                      // IF Conditions Card (SCHEDULE rules have none)
+                      if (_triggerType != 'SCHEDULE')
                       GlassCard(
                         padding: const EdgeInsets.all(AppSpacing.lg),
                         radius: AppRadius.card,
@@ -560,7 +619,8 @@ class _AutomationRuleEditorScreenState
                           ],
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      if (_triggerType != 'SCHEDULE')
+                        const SizedBox(height: AppSpacing.lg),
 
                       // THEN Actions Card
                       GlassCard(
@@ -666,6 +726,57 @@ class _AutomationRuleEditorScreenState
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleCard(ThemeData theme) {
+    final time = _scheduleTime;
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      radius: AppRadius.card,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _needsScheduleTime ? 'GIỜ CHẠY (bắt buộc)' : 'THÊM GIỜ CHẠY (tùy chọn)',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          if (!_needsScheduleTime)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Các giờ chạy hiện có được giữ nguyên.',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          const SizedBox(height: AppSpacing.md),
+          OutlinedButton.icon(
+            onPressed: _pickScheduleTime,
+            icon: const Icon(Icons.schedule_rounded),
+            label: Text(time == null ? 'Chọn giờ' : time.format(context)),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (var day = 1; day <= 7; day++)
+                GlassFilterChip(
+                  label: _dayLabels[day - 1],
+                  selected: _repeatDays.contains(day),
+                  onTap: () => setState(() {
+                    if (!_repeatDays.remove(day)) _repeatDays.add(day);
+                  }),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _repeatDays.isEmpty ? 'Không chọn ngày nào = chạy hằng ngày.' : '',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }

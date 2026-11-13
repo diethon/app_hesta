@@ -69,68 +69,47 @@ class RecommendationsListNotifier
     }
   }
 
-  Future<bool> approve(String id) async {
-    final current = state.valueOrNull ?? [];
+  /// Shared helper: optimistic update then API call. Rolls back to [snapshot] on failure.
+  Future<bool> _resolveOptimistic(
+    String id,
+    String localStatus,
+    Future<void> Function(RecommendationRepository repo, String homeId, String id) apiCall,
+  ) async {
+    final snapshot = state.valueOrNull ?? [];
+    // Optimistic update — user sees change immediately.
     state = AsyncValue.data(
-      current
-          .map((r) => r.id == id ? r.copyWith(status: 'APPROVED') : r)
-          .toList(),
+      snapshot.map((r) => r.id == id ? r.copyWith(status: localStatus) : r).toList(),
     );
-
     final homeId = ref.read(currentHomeIdProvider);
-    if (homeId != null && !kUseMockData) {
-      try {
-        final repo = ref.read(recommendationRepositoryProvider);
-        await repo.approve(homeId, id);
-        return true;
-      } catch (_) {
-        return false;
-      }
+    if (homeId == null || kUseMockData) return true;
+    try {
+      final repo = ref.read(recommendationRepositoryProvider);
+      await apiCall(repo, homeId, id);
+      return true;
+    } catch (_) {
+      // Rollback to pre-action state so the UI stays consistent with the backend.
+      state = AsyncValue.data(snapshot);
+      return false;
     }
-    return true;
   }
 
-  Future<bool> reject(String id) async {
-    final current = state.valueOrNull ?? [];
-    state = AsyncValue.data(
-      current
-          .map((r) => r.id == id ? r.copyWith(status: 'REJECTED') : r)
-          .toList(),
-    );
+  Future<bool> approve(String id) => _resolveOptimistic(
+        id,
+        'ACCEPTED', // backend sets status = "ACCEPTED" on approve
+        (repo, homeId, id) => repo.approve(homeId, id),
+      );
 
-    final homeId = ref.read(currentHomeIdProvider);
-    if (homeId != null && !kUseMockData) {
-      try {
-        final repo = ref.read(recommendationRepositoryProvider);
-        await repo.reject(homeId, id);
-        return true;
-      } catch (_) {
-        return false;
-      }
-    }
-    return true;
-  }
+  Future<bool> reject(String id) => _resolveOptimistic(
+        id,
+        'REJECTED',
+        (repo, homeId, id) => repo.reject(homeId, id),
+      );
 
-  Future<bool> dismiss(String id) async {
-    final current = state.valueOrNull ?? [];
-    state = AsyncValue.data(
-      current
-          .map((r) => r.id == id ? r.copyWith(status: 'DISMISSED') : r)
-          .toList(),
-    );
-
-    final homeId = ref.read(currentHomeIdProvider);
-    if (homeId != null && !kUseMockData) {
-      try {
-        final repo = ref.read(recommendationRepositoryProvider);
-        await repo.dismiss(homeId, id);
-        return true;
-      } catch (_) {
-        return false;
-      }
-    }
-    return true;
-  }
+  Future<bool> dismiss(String id) => _resolveOptimistic(
+        id,
+        'DISMISSED',
+        (repo, homeId, id) => repo.dismiss(homeId, id),
+      );
 
   List<Recommendation> _mockRecommendations() {
     return [
@@ -198,7 +177,7 @@ class RecommendationsListNotifier
         explanation:
             'Mở rèm đón ánh sáng tự nhiên lúc 06:30 vào các buổi sáng ngày làm việc.',
         confidence: 0.82,
-        status: 'APPROVED',
+        status: 'ACCEPTED',
         engineType: 'ML',
         modelVersion: 'v2.3.0',
         createdAt: DateTime.now().subtract(const Duration(days: 3)),
