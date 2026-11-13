@@ -11,6 +11,7 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
 import '../../../core/widgets/glass/glass_card.dart';
+import '../../../core/widgets/glass/glass_filter_chip.dart';
 import '../../../core/widgets/glass/glass_toggle.dart';
 import '../../../core/network/error_mapper.dart';
 import '../../devices/data/device_providers.dart';
