@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
@@ -72,6 +74,18 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_actions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Vui lòng thêm ít nhất 1 hành động thiết bị cho ngữ cảnh.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final homeId = ref.read(currentHomeIdProvider);
     if (homeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -181,6 +195,108 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Live Preview Card
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'XEM TRƯỚC NGỮ CẢNH',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: accent,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Builder(
+                              builder: (context) {
+                                final atmosphere =
+                                    SceneIcons.getAtmosphere(_selectedIcon);
+                                return GlassCard(
+                                  radius: AppRadius.card,
+                                  padding: const EdgeInsets.all(AppSpacing.md),
+                                  borderGradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      atmosphere.accentColor
+                                          .withValues(alpha: 0.5),
+                                      Colors.white.withValues(alpha: 0.08),
+                                    ],
+                                  ),
+                                  shadows: GlassTokens.glow(
+                                    atmosphere.accentColor,
+                                    intensity: 0.25,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: LinearGradient(
+                                            colors: atmosphere.gradient
+                                                .map((c) =>
+                                                    c.withValues(alpha: 0.35))
+                                                .toList(),
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          border: Border.all(
+                                            color: atmosphere.accentColor
+                                                .withValues(alpha: 0.45),
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          atmosphere.icon,
+                                          color: atmosphere.accentColor,
+                                          size: 22,
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppSpacing.md),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _nameController.text.trim().isEmpty
+                                                  ? 'Tên ngữ cảnh'
+                                                  : _nameController.text.trim(),
+                                              style: theme.textTheme.titleMedium
+                                                  ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: -0.2,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${_actions.length} hành động • ${atmosphere.vietnameseLabel}',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                fontSize: 11.5,
+                                                color: isDark
+                                                    ? AppColors.onDarkMuted
+                                                    : AppColors.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
                       // Basic Info Card
                       GlassCard(
                         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -267,36 +383,60 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                 itemBuilder: (context, i) {
                                   final iconName = _availableIcons[i];
                                   final isSelected = _selectedIcon == iconName;
-                                  return GestureDetector(
-                                    onTap: () =>
-                                        setState(() => _selectedIcon = iconName),
-                                    child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      width: 50,
-                                      height: 50,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: isSelected
-                                            ? accent.withValues(alpha: 0.25)
-                                            : Colors.white.withValues(alpha: 0.05),
-                                        border: Border.all(
+                                  final atmosphere =
+                                      SceneIcons.getAtmosphere(iconName);
+                                  return Tooltip(
+                                    message: atmosphere.vietnameseLabel,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.selectionClick();
+                                        setState(
+                                          () => _selectedIcon = iconName,
+                                        );
+                                      },
+                                      child: AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 200),
+                                        width: 50,
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
                                           color: isSelected
-                                              ? accent
-                                              : Colors.white.withValues(
-                                                  alpha: 0.15,
-                                                ),
-                                          width: isSelected ? 2 : 1,
+                                              ? atmosphere.accentColor
+                                                  .withValues(alpha: 0.28)
+                                              : isDark
+                                                  ? Colors.white
+                                                      .withValues(alpha: 0.05)
+                                                  : Colors.black
+                                                      .withValues(alpha: 0.04),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? atmosphere.accentColor
+                                                : isDark
+                                                    ? Colors.white.withValues(
+                                                        alpha: 0.15,
+                                                      )
+                                                    : Colors.black.withValues(
+                                                        alpha: 0.12,
+                                                      ),
+                                            width: isSelected ? 2 : 1,
+                                          ),
+                                          boxShadow: isSelected
+                                              ? GlassTokens.glow(
+                                                  atmosphere.accentColor,
+                                                  intensity: 0.35,
+                                                )
+                                              : null,
                                         ),
-                                      ),
-                                      child: Icon(
-                                        SceneIcons.getIcon(iconName),
-                                        color: isSelected
-                                            ? accent
-                                            : (isDark
-                                                ? AppColors.onDarkMuted
-                                                : Colors.grey.shade600),
-                                        size: 24,
+                                        child: Icon(
+                                          atmosphere.icon,
+                                          color: isSelected
+                                              ? atmosphere.accentColor
+                                              : (isDark
+                                                  ? AppColors.onDarkMuted
+                                                  : Colors.grey.shade600),
+                                          size: 24,
+                                        ),
                                       ),
                                     ),
                                   );

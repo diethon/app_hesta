@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
@@ -90,9 +91,17 @@ class _AutomationRuleDetailScreenState
   }
 
   Future<void> _deleteRule() async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor:
+            isDark ? AppColors.auroraCanvasMid : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
         title: const Text('Xác nhận xóa'),
         content: Text('Bạn có chắc muốn xóa quy tắc "${_rule.name}"?'),
         actions: [
@@ -103,7 +112,7 @@ class _AutomationRuleDetailScreenState
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Xóa'),
+            child: const Text('Xóa quy tắc'),
           ),
         ],
       ),
@@ -173,61 +182,85 @@ class _AutomationRuleDetailScreenState
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // Hero Header Card
-                  GlassCard(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    radius: AppRadius.hero,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Builder(
+                    builder: (context) {
+                      final trigColor = _rule.triggerType == 'SCHEDULE'
+                          ? const Color(0xFFFBBF24)
+                          : (_rule.triggerType == 'SENSOR'
+                              ? const Color(0xFF38BDF8)
+                              : const Color(0xFFA855F7));
+
+                      return GlassCard(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        radius: AppRadius.hero,
+                        borderGradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            trigColor.withValues(alpha: 0.5),
+                            Colors.white.withValues(alpha: 0.08),
+                          ],
+                        ),
+                        shadows: GlassTokens.glow(trigColor, intensity: 0.35),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            GlassStatusPill(
-                              label: _rule.triggerType,
-                              color: accent,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                GlassStatusPill(
+                                  label: _rule.triggerType,
+                                  color: trigColor,
+                                ),
+                                GlassToggle(
+                                  value: _rule.enabled,
+                                  onChanged: (_) async {
+                                    await ref
+                                        .read(
+                                          automationRulesListProvider.notifier,
+                                        )
+                                        .toggleRule(_rule.id);
+                                    setState(() {
+                                      _rule = _rule.copyWith(
+                                        enabled: !_rule.enabled,
+                                      );
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
-                            GlassToggle(
-                              value: _rule.enabled,
-                              onChanged: (_) async {
-                                await ref
-                                    .read(automationRulesListProvider.notifier)
-                                    .toggleRule(_rule.id);
-                                setState(() {
-                                  _rule =
-                                      _rule.copyWith(enabled: !_rule.enabled);
-                                });
-                              },
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              _rule.name,
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            if (_rule.description != null &&
+                                _rule.description!.isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                _rule.description!,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: isDark
+                                      ? AppColors.onDarkMuted
+                                      : AppColors.onSurfaceVariant,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: AppSpacing.lg),
+                            AppButton(
+                              label: 'Chạy thử quy tắc (Test Rule)',
+                              icon: Icons.play_arrow_rounded,
+                              isLoading: _isTesting,
+                              onPressed: _testRule,
                             ),
                           ],
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          _rule.name,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (_rule.description != null &&
-                            _rule.description!.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            _rule.description!,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: isDark
-                                  ? AppColors.onDarkMuted
-                                  : AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: AppSpacing.lg),
-                        AppButton(
-                          label: 'Chạy thử quy tắc (Test Rule)',
-                          icon: Icons.play_arrow_rounded,
-                          isLoading: _isTesting,
-                          onPressed: _testRule,
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                   const SizedBox(height: AppSpacing.lg),
 
