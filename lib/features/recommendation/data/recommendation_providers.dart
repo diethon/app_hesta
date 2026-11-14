@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/network_client.dart';
 import '../../authentication/data/auth_providers.dart' show kUseMockData;
+import '../../automation/data/automation_providers.dart';
 import '../../home/data/home_providers.dart';
 import '../domain/recommendation_models.dart';
 import 'recommendation_repository.dart';
@@ -85,12 +86,19 @@ class RecommendationsListNotifier
     try {
       final repo = ref.read(recommendationRepositoryProvider);
       await apiCall(repo, homeId, id);
-      return true;
     } catch (_) {
       // Rollback to pre-action state so the UI stays consistent with the backend.
       state = AsyncValue.data(snapshot);
       return false;
     }
+    // Approving creates an automation rule on the backend.
+    if (localStatus == 'ACCEPTED') ref.invalidate(automationRulesListProvider);
+    // Like the web: reload so statuses are the backend's; the optimistic list stays if this fails.
+    try {
+      final repo = ref.read(recommendationRepositoryProvider);
+      state = AsyncValue.data(await repo.getRecommendations(homeId));
+    } catch (_) {}
+    return true;
   }
 
   Future<bool> approve(String id) => _resolveOptimistic(
