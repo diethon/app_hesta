@@ -501,12 +501,12 @@ class RecommendationItemCard extends StatelessWidget {
                   ],
                 ),
                 GlassStatusPill(
-                  label: recommendation.status == 'ACCEPTED'
+                  label: recommendation.isApproved
                       ? 'ĐÃ DUYỆT'
                       : (recommendation.status == 'REJECTED'
                           ? 'ĐÃ TỪ CHỐI'
                           : 'ĐÃ BỎ QUA'),
-                  color: recommendation.status == 'ACCEPTED'
+                  color: recommendation.isApproved
                       ? mint
                       : (recommendation.status == 'REJECTED'
                           ? AppColors.error
