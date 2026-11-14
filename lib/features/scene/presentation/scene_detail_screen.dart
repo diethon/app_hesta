@@ -43,7 +43,7 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
     await HapticFeedback.mediumImpact();
     if (!mounted) return;
     setState(() => _isExecuting = true);
-    final success =
+    final error =
         await ref.read(scenesListProvider.notifier).executeScene(_scene.id);
 
     if (mounted) {
@@ -53,22 +53,20 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
           content: Row(
             children: [
               Icon(
-                success ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                error == null ? Icons.check_circle_rounded : Icons.error_outline_rounded,
                 color: Colors.white,
                 size: 20,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  success
-                      ? 'Đã kích hoạt kịch bản: ${_scene.name}'
-                      : 'Kích hoạt thất bại',
+                  error ?? 'Đã kích hoạt kịch bản: ${_scene.name}',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
-          backgroundColor: success
+          backgroundColor: error == null
               ? (isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight)
               : AppColors.error,
           behavior: SnackBarBehavior.floating,

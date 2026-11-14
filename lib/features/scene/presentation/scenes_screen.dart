@@ -39,7 +39,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
     if (!mounted) return;
     setState(() => _executingSceneId = scene.id);
 
-    final success =
+    final error =
         await ref.read(scenesListProvider.notifier).executeScene(scene.id);
 
     if (!mounted) return;
@@ -50,22 +50,20 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
         content: Row(
           children: [
             Icon(
-              success ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+              error == null ? Icons.check_circle_rounded : Icons.error_outline_rounded,
               color: Colors.white,
               size: 20,
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
-                success
-                    ? 'Đã kích hoạt ngữ cảnh: ${scene.name}'
-                    : 'Không thể kích hoạt ngữ cảnh',
+                error ?? 'Đã kích hoạt kịch bản: ${scene.name}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
         ),
-        backgroundColor: success ? mint : AppColors.error,
+        backgroundColor: error == null ? mint : AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),

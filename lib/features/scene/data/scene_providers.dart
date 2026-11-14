@@ -46,19 +46,27 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
     });
   }
 
-  Future<bool> executeScene(String sceneId) async {
+  /// Runs a scene like the web does. Returns null on success, otherwise the message to show:
+  /// a switched-off scene or one without actions is not run, and only SUCCESS counts as a clean run.
+  Future<String?> executeScene(String sceneId) async {
     final homeId = ref.read(currentHomeIdProvider);
-    if (homeId == null) return false;
+    if (homeId == null) return 'Vui lòng chọn ngôi nhà trước';
+
+    final scene = state.valueOrNull?.where((s) => s.id == sceneId).firstOrNull;
+    if (scene != null && !scene.enabled) return 'Bật kịch bản để chạy';
+    if (scene != null && scene.actions.isEmpty) {
+      return 'Kịch bản chưa có hành động nào để thực thi';
+    }
 
     try {
       final repo = ref.read(sceneRepositoryProvider);
-      await repo.executeScene(homeId, sceneId);
-      return true;
+      final run = await repo.executeScene(homeId, sceneId);
+      final ok = run.status == 'SUCCESS' ||
+          (run.resultDetail.isNotEmpty && run.resultDetail.every((r) => r.success));
+      return ok ? null : 'Kịch bản chạy với một số lỗi';
     } catch (e) {
-      if (kUseMockData) {
-        return true;
-      }
-      return false;
+      if (kUseMockData) return null;
+      return 'Lỗi khi kích hoạt kịch bản';
     }
   }
 
