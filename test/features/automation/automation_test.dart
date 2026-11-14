@@ -21,7 +21,7 @@ void main() {
             'expectedValue': 30,
             'logicalOperator': 'AND',
             'order': 0,
-          }
+          },
         ],
         'actions': [
           {
@@ -31,7 +31,7 @@ void main() {
             'action': 'SET_TEMPERATURE',
             'parameters': {'temperature': 24},
             'order': 0,
-          }
+          },
         ],
       };
 
@@ -84,8 +84,18 @@ void main() {
         'startedAt': '2026-10-27T12:00:00Z',
         'completedAt': '2026-10-27T12:00:00.150Z',
         'resultDetail': [
-          {'deviceId': 'd1', 'action': 'TURN_ON', 'success': true, 'status': 'OK'},
-          {'deviceId': 'd2', 'action': 'TURN_ON', 'success': false, 'status': 'OFFLINE'},
+          {
+            'deviceId': 'd1',
+            'action': 'TURN_ON',
+            'success': true,
+            'status': 'OK',
+          },
+          {
+            'deviceId': 'd2',
+            'action': 'TURN_ON',
+            'success': false,
+            'status': 'OFFLINE',
+          },
         ],
       };
 

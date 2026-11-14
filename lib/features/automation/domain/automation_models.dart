@@ -142,17 +142,17 @@ class AutomationRule {
     final rawConds = json['conditions'];
     final condList = (rawConds is List)
         ? rawConds
-            .whereType<Map>()
-            .map((c) => RuleCondition.fromJson(Map<String, dynamic>.from(c)))
-            .toList()
+              .whereType<Map>()
+              .map((c) => RuleCondition.fromJson(Map<String, dynamic>.from(c)))
+              .toList()
         : const <RuleCondition>[];
 
     final rawActs = json['actions'];
     final actList = (rawActs is List)
         ? rawActs
-            .whereType<Map>()
-            .map((a) => RuleAction.fromJson(Map<String, dynamic>.from(a)))
-            .toList()
+              .whereType<Map>()
+              .map((a) => RuleAction.fromJson(Map<String, dynamic>.from(a)))
+              .toList()
         : const <RuleAction>[];
 
     return AutomationRule(
@@ -230,8 +230,9 @@ class AutomationExecution {
   /// Backend AutomationExecutionResponse: matchedAt / startedAt / completedAt, test flag,
   /// resultDetail = [{deviceId|sceneId, action, success, status}]. Duration and the summary are derived.
   factory AutomationExecution.fromJson(Map<String, dynamic> json) {
-    DateTime? at(String key) =>
-        json[key] != null ? DateTime.tryParse(json[key].toString())?.toLocal() : null;
+    DateTime? at(String key) => json[key] != null
+        ? DateTime.tryParse(json[key].toString())?.toLocal()
+        : null;
     final started = at('startedAt');
     final completed = at('completedAt');
     final steps = json['resultDetail'] is List

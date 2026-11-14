@@ -47,7 +47,8 @@ class InMemoryTokenStorage implements TokenStore {
   }
 
   @override
-  Future<({String? userId, String? email, String? name})> readUserSession() async {
+  Future<({String? userId, String? email, String? name})>
+  readUserSession() async {
     return (userId: _userId, email: _email, name: _name);
   }
 }

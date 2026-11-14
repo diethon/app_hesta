@@ -13,8 +13,8 @@ final sceneRepositoryProvider = Provider<SceneRepository>((ref) {
 
 final scenesListProvider =
     AsyncNotifierProvider<ScenesListNotifier, List<Scene>>(
-  ScenesListNotifier.new,
-);
+      ScenesListNotifier.new,
+    );
 
 class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
   @override
@@ -61,8 +61,10 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
     try {
       final repo = ref.read(sceneRepositoryProvider);
       final run = await repo.executeScene(homeId, sceneId);
-      final ok = run.status == 'SUCCESS' ||
-          (run.resultDetail.isNotEmpty && run.resultDetail.every((r) => r.success));
+      final ok =
+          run.status == 'SUCCESS' ||
+          (run.resultDetail.isNotEmpty &&
+              run.resultDetail.every((r) => r.success));
       return ok ? null : 'Kịch bản chạy với một số lỗi';
     } catch (e) {
       if (kUseMockData) return null;
@@ -126,7 +128,8 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
         homeId: 'home-default',
         name: 'Xem phim (Movie Night)',
         icon: 'movie',
-        description: 'Tắt đèn phòng khách, bật đèn nền 20%, bật TV và loa soundbar',
+        description:
+            'Tắt đèn phòng khách, bật đèn nền 20%, bật TV và loa soundbar',
         enabled: true,
         actions: const [
           SceneAction(
@@ -230,75 +233,75 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
   }
 }
 
-final sceneExecutionsProvider =
-    FutureProvider.family.autoDispose<List<SceneExecution>, String>(
-  (ref, sceneId) async {
-    final homeId = ref.watch(currentHomeIdProvider);
-    if (homeId == null || kUseMockData) {
-      return [
-        SceneExecution(
-          id: 'exec-1',
-          sceneId: sceneId,
-          triggerSource: 'MANUAL',
-          status: 'SUCCESS',
-          startedAt: DateTime.now().subtract(const Duration(hours: 2)),
-          completedAt: DateTime.now().subtract(const Duration(hours: 2, minutes: -1)),
-          resultDetail: const [
-            SceneExecutionDetail(
-              deviceId: 'living-light-1',
-              action: 'TURN_OFF',
-              success: true,
-              status: 'OK',
+final sceneExecutionsProvider = FutureProvider.family
+    .autoDispose<List<SceneExecution>, String>((ref, sceneId) async {
+      final homeId = ref.watch(currentHomeIdProvider);
+      if (homeId == null || kUseMockData) {
+        return [
+          SceneExecution(
+            id: 'exec-1',
+            sceneId: sceneId,
+            triggerSource: 'MANUAL',
+            status: 'SUCCESS',
+            startedAt: DateTime.now().subtract(const Duration(hours: 2)),
+            completedAt: DateTime.now().subtract(
+              const Duration(hours: 2, minutes: -1),
             ),
-            SceneExecutionDetail(
-              deviceId: 'living-light-2',
-              action: 'SET_BRIGHTNESS',
-              success: true,
-              status: 'OK',
+            resultDetail: const [
+              SceneExecutionDetail(
+                deviceId: 'living-light-1',
+                action: 'TURN_OFF',
+                success: true,
+                status: 'OK',
+              ),
+              SceneExecutionDetail(
+                deviceId: 'living-light-2',
+                action: 'SET_BRIGHTNESS',
+                success: true,
+                status: 'OK',
+              ),
+            ],
+          ),
+          SceneExecution(
+            id: 'exec-2',
+            sceneId: sceneId,
+            triggerSource: 'SCHEDULE',
+            status: 'SUCCESS',
+            startedAt: DateTime.now().subtract(const Duration(days: 1)),
+            completedAt: DateTime.now().subtract(
+              const Duration(days: 1, minutes: -1),
             ),
-          ],
-        ),
-        SceneExecution(
-          id: 'exec-2',
-          sceneId: sceneId,
-          triggerSource: 'SCHEDULE',
-          status: 'SUCCESS',
-          startedAt: DateTime.now().subtract(const Duration(days: 1)),
-          completedAt: DateTime.now().subtract(const Duration(days: 1, minutes: -1)),
-        ),
-      ];
-    }
+          ),
+        ];
+      }
 
-    try {
-      final repo = ref.read(sceneRepositoryProvider);
-      return await repo.getExecutions(homeId, sceneId);
-    } catch (_) {
-      return [];
-    }
-  },
-);
+      try {
+        final repo = ref.read(sceneRepositoryProvider);
+        return await repo.getExecutions(homeId, sceneId);
+      } catch (_) {
+        return [];
+      }
+    });
 
-final sceneSchedulesProvider =
-    FutureProvider.family.autoDispose<List<SceneSchedule>, String>(
-  (ref, sceneId) async {
-    final homeId = ref.watch(currentHomeIdProvider);
-    if (homeId == null || kUseMockData) {
-      return [
-        SceneSchedule(
-          id: 'sched-1',
-          sceneId: sceneId,
-          time: '21:30',
-          repeatDays: const [1, 2, 3, 4, 5],
-          enabled: true,
-        ),
-      ];
-    }
+final sceneSchedulesProvider = FutureProvider.family
+    .autoDispose<List<SceneSchedule>, String>((ref, sceneId) async {
+      final homeId = ref.watch(currentHomeIdProvider);
+      if (homeId == null || kUseMockData) {
+        return [
+          SceneSchedule(
+            id: 'sched-1',
+            sceneId: sceneId,
+            time: '21:30',
+            repeatDays: const [1, 2, 3, 4, 5],
+            enabled: true,
+          ),
+        ];
+      }
 
-    try {
-      final repo = ref.read(sceneRepositoryProvider);
-      return await repo.getSchedules(homeId, sceneId);
-    } catch (_) {
-      return [];
-    }
-  },
-);
+      try {
+        final repo = ref.read(sceneRepositoryProvider);
+        return await repo.getSchedules(homeId, sceneId);
+      } catch (_) {
+        return [];
+      }
+    });

@@ -95,7 +95,8 @@ class HomeScreen extends ConsumerWidget {
                       builder: (context) {
                         final items = devices.valueOrNull ?? const <Device>[];
                         final sensor = items.cast<Device?>().firstWhere(
-                          (d) => d?.rawType?.toUpperCase() == 'TEMP_HUMID_SENSOR',
+                          (d) =>
+                              d?.rawType?.toUpperCase() == 'TEMP_HUMID_SENSOR',
                           orElse: () => items.cast<Device?>().firstWhere(
                             (d) =>
                                 d?.type == DeviceType.sensor &&
@@ -530,8 +531,9 @@ class _QuickScenesState extends ConsumerState<_QuickScenes> {
     setState(() => _executingSceneId = scene.id);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final error =
-        await ref.read(scenesListProvider.notifier).executeScene(scene.id);
+    final error = await ref
+        .read(scenesListProvider.notifier)
+        .executeScene(scene.id);
 
     if (mounted) {
       setState(() => _executingSceneId = null);

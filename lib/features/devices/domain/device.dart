@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 
-enum DeviceType { light, ledRgb, thermostat, lock, speaker, camera, fan, sensor }
+enum DeviceType {
+  light,
+  ledRgb,
+  thermostat,
+  lock,
+  speaker,
+  camera,
+  fan,
+  sensor,
+}
 
 enum DeviceStatus { online, offline }
 
@@ -59,7 +68,12 @@ class Device {
 
   Color? get rgbColor {
     if (r == null || g == null || b == null) return null;
-    return Color.fromARGB(255, r!.clamp(0, 255), g!.clamp(0, 255), b!.clamp(0, 255));
+    return Color.fromARGB(
+      255,
+      r!.clamp(0, 255),
+      g!.clamp(0, 255),
+      b!.clamp(0, 255),
+    );
   }
 
   Device copyWith({
@@ -150,4 +164,3 @@ class DeviceCommand {
   final String? customAction;
   final Map<String, dynamic>? customParams;
 }
-

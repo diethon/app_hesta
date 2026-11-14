@@ -228,5 +228,4 @@ class MockDeviceRepository implements DeviceRepository {
     _devices[index] = updated;
     return updated;
   }
-
 }

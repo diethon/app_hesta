@@ -39,8 +39,9 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
     if (!mounted) return;
     setState(() => _executingSceneId = scene.id);
 
-    final error =
-        await ref.read(scenesListProvider.notifier).executeScene(scene.id);
+    final error = await ref
+        .read(scenesListProvider.notifier)
+        .executeScene(scene.id);
 
     if (!mounted) return;
     setState(() => _executingSceneId = null);
@@ -50,7 +51,9 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
         content: Row(
           children: [
             Icon(
-              error == null ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+              error == null
+                  ? Icons.check_circle_rounded
+                  : Icons.error_outline_rounded,
               color: Colors.white,
               size: 20,
             ),
@@ -97,16 +100,14 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(
-                      Icons.touch_app_rounded,
-                      size: 16,
-                      color: accent,
-                    ),
+                    Icon(Icons.touch_app_rounded, size: 16, color: accent),
                     const SizedBox(width: 6),
                     Text(
                       'KÍCH HOẠT NHANH 1-CHẠM',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: isDark ? AppColors.onDarkMuted : AppColors.onSurfaceVariant,
+                        color: isDark
+                            ? AppColors.onDarkMuted
+                            : AppColors.onSurfaceVariant,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.0,
                       ),
@@ -218,8 +219,9 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                             backgroundColor: accent,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
                             ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.lg,
@@ -480,7 +482,9 @@ class _QuickSceneCard extends StatelessWidget {
                   '${scene.actions.length} thiết bị',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 11,
-                    color: isDark ? AppColors.onDarkMuted : AppColors.onSurfaceVariant,
+                    color: isDark
+                        ? AppColors.onDarkMuted
+                        : AppColors.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -569,8 +573,8 @@ class _SceneListItem extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: scene.enabled
                         ? atmosphere.gradient
-                            .map((c) => c.withValues(alpha: 0.35))
-                            .toList()
+                              .map((c) => c.withValues(alpha: 0.35))
+                              .toList()
                         : [
                             Colors.grey.withValues(alpha: 0.15),
                             Colors.grey.withValues(alpha: 0.05),
@@ -584,7 +588,10 @@ class _SceneListItem extends StatelessWidget {
                         : Colors.white.withValues(alpha: 0.1),
                   ),
                   boxShadow: scene.enabled
-                      ? GlassTokens.glow(atmosphere.accentColor, intensity: 0.25)
+                      ? GlassTokens.glow(
+                          atmosphere.accentColor,
+                          intensity: 0.25,
+                        )
                       : null,
                 ),
                 child: Icon(
@@ -608,8 +615,8 @@ class _SceneListItem extends StatelessWidget {
                         color: scene.enabled
                             ? (isDark ? AppColors.onDark : AppColors.onSurface)
                             : (isDark
-                                ? AppColors.onDarkMuted
-                                : Colors.grey.shade600),
+                                  ? AppColors.onDarkMuted
+                                  : Colors.grey.shade600),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -631,10 +638,7 @@ class _SceneListItem extends StatelessWidget {
                   ],
                 ),
               ),
-              GlassToggle(
-                value: scene.enabled,
-                onChanged: (_) => onToggle(),
-              ),
+              GlassToggle(value: scene.enabled, onChanged: (_) => onToggle()),
             ],
           ),
           if (scene.description != null && scene.description!.isNotEmpty) ...[
@@ -642,7 +646,9 @@ class _SceneListItem extends StatelessWidget {
             Text(
               scene.description!,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: isDark ? AppColors.onDarkMuted : AppColors.onSurfaceVariant,
+                color: isDark
+                    ? AppColors.onDarkMuted
+                    : AppColors.onSurfaceVariant,
                 height: 1.4,
               ),
               maxLines: 2,
@@ -663,8 +669,10 @@ class _SceneListItem extends StatelessWidget {
                     act.targetDeviceName,
                   );
                   return Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: isDark
                           ? Colors.black.withValues(alpha: 0.22)
@@ -703,8 +711,10 @@ class _SceneListItem extends StatelessWidget {
                 }),
                 if (scene.actions.length > 3)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),

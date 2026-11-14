@@ -42,7 +42,10 @@ void main() {
       expect(scene.actions[0].targetDeviceName, 'Đèn phòng khách');
       expect(scene.actions[1].value, 24);
 
-      final updated = scene.copyWith(name: 'Xem phim cuối tuần', enabled: false);
+      final updated = scene.copyWith(
+        name: 'Xem phim cuối tuần',
+        enabled: false,
+      );
       expect(updated.name, 'Xem phim cuối tuần');
       expect(updated.enabled, false);
       expect(updated.id, 'scene-123');
@@ -62,7 +65,7 @@ void main() {
             'action': 'TURN_OFF',
             'success': true,
             'status': 'OK',
-          }
+          },
         ],
       };
 

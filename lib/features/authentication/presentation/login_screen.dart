@@ -153,7 +153,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ],
                           ),
-                          if (_localError != null || auth.errorMessage != null) ...[
+                          if (_localError != null ||
+                              auth.errorMessage != null) ...[
                             const SizedBox(height: AppSpacing.md),
                             Text(
                               _localError ?? auth.errorMessage!,

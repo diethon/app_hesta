@@ -102,9 +102,9 @@ class Scene {
     final actionsRaw = json['actions'];
     final actionsList = (actionsRaw is List)
         ? actionsRaw
-            .whereType<Map>()
-            .map((a) => SceneAction.fromJson(Map<String, dynamic>.from(a)))
-            .toList()
+              .whereType<Map>()
+              .map((a) => SceneAction.fromJson(Map<String, dynamic>.from(a)))
+              .toList()
         : const <SceneAction>[];
 
     actionsList.sort((a, b) => a.order.compareTo(b.order));
@@ -222,9 +222,12 @@ class SceneExecution {
     final detailsRaw = json['resultDetail'];
     final details = (detailsRaw is List)
         ? detailsRaw
-            .whereType<Map>()
-            .map((d) => SceneExecutionDetail.fromJson(Map<String, dynamic>.from(d)))
-            .toList()
+              .whereType<Map>()
+              .map(
+                (d) =>
+                    SceneExecutionDetail.fromJson(Map<String, dynamic>.from(d)),
+              )
+              .toList()
         : const <SceneExecutionDetail>[];
 
     return SceneExecution(
@@ -276,10 +279,6 @@ class SceneSchedule {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'scheduledTime': time,
-      'repeatDays': repeatDays,
-      'active': enabled,
-    };
+    return {'scheduledTime': time, 'repeatDays': repeatDays, 'active': enabled};
   }
 }

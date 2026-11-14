@@ -105,7 +105,9 @@ class Recommendation {
       deviceId: json['deviceId']?.toString(),
       deviceName: json['deviceName']?.toString(),
       triggerCondition: triggerRaw is Map
-          ? RecommendationTrigger.fromJson(Map<String, dynamic>.from(triggerRaw))
+          ? RecommendationTrigger.fromJson(
+              Map<String, dynamic>.from(triggerRaw),
+            )
           : const RecommendationTrigger(type: 'SCHEDULE'),
       proposedAction: actionRaw is Map
           ? RecommendationAction.fromJson(Map<String, dynamic>.from(actionRaw))
@@ -125,10 +127,7 @@ class Recommendation {
     );
   }
 
-  Recommendation copyWith({
-    String? status,
-    DateTime? resolvedAt,
-  }) {
+  Recommendation copyWith({String? status, DateTime? resolvedAt}) {
     return Recommendation(
       id: id,
       homeId: homeId,
@@ -180,8 +179,7 @@ class MlModelStatus {
   bool get isUnavailable => status.toUpperCase() == 'UNAVAILABLE';
   bool get isNotTrained => status.toUpperCase() == 'NOT_TRAINED';
 
-  int get accuracyPercent =>
-      accuracy != null ? (accuracy! * 100).round() : 0;
+  int get accuracyPercent => accuracy != null ? (accuracy! * 100).round() : 0;
 
   factory MlModelStatus.fromJson(Map<String, dynamic> json) {
     return MlModelStatus(
