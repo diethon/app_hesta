@@ -48,7 +48,23 @@ class _AutomationRuleDetailScreenState
 
     try {
       final repo = ref.read(automationRepositoryProvider);
-      final result = await repo.testRule(homeId, _rule.id);
+      // Same simulated event as the web RuleTestSheet: each condition reports its expected value.
+      final eventCond =
+          _rule.conditions.where((c) => c.attribute == 'eventType').firstOrNull;
+      final result = await repo.testRule(homeId, _rule.id, eventData: {
+        'sourceDeviceId':
+            _rule.conditions.where((c) => c.deviceId != null).firstOrNull?.deviceId,
+        'eventType': _rule.triggerType == 'EVENT'
+            ? (eventCond?.expectedValue?.toString() ?? 'EVENT')
+            : 'SENSOR',
+        'data': {
+          for (final c in _rule.conditions)
+            if (c.attribute.isNotEmpty && c.attribute != 'eventType')
+              c.attribute: c.expectedValue,
+        },
+      });
+      final matched = result['matched'] == true;
+      final proposed = (result['proposedActions'] as List?)?.length ?? 0;
 
       if (!mounted) return;
       await showDialog(
@@ -56,17 +72,20 @@ class _AutomationRuleDetailScreenState
         builder: (ctx) => AlertDialog(
             backgroundColor:
                 isDark ? AppColors.auroraCanvasMid : AppColors.surface,
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.check_circle_rounded, color: AppColors.success),
-                SizedBox(width: 8),
-                Text('Kết quả chạy thử'),
+                Icon(
+                  matched ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                  color: matched ? AppColors.success : AppColors.warning,
+                ),
+                const SizedBox(width: 8),
+                const Text('Kết quả chạy thử'),
               ],
             ),
             content: Text(
-              result.containsKey('message')
-                  ? result['message'].toString()
-                  : 'Quy tắc đã được chạy thử thành công!',
+              matched
+                  ? 'Điều kiện khớp. Quy tắc sẽ thực hiện $proposed hành động (chạy thử không điều khiển thiết bị thật).'
+                  : 'Điều kiện chưa khớp nên quy tắc sẽ không chạy.',
             ),
             actions: [
               TextButton(
@@ -250,13 +269,16 @@ class _AutomationRuleDetailScreenState
                                 ),
                               ),
                             ],
-                            const SizedBox(height: AppSpacing.lg),
-                            AppButton(
-                              label: 'Chạy thử quy tắc (Test Rule)',
-                              icon: Icons.play_arrow_rounded,
-                              isLoading: _isTesting,
-                              onPressed: _testRule,
-                            ),
+                            // Like the web: a SCHEDULE rule has no event to simulate.
+                            if (_rule.triggerType != 'SCHEDULE') ...[
+                              const SizedBox(height: AppSpacing.lg),
+                              AppButton(
+                                label: 'Chạy thử quy tắc',
+                                icon: Icons.play_arrow_rounded,
+                                isLoading: _isTesting,
+                                onPressed: _testRule,
+                              ),
+                            ],
                           ],
                         ),
                       );
