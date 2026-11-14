@@ -7,19 +7,19 @@ import '../../home/data/home_providers.dart';
 import '../domain/recommendation_models.dart';
 import 'recommendation_repository.dart';
 
-final recommendationRepositoryProvider =
-    Provider<RecommendationRepository>((ref) {
+final recommendationRepositoryProvider = Provider<RecommendationRepository>((
+  ref,
+) {
   final client = ref.watch(cloudApiClientProvider);
   return RecommendationRepository(client: client);
 });
 
 final recommendationsListProvider =
     AsyncNotifierProvider<RecommendationsListNotifier, List<Recommendation>>(
-  RecommendationsListNotifier.new,
-);
+      RecommendationsListNotifier.new,
+    );
 
-class RecommendationsListNotifier
-    extends AsyncNotifier<List<Recommendation>> {
+class RecommendationsListNotifier extends AsyncNotifier<List<Recommendation>> {
   @override
   Future<List<Recommendation>> build() async {
     final homeId = ref.watch(currentHomeIdProvider);
@@ -43,7 +43,9 @@ class RecommendationsListNotifier
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final homeId = ref.read(currentHomeIdProvider);
-      if (homeId == null) return kUseMockData ? _mockRecommendations() : const [];
+      if (homeId == null) {
+        return kUseMockData ? _mockRecommendations() : const [];
+      }
       final repo = ref.read(recommendationRepositoryProvider);
       return repo.getRecommendations(homeId);
     });
@@ -74,12 +76,19 @@ class RecommendationsListNotifier
   Future<bool> _resolveOptimistic(
     String id,
     String localStatus,
-    Future<void> Function(RecommendationRepository repo, String homeId, String id) apiCall,
+    Future<void> Function(
+      RecommendationRepository repo,
+      String homeId,
+      String id,
+    )
+    apiCall,
   ) async {
     final snapshot = state.valueOrNull ?? [];
     // Optimistic update — user sees change immediately.
     state = AsyncValue.data(
-      snapshot.map((r) => r.id == id ? r.copyWith(status: localStatus) : r).toList(),
+      snapshot
+          .map((r) => r.id == id ? r.copyWith(status: localStatus) : r)
+          .toList(),
     );
     final homeId = ref.read(currentHomeIdProvider);
     if (homeId == null || kUseMockData) return true;
@@ -102,22 +111,22 @@ class RecommendationsListNotifier
   }
 
   Future<bool> approve(String id) => _resolveOptimistic(
-        id,
-        'ACCEPTED', // backend sets status = "ACCEPTED" on approve
-        (repo, homeId, id) => repo.approve(homeId, id),
-      );
+    id,
+    'ACCEPTED', // backend sets status = "ACCEPTED" on approve
+    (repo, homeId, id) => repo.approve(homeId, id),
+  );
 
   Future<bool> reject(String id) => _resolveOptimistic(
-        id,
-        'REJECTED',
-        (repo, homeId, id) => repo.reject(homeId, id),
-      );
+    id,
+    'REJECTED',
+    (repo, homeId, id) => repo.reject(homeId, id),
+  );
 
   Future<bool> dismiss(String id) => _resolveOptimistic(
-        id,
-        'DISMISSED',
-        (repo, homeId, id) => repo.dismiss(homeId, id),
-      );
+    id,
+    'DISMISSED',
+    (repo, homeId, id) => repo.dismiss(homeId, id),
+  );
 
   List<Recommendation> _mockRecommendations() {
     return [
@@ -197,8 +206,8 @@ class RecommendationsListNotifier
 
 final mlModelStatusProvider =
     AsyncNotifierProvider<MlModelStatusNotifier, MlModelStatus>(
-  MlModelStatusNotifier.new,
-);
+      MlModelStatusNotifier.new,
+    );
 
 class MlModelStatusNotifier extends AsyncNotifier<MlModelStatus> {
   @override

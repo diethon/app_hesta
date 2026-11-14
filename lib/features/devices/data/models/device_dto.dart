@@ -1,6 +1,5 @@
 import '../../domain/device.dart';
 
-
 /// DTO thích ứng trực tiếp từ DeviceResponse & TwinDeviceSnapshotResponse của backend_hesta.
 class DeviceDto {
   const DeviceDto({
@@ -77,29 +76,39 @@ class DeviceDto {
       humidity = (json['humidity'] as num?)?.round();
     }
 
-    int? r = (currentState['r'] as num?)?.toInt() ?? (json['r'] as num?)?.toInt();
-    int? g = (currentState['g'] as num?)?.toInt() ?? (json['g'] as num?)?.toInt();
-    int? b = (currentState['b'] as num?)?.toInt() ?? (json['b'] as num?)?.toInt();
+    int? r =
+        (currentState['r'] as num?)?.toInt() ?? (json['r'] as num?)?.toInt();
+    int? g =
+        (currentState['g'] as num?)?.toInt() ?? (json['g'] as num?)?.toInt();
+    int? b =
+        (currentState['b'] as num?)?.toInt() ?? (json['b'] as num?)?.toInt();
 
-    String? acMode = currentState['mode']?.toString() ?? json['mode']?.toString();
+    String? acMode =
+        currentState['mode']?.toString() ?? json['mode']?.toString();
     String? acFan = currentState['fan']?.toString() ?? json['fan']?.toString();
-    bool? acSwing = currentState['swing'] == true ||
+    bool? acSwing =
+        currentState['swing'] == true ||
         currentState['swing'] == 'true' ||
         currentState['swing'] == 'ON' ||
         json['swing'] == true;
 
-    bool? timerEnabled = currentState['timerEnabled'] == true || json['timerEnabled'] == true;
-    int? timerHour = (currentState['timerHour'] as num?)?.toInt() ??
+    bool? timerEnabled =
+        currentState['timerEnabled'] == true || json['timerEnabled'] == true;
+    int? timerHour =
+        (currentState['timerHour'] as num?)?.toInt() ??
         (json['timerHour'] as num?)?.toInt() ??
         (currentState['hour'] as num?)?.toInt();
-    bool? timerHalfHour = currentState['timerHalfHour'] == true ||
+    bool? timerHalfHour =
+        currentState['timerHalfHour'] == true ||
         json['timerHalfHour'] == true ||
         currentState['halfHour'] == true;
 
-    final energyWatts = (currentState['energyWatts'] as num?)?.toDouble() ??
+    final energyWatts =
+        (currentState['energyWatts'] as num?)?.toDouble() ??
         (json['energyWatts'] as num?)?.toDouble();
 
-    final subtitle = json['roomName'] as String? ??
+    final subtitle =
+        json['roomName'] as String? ??
         json['nodeName'] as String? ??
         json['subtitle'] as String?;
 
@@ -215,10 +224,15 @@ class DeviceDto {
       'AC' || 'THERMOSTAT' || 'AIR_CONDITIONER' => DeviceType.thermostat,
       'LOCK' || 'DOOR' => DeviceType.lock,
       'FAN' => DeviceType.fan,
-      'SENSOR' || 'TEMP_SENSOR' || 'MOTION_SENSOR' || 'TEMP_HUMID_SENSOR' || 'SMOKE_SENSOR' => DeviceType.sensor,
+      'SENSOR' ||
+      'TEMP_SENSOR' ||
+      'MOTION_SENSOR' ||
+      'TEMP_HUMID_SENSOR' ||
+      'SMOKE_SENSOR' => DeviceType.sensor,
       'CAMERA' || 'CAMERA_AI' => DeviceType.camera,
       'SPEAKER' || 'SOCKET' || 'SMART_PLUG' => DeviceType.speaker,
-      _ => DeviceType.values.asNameMap()[raw.toLowerCase()] ?? DeviceType.sensor,
+      _ =>
+        DeviceType.values.asNameMap()[raw.toLowerCase()] ?? DeviceType.sensor,
     };
   }
 
@@ -245,7 +259,9 @@ Map<String, dynamic> deviceCommandToRequestBody(DeviceCommand command) {
     if (command.acAction != null) {
       final body = <String, dynamic>{'action': command.acAction};
       if (command.isOn != null) body['power'] = command.isOn;
-      if (command.temperature != null) body['temperature'] = command.temperature;
+      if (command.temperature != null) {
+        body['temperature'] = command.temperature;
+      }
       if (command.mode != null) body['mode'] = command.mode;
       if (command.fan != null) body['fan'] = command.fan;
       if (command.swing != null) body['swing'] = command.swing;
@@ -345,4 +361,3 @@ Map<String, dynamic> deviceCommandToRequestBody(DeviceCommand command) {
     },
   };
 }
-
