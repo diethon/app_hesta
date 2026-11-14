@@ -268,17 +268,18 @@ class SceneSchedule {
     return SceneSchedule(
       id: (json['id'] ?? '').toString(),
       sceneId: (json['sceneId'] ?? '').toString(),
-      time: (json['time'] ?? '07:00').toString(),
+      // Backend ScheduleResponse: scheduledTime is "HH:mm:ss", active is the on/off flag.
+      time: (json['scheduledTime'] ?? '07:00').toString().substring(0, 5),
       repeatDays: days,
-      enabled: json['enabled'] as bool? ?? true,
+      enabled: json['active'] as bool? ?? true,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'time': time,
+      'scheduledTime': time,
       'repeatDays': repeatDays,
-      'enabled': enabled,
+      'active': enabled,
     };
   }
 }

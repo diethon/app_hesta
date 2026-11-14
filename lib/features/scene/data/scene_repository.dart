@@ -119,9 +119,9 @@ class SceneRepository {
     required bool enabled,
   }) async {
     final payload = {
-      'time': time,
+      'scheduledTime': time,
       'repeatDays': repeatDays,
-      'enabled': enabled,
+      'active': enabled,
     };
 
     if (scheduleId == null) {

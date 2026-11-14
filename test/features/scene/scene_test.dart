@@ -83,10 +83,22 @@ void main() {
         enabled: true,
       );
 
+      // Backend ScheduleRequest field names.
       final json = schedule.toJson();
-      expect(json['time'], '20:00');
+      expect(json['scheduledTime'], '20:00');
       expect(json['repeatDays'], [1, 2, 3, 4, 5]);
-      expect(json['enabled'], true);
+      expect(json['active'], true);
+
+      // Backend ScheduleResponse sends "HH:mm:ss".
+      final parsed = SceneSchedule.fromJson({
+        'id': 'sched-2',
+        'scheduledTime': '21:30:00',
+        'repeatDays': [6, 7],
+        'active': false,
+      });
+      expect(parsed.time, '21:30');
+      expect(parsed.repeatDays, [6, 7]);
+      expect(parsed.enabled, false);
     });
   });
 
