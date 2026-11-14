@@ -65,6 +65,7 @@ class Recommendation {
     required this.status, // PENDING, ACCEPTED, APPROVED, REJECTED, DISMISSED
     this.engineType = 'ML',
     this.modelVersion,
+    this.eligible,
     this.createdAt,
     this.resolvedAt,
   });
@@ -80,12 +81,19 @@ class Recommendation {
   final String status;
   final String engineType;
   final String? modelVersion;
+
+  /// False when the backend no longer considers it actionable (e.g. already covered by a rule).
+  final bool? eligible;
   final DateTime? createdAt;
   final DateTime? resolvedAt;
 
   int get confidencePercent => (confidence * 100).round();
 
-  bool get isPending => status == 'PENDING';
+  /// Same filter as the web "Gợi ý mới" tab: pending and not marked ineligible.
+  bool get isPending => status == 'PENDING' && eligible != false;
+
+  /// The backend has used both ACCEPTED and APPROVED for an approved recommendation.
+  bool get isApproved => status == 'ACCEPTED' || status == 'APPROVED';
 
   factory Recommendation.fromJson(Map<String, dynamic> json) {
     final triggerRaw = json['triggerCondition'];
@@ -97,7 +105,9 @@ class Recommendation {
       deviceId: json['deviceId']?.toString(),
       deviceName: json['deviceName']?.toString(),
       triggerCondition: triggerRaw is Map
-          ? RecommendationTrigger.fromJson(Map<String, dynamic>.from(triggerRaw))
+          ? RecommendationTrigger.fromJson(
+              Map<String, dynamic>.from(triggerRaw),
+            )
           : const RecommendationTrigger(type: 'SCHEDULE'),
       proposedAction: actionRaw is Map
           ? RecommendationAction.fromJson(Map<String, dynamic>.from(actionRaw))
@@ -107,6 +117,7 @@ class Recommendation {
       status: (json['status'] ?? 'PENDING').toString(),
       engineType: (json['engineType'] ?? 'ML').toString(),
       modelVersion: json['modelVersion']?.toString(),
+      eligible: json['eligible'] as bool?,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
@@ -116,10 +127,7 @@ class Recommendation {
     );
   }
 
-  Recommendation copyWith({
-    String? status,
-    DateTime? resolvedAt,
-  }) {
+  Recommendation copyWith({String? status, DateTime? resolvedAt}) {
     return Recommendation(
       id: id,
       homeId: homeId,
@@ -132,6 +140,7 @@ class Recommendation {
       status: status ?? this.status,
       engineType: engineType,
       modelVersion: modelVersion,
+      eligible: eligible,
       createdAt: createdAt,
       resolvedAt: resolvedAt ?? this.resolvedAt,
     );
@@ -170,8 +179,7 @@ class MlModelStatus {
   bool get isUnavailable => status.toUpperCase() == 'UNAVAILABLE';
   bool get isNotTrained => status.toUpperCase() == 'NOT_TRAINED';
 
-  int get accuracyPercent =>
-      accuracy != null ? (accuracy! * 100).round() : 0;
+  int get accuracyPercent => accuracy != null ? (accuracy! * 100).round() : 0;
 
   factory MlModelStatus.fromJson(Map<String, dynamic> json) {
     return MlModelStatus(

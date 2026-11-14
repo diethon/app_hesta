@@ -49,7 +49,9 @@ AppException mapDioException(DioException error) {
       return ForbiddenException(message ?? 'Access denied.');
     case '1006':
     case 'INVALID_CREDENTIALS':
-      return UnauthorizedException(message ?? 'Email hoặc mật khẩu không chính xác.');
+      return UnauthorizedException(
+        message ?? 'Email hoặc mật khẩu không chính xác.',
+      );
     case '1002':
     case 'USER_EXISTED':
     case 'EMAIL_ALREADY_EXISTS':

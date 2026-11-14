@@ -75,9 +75,8 @@ class NotificationsScreen extends ConsumerWidget {
                   );
                 }
                 return RefreshIndicator(
-                  onRefresh: () => ref
-                      .read(notificationsControllerProvider.notifier)
-                      .load(),
+                  onRefresh: () =>
+                      ref.read(notificationsControllerProvider.notifier).load(),
                   child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(
@@ -94,7 +93,9 @@ class NotificationsScreen extends ConsumerWidget {
                         onTap: item.read
                             ? null
                             : () => ref
-                                  .read(notificationsControllerProvider.notifier)
+                                  .read(
+                                    notificationsControllerProvider.notifier,
+                                  )
                                   .markRead(item.id),
                       );
                     },
@@ -204,9 +205,7 @@ class _NotificationTile extends ConsumerWidget {
                   Text(
                     notification.body,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.7,
-                      ),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       height: 1.35,
                     ),
                   ),

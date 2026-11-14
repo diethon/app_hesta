@@ -19,11 +19,7 @@ import 'vertical_glass_slider.dart';
 /// 4. Các phím màu nhanh (presets) thẩm mỹ cao.
 /// 5. Gọi API tương ứng từ iot-led.http (`POWER_ON`, `POWER_OFF`, `SET_RGB`, `SET_BRIGHTNESS`).
 class LedRgbControls extends ConsumerStatefulWidget {
-  const LedRgbControls({
-    required this.device,
-    required this.accent,
-    super.key,
-  });
+  const LedRgbControls({required this.device, required this.accent, super.key});
 
   final Device device;
   final Color accent;
@@ -57,7 +53,8 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
   @override
   void didUpdateWidget(LedRgbControls oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.device.rgbColor != null && widget.device.rgbColor != _currentColor) {
+    if (widget.device.rgbColor != null &&
+        widget.device.rgbColor != _currentColor) {
       _currentColor = widget.device.rgbColor!;
     }
     if (widget.device.brightness != null) {
@@ -70,32 +67,30 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
     final r = (color.r * 255.0).round() & 0xff;
     final g = (color.g * 255.0).round() & 0xff;
     final b = (color.b * 255.0).round() & 0xff;
-    ref.read(devicesControllerProvider.notifier).updateDevice(
+    ref
+        .read(devicesControllerProvider.notifier)
+        .updateDevice(
           widget.device.id,
-          DeviceCommand(
-            r: r,
-            g: g,
-            b: b,
-            isOn: true,
-          ),
+          DeviceCommand(r: r, g: g, b: b, isOn: true),
         );
   }
 
   void _sendBrightness(double value) {
     final intLevel = (value * 100).round();
     setState(() => _brightness = value);
-    ref.read(devicesControllerProvider.notifier).updateDevice(
+    ref
+        .read(devicesControllerProvider.notifier)
+        .updateDevice(
           widget.device.id,
-          DeviceCommand(
-            brightness: intLevel,
-            isOn: intLevel > 0,
-          ),
+          DeviceCommand(brightness: intLevel, isOn: intLevel > 0),
         );
   }
 
   void _togglePower() {
     HapticFeedback.mediumImpact();
-    ref.read(devicesControllerProvider.notifier).updateDevice(
+    ref
+        .read(devicesControllerProvider.notifier)
+        .updateDevice(
           widget.device.id,
           DeviceCommand(isOn: !widget.device.isOn),
         );
@@ -178,7 +173,10 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
                                 width: 2,
                               ),
                               boxShadow: isOn
-                                  ? GlassTokens.glow(effectiveColor, intensity: 0.9)
+                                  ? GlassTokens.glow(
+                                      effectiveColor,
+                                      intensity: 0.9,
+                                    )
                                   : GlassTokens.shadowSoft,
                             ),
                             child: Icon(
@@ -195,9 +193,7 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
                             children: [
                               Text(
                                 isOn ? 'ĐANG BẬT' : 'ĐÃ TẮT',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelMedium
+                                style: Theme.of(context).textTheme.labelMedium
                                     ?.copyWith(
                                       color: isOn
                                           ? AppColors.auroraMint
@@ -209,9 +205,7 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
                               const SizedBox(height: 2),
                               Text(
                                 'Độ sáng ${(_brightness * 100).round()}%',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
+                                style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white,
@@ -220,11 +214,11 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
                               const SizedBox(height: 2),
                               Text(
                                 'LED_RGB • IoT Control',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
-                                      color: Colors.white.withValues(alpha: 0.5),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       fontSize: 11,
                                     ),
                               ),
@@ -256,7 +250,10 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
                               shape: BoxShape.circle,
                               color: effectiveColor,
                               boxShadow: isOn
-                                  ? GlassTokens.glow(effectiveColor, intensity: 0.6)
+                                  ? GlassTokens.glow(
+                                      effectiveColor,
+                                      intensity: 0.6,
+                                    )
                                   : null,
                             ),
                           ),
@@ -265,9 +262,7 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
                             isOn
                                 ? 'RGB: ($rVal, $gVal, $bVal)'
                                 : 'Đèn đang tắt',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: Colors.white.withValues(alpha: 0.8),
                                   fontWeight: FontWeight.w500,
@@ -310,10 +305,10 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
           Text(
             'MÀU PHỔ BIẾN',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.65),
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                ),
+              color: Colors.white.withValues(alpha: 0.65),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           SingleChildScrollView(
@@ -335,17 +330,23 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: _currentColor.toARGB32() == color.toARGB32() && isOn
+                          color:
+                              _currentColor.toARGB32() == color.toARGB32() &&
+                                  isOn
                               ? color.withValues(alpha: 0.35)
                               : Colors.white.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(AppRadius.pill),
                           border: Border.all(
-                            color: _currentColor.toARGB32() == color.toARGB32() && isOn
+                            color:
+                                _currentColor.toARGB32() == color.toARGB32() &&
+                                    isOn
                                 ? color
                                 : Colors.white.withValues(alpha: 0.15),
                             width: 1.5,
                           ),
-                          boxShadow: _currentColor.toARGB32() == color.toARGB32() && isOn
+                          boxShadow:
+                              _currentColor.toARGB32() == color.toARGB32() &&
+                                  isOn
                               ? GlassTokens.glow(color, intensity: 0.7)
                               : null,
                         ),
@@ -363,9 +364,7 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
                             const SizedBox(width: 8),
                             Text(
                               name,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
+                              style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(
                                     color: Colors.white.withValues(alpha: 0.9),
                                     fontWeight: FontWeight.w600,

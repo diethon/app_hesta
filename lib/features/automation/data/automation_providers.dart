@@ -13,11 +13,10 @@ final automationRepositoryProvider = Provider<AutomationRepository>((ref) {
 
 final automationRulesListProvider =
     AsyncNotifierProvider<AutomationRulesListNotifier, List<AutomationRule>>(
-  AutomationRulesListNotifier.new,
-);
+      AutomationRulesListNotifier.new,
+    );
 
-class AutomationRulesListNotifier
-    extends AsyncNotifier<List<AutomationRule>> {
+class AutomationRulesListNotifier extends AsyncNotifier<List<AutomationRule>> {
   @override
   Future<List<AutomationRule>> build() async {
     final homeId = ref.watch(currentHomeIdProvider);
@@ -116,7 +115,8 @@ class AutomationRulesListNotifier
         id: 'rule-night-motion',
         homeId: 'home-default',
         name: 'Cảm biến chuyển động ban đêm',
-        description: 'Phát hiện chuyển động ở hành lang từ 23:00 - 05:00 bật đèn 30%',
+        description:
+            'Phát hiện chuyển động ở hành lang từ 23:00 - 05:00 bật đèn 30%',
         triggerType: 'SENSOR',
         enabled: true,
         conditions: [
@@ -166,36 +166,35 @@ class AutomationRulesListNotifier
   }
 }
 
-final automationRuleExecutionsProvider =
-    FutureProvider.family.autoDispose<List<AutomationExecution>, String>(
-  (ref, ruleId) async {
-    final homeId = ref.watch(currentHomeIdProvider);
-    if (homeId == null || kUseMockData) {
-      return [
-        AutomationExecution(
-          id: 'exec-auto-1',
-          ruleId: ruleId,
-          status: 'SUCCESS',
-          executedAt: DateTime.now().subtract(const Duration(minutes: 45)),
-          durationMs: 120,
-          details: 'Tất cả điều kiện thỏa mãn, đã kích hoạt hành động thành công',
-        ),
-        AutomationExecution(
-          id: 'exec-auto-2',
-          ruleId: ruleId,
-          status: 'SUCCESS',
-          executedAt: DateTime.now().subtract(const Duration(hours: 12)),
-          durationMs: 110,
-          details: 'Kích hoạt định kỳ thành công',
-        ),
-      ];
-    }
+final automationRuleExecutionsProvider = FutureProvider.family
+    .autoDispose<List<AutomationExecution>, String>((ref, ruleId) async {
+      final homeId = ref.watch(currentHomeIdProvider);
+      if (homeId == null || kUseMockData) {
+        return [
+          AutomationExecution(
+            id: 'exec-auto-1',
+            ruleId: ruleId,
+            status: 'SUCCESS',
+            executedAt: DateTime.now().subtract(const Duration(minutes: 45)),
+            durationMs: 120,
+            details:
+                'Tất cả điều kiện thỏa mãn, đã kích hoạt hành động thành công',
+          ),
+          AutomationExecution(
+            id: 'exec-auto-2',
+            ruleId: ruleId,
+            status: 'SUCCESS',
+            executedAt: DateTime.now().subtract(const Duration(hours: 12)),
+            durationMs: 110,
+            details: 'Kích hoạt định kỳ thành công',
+          ),
+        ];
+      }
 
-    try {
-      final repo = ref.read(automationRepositoryProvider);
-      return await repo.getExecutions(homeId, ruleId);
-    } catch (_) {
-      return [];
-    }
-  },
-);
+      try {
+        final repo = ref.read(automationRepositoryProvider);
+        return await repo.getExecutions(homeId, ruleId);
+      } catch (_) {
+        return [];
+      }
+    });

@@ -53,102 +53,100 @@ class SceneHistoryScreen extends ConsumerWidget {
                   if (executions.isEmpty) {
                     return const SliverFillRemaining(
                       child: EmptyView(
-                        message: 'Chưa có lịch sử thực thi nào cho kịch bản này.',
+                        message:
+                            'Chưa có lịch sử thực thi nào cho kịch bản này.',
                         icon: Icons.history_rounded,
                       ),
                     );
                   }
 
                   return SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final item = executions[index];
-                        final formattedDate = DateFormat(
-                          'HH:mm:ss • dd/MM/yyyy',
-                        ).format(item.startedAt);
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final item = executions[index];
+                      final formattedDate = DateFormat(
+                        'HH:mm:ss • dd/MM/yyyy',
+                      ).format(item.startedAt);
 
-                        final isSuccess = item.status == 'SUCCESS';
-                        final statusColor = isSuccess
-                            ? (isDark
+                      final isSuccess = item.status == 'SUCCESS';
+                      final statusColor = isSuccess
+                          ? (isDark
                                 ? AppColors.auroraMint
                                 : AppColors.auroraMintOnLight)
-                            : AppColors.error;
+                          : AppColors.error;
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                          child: GlassCard(
-                            radius: AppRadius.card,
-                            padding: const EdgeInsets.all(AppSpacing.lg),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      formattedDate,
-                                      style:
-                                          theme.textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: GlassCard(
+                          radius: AppRadius.card,
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    formattedDate,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                    GlassStatusPill(
-                                      label: item.status,
-                                      color: statusColor,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(
-                                  'Nguồn kích hoạt: ${item.triggerSource}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: isDark
-                                        ? AppColors.onDarkMuted
-                                        : AppColors.onSurfaceVariant,
                                   ),
-                                ),
-                                if (item.resultDetail.isNotEmpty) ...[
-                                  const SizedBox(height: AppSpacing.sm),
-                                  const Divider(height: 1, color: Colors.white10),
-                                  const SizedBox(height: AppSpacing.sm),
-                                  ...item.resultDetail.map(
-                                    (d) => Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 2,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            d.success
-                                                ? Icons.check_circle_rounded
-                                                : Icons.cancel_rounded,
-                                            size: 16,
-                                            color: d.success
-                                                ? (isDark
-                                                    ? AppColors.auroraMint
-                                                    : AppColors.auroraMintOnLight)
-                                                : AppColors.error,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              '${d.deviceId} ➔ ${d.action}',
-                                              style: theme.textTheme.bodySmall,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                  GlassStatusPill(
+                                    label: item.status,
+                                    color: statusColor,
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                'Nguồn kích hoạt: ${item.triggerSource}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isDark
+                                      ? AppColors.onDarkMuted
+                                      : AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                              if (item.resultDetail.isNotEmpty) ...[
+                                const SizedBox(height: AppSpacing.sm),
+                                const Divider(height: 1, color: Colors.white10),
+                                const SizedBox(height: AppSpacing.sm),
+                                ...item.resultDetail.map(
+                                  (d) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 2,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          d.success
+                                              ? Icons.check_circle_rounded
+                                              : Icons.cancel_rounded,
+                                          size: 16,
+                                          color: d.success
+                                              ? (isDark
+                                                    ? AppColors.auroraMint
+                                                    : AppColors
+                                                          .auroraMintOnLight)
+                                              : AppColors.error,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            '${d.deviceId} ➔ ${d.action}',
+                                            style: theme.textTheme.bodySmall,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ],
-                            ),
+                            ],
                           ),
-                        );
-                      },
-                      childCount: executions.length,
-                    ),
+                        ),
+                      );
+                    }, childCount: executions.length),
                   );
                 },
                 loading: () => const SliverFillRemaining(

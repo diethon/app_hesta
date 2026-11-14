@@ -102,9 +102,9 @@ class Scene {
     final actionsRaw = json['actions'];
     final actionsList = (actionsRaw is List)
         ? actionsRaw
-            .whereType<Map>()
-            .map((a) => SceneAction.fromJson(Map<String, dynamic>.from(a)))
-            .toList()
+              .whereType<Map>()
+              .map((a) => SceneAction.fromJson(Map<String, dynamic>.from(a)))
+              .toList()
         : const <SceneAction>[];
 
     actionsList.sort((a, b) => a.order.compareTo(b.order));
@@ -222,9 +222,12 @@ class SceneExecution {
     final detailsRaw = json['resultDetail'];
     final details = (detailsRaw is List)
         ? detailsRaw
-            .whereType<Map>()
-            .map((d) => SceneExecutionDetail.fromJson(Map<String, dynamic>.from(d)))
-            .toList()
+              .whereType<Map>()
+              .map(
+                (d) =>
+                    SceneExecutionDetail.fromJson(Map<String, dynamic>.from(d)),
+              )
+              .toList()
         : const <SceneExecutionDetail>[];
 
     return SceneExecution(
@@ -268,17 +271,14 @@ class SceneSchedule {
     return SceneSchedule(
       id: (json['id'] ?? '').toString(),
       sceneId: (json['sceneId'] ?? '').toString(),
-      time: (json['time'] ?? '07:00').toString(),
+      // Backend ScheduleResponse: scheduledTime is "HH:mm:ss", active is the on/off flag.
+      time: (json['scheduledTime'] ?? '07:00').toString().substring(0, 5),
       repeatDays: days,
-      enabled: json['enabled'] as bool? ?? true,
+      enabled: json['active'] as bool? ?? true,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'time': time,
-      'repeatDays': repeatDays,
-      'enabled': enabled,
-    };
+    return {'scheduledTime': time, 'repeatDays': repeatDays, 'active': enabled};
   }
 }

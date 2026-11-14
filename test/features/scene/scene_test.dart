@@ -42,7 +42,10 @@ void main() {
       expect(scene.actions[0].targetDeviceName, 'Đèn phòng khách');
       expect(scene.actions[1].value, 24);
 
-      final updated = scene.copyWith(name: 'Xem phim cuối tuần', enabled: false);
+      final updated = scene.copyWith(
+        name: 'Xem phim cuối tuần',
+        enabled: false,
+      );
       expect(updated.name, 'Xem phim cuối tuần');
       expect(updated.enabled, false);
       expect(updated.id, 'scene-123');
@@ -62,7 +65,7 @@ void main() {
             'action': 'TURN_OFF',
             'success': true,
             'status': 'OK',
-          }
+          },
         ],
       };
 
@@ -83,10 +86,22 @@ void main() {
         enabled: true,
       );
 
+      // Backend ScheduleRequest field names.
       final json = schedule.toJson();
-      expect(json['time'], '20:00');
+      expect(json['scheduledTime'], '20:00');
       expect(json['repeatDays'], [1, 2, 3, 4, 5]);
-      expect(json['enabled'], true);
+      expect(json['active'], true);
+
+      // Backend ScheduleResponse sends "HH:mm:ss".
+      final parsed = SceneSchedule.fromJson({
+        'id': 'sched-2',
+        'scheduledTime': '21:30:00',
+        'repeatDays': [6, 7],
+        'active': false,
+      });
+      expect(parsed.time, '21:30');
+      expect(parsed.repeatDays, [6, 7]);
+      expect(parsed.enabled, false);
     });
   });
 

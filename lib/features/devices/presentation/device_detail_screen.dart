@@ -17,7 +17,6 @@ import 'device_visuals.dart';
 import 'widgets/air_conditioner_controls.dart';
 import 'widgets/led_rgb_controls.dart';
 
-
 class DeviceDetailScreen extends ConsumerStatefulWidget {
   const DeviceDetailScreen({required this.deviceId, super.key});
 
@@ -87,9 +86,8 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                     image,
                     fit: BoxFit.cover,
                     alignment: const Alignment(0.4, -0.3),
-                    errorBuilder: (_, __, ___) => const AmbientBackground(
-                      child: SizedBox.expand(),
-                    ),
+                    errorBuilder: (_, __, ___) =>
+                        const AmbientBackground(child: SizedBox.expand()),
                   ),
                 ),
               ),

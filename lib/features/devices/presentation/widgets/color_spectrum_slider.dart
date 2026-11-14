@@ -80,7 +80,10 @@ class _ColorSpectrumSliderState extends State<ColorSpectrumSlider> {
                       decoration: BoxDecoration(
                         color: activeColor,
                         shape: BoxShape.circle,
-                        boxShadow: GlassTokens.glow(activeColor, intensity: 0.9),
+                        boxShadow: GlassTokens.glow(
+                          activeColor,
+                          intensity: 0.9,
+                        ),
                         border: Border.all(color: Colors.white, width: 1.5),
                       ),
                     ),
@@ -88,15 +91,18 @@ class _ColorSpectrumSliderState extends State<ColorSpectrumSlider> {
                     Text(
                       'DẢI MÀU RGB',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.2,
-                          ),
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
                     ),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -108,10 +114,10 @@ class _ColorSpectrumSliderState extends State<ColorSpectrumSlider> {
                   child: Text(
                     'Hue: ${_hue.round()}°',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ],
@@ -177,10 +183,7 @@ class _ColorSpectrumSliderState extends State<ColorSpectrumSlider> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: activeColor,
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 3,
-                          ),
+                          border: Border.all(color: Colors.white, width: 3),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.45),

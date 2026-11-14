@@ -26,8 +26,7 @@ class RecommendationsScreen extends ConsumerStatefulWidget {
       _RecommendationsScreenState();
 }
 
-class _RecommendationsScreenState
-    extends ConsumerState<RecommendationsScreen> {
+class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
   String _selectedTab = 'pending'; // pending, approved, rejected, all_history
   bool _isGenerating = false;
 
@@ -40,8 +39,9 @@ class _RecommendationsScreenState
     if (!mounted) return;
     setState(() => _isGenerating = true);
 
-    final count =
-        await ref.read(recommendationsListProvider.notifier).generate();
+    final count = await ref
+        .read(recommendationsListProvider.notifier)
+        .generate();
 
     if (mounted) {
       setState(() => _isGenerating = false);
@@ -50,7 +50,9 @@ class _RecommendationsScreenState
           content: Row(
             children: [
               Icon(
-                count > 0 ? Icons.auto_awesome_rounded : Icons.info_outline_rounded,
+                count > 0
+                    ? Icons.auto_awesome_rounded
+                    : Icons.info_outline_rounded,
                 color: Colors.white,
                 size: 20,
               ),
@@ -85,10 +87,10 @@ class _RecommendationsScreenState
     final theme = Theme.of(context);
     final allItems = recsAsync.valueOrNull ?? [];
     final pendingCount = allItems.where((r) => r.isPending).length;
-    final approvedCount =
-        allItems.where((r) => r.status.toUpperCase() == 'APPROVED').length;
-    final rejectedCount =
-        allItems.where((r) => r.status.toUpperCase() == 'REJECTED').length;
+    final approvedCount = allItems.where((r) => r.isApproved).length;
+    final rejectedCount = allItems
+        .where((r) => r.status.toUpperCase() == 'REJECTED')
+        .length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,14 +107,16 @@ class _RecommendationsScreenState
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.md + 2,
           ),
-          fill: (isDark ? AppColors.orbViolet : Colors.purple)
-              .withValues(alpha: 0.16),
+          fill: (isDark ? AppColors.orbViolet : Colors.purple).withValues(
+            alpha: 0.16,
+          ),
           borderGradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              (isDark ? AppColors.orbViolet : Colors.purple)
-                  .withValues(alpha: 0.45),
+              (isDark ? AppColors.orbViolet : Colors.purple).withValues(
+                alpha: 0.45,
+              ),
               Colors.white.withValues(alpha: 0.08),
             ],
           ),
@@ -219,13 +223,11 @@ class _RecommendationsScreenState
           data: (items) {
             final filtered = items.where((r) {
               if (_selectedTab == 'pending') return r.isPending;
-              if (_selectedTab == 'approved') {
-                return r.status.toUpperCase() == 'APPROVED';
-              }
+              if (_selectedTab == 'approved') return r.isApproved;
               if (_selectedTab == 'rejected') {
                 return r.status.toUpperCase() == 'REJECTED';
               }
-              return !r.isPending; // all_history
+              return r.status != 'PENDING'; // all_history, same as the web
             }).toList();
 
             if (filtered.isEmpty) {
@@ -271,8 +273,9 @@ class _RecommendationsScreenState
                                 backgroundColor: mint,
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.md),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.md,
+                                  ),
                                 ),
                               ),
                             );
@@ -340,9 +343,7 @@ class _RecommendationsScreenState
                     icon: Icons.refresh_rounded,
                     tooltip: 'Làm mới',
                     onTap: () {
-                      ref
-                          .read(recommendationsListProvider.notifier)
-                          .refresh();
+                      ref.read(recommendationsListProvider.notifier).refresh();
                       ref.read(mlModelStatusProvider.notifier).refresh();
                     },
                   ),

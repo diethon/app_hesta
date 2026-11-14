@@ -33,7 +33,8 @@ class AutomationRulesScreen extends ConsumerStatefulWidget {
 }
 
 class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
-  String _selectedFilter = 'all'; // all, SENSOR, SCHEDULE, EVENT, enabled, disabled
+  String _selectedFilter =
+      'all'; // all, SENSOR, SCHEDULE, EVENT, enabled, disabled
 
   Widget _buildContent(
     BuildContext context,
@@ -44,12 +45,15 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
   ) {
     final theme = Theme.of(context);
     final allRules = rulesAsync.valueOrNull ?? [];
-    final sensorCount =
-        allRules.where((r) => r.triggerType.toUpperCase() == 'SENSOR').length;
-    final scheduleCount =
-        allRules.where((r) => r.triggerType.toUpperCase() == 'SCHEDULE').length;
-    final eventCount =
-        allRules.where((r) => r.triggerType.toUpperCase() == 'EVENT').length;
+    final sensorCount = allRules
+        .where((r) => r.triggerType.toUpperCase() == 'SENSOR')
+        .length;
+    final scheduleCount = allRules
+        .where((r) => r.triggerType.toUpperCase() == 'SCHEDULE')
+        .length;
+    final eventCount = allRules
+        .where((r) => r.triggerType.toUpperCase() == 'EVENT')
+        .length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,9 +112,7 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
               Expanded(
                 child: GlassCard(
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ScenesScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const ScenesScreen()),
                   ),
                   radius: AppRadius.card,
                   padding: const EdgeInsets.all(AppSpacing.md),
@@ -256,8 +258,9 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
                             backgroundColor: accent,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.pill,
+                              ),
                             ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.lg,
@@ -390,8 +393,9 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
                   GlassIconButton(
                     icon: Icons.refresh_rounded,
                     tooltip: 'Làm mới',
-                    onTap: () =>
-                        ref.read(automationRulesListProvider.notifier).refresh(),
+                    onTap: () => ref
+                        .read(automationRulesListProvider.notifier)
+                        .refresh(),
                   ),
                 ],
               ),
@@ -509,17 +513,20 @@ class _RuleListItem extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
-                      (rule.enabled ? trigColor : Colors.grey)
-                          .withValues(alpha: 0.28),
-                      (rule.enabled ? trigColor : Colors.grey)
-                          .withValues(alpha: 0.08),
+                      (rule.enabled ? trigColor : Colors.grey).withValues(
+                        alpha: 0.28,
+                      ),
+                      (rule.enabled ? trigColor : Colors.grey).withValues(
+                        alpha: 0.08,
+                      ),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   border: Border.all(
-                    color: (rule.enabled ? trigColor : Colors.grey)
-                        .withValues(alpha: 0.35),
+                    color: (rule.enabled ? trigColor : Colors.grey).withValues(
+                      alpha: 0.35,
+                    ),
                   ),
                   boxShadow: rule.enabled
                       ? GlassTokens.glow(trigColor, intensity: 0.25)
@@ -544,8 +551,8 @@ class _RuleListItem extends StatelessWidget {
                         color: rule.enabled
                             ? (isDark ? AppColors.onDark : AppColors.onSurface)
                             : (isDark
-                                ? AppColors.onDarkMuted
-                                : Colors.grey.shade600),
+                                  ? AppColors.onDarkMuted
+                                  : Colors.grey.shade600),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -576,10 +583,7 @@ class _RuleListItem extends StatelessWidget {
                   ],
                 ),
               ),
-              GlassToggle(
-                value: rule.enabled,
-                onChanged: (_) => onToggle(),
-              ),
+              GlassToggle(value: rule.enabled, onChanged: (_) => onToggle()),
             ],
           ),
           if (rule.description != null && rule.description!.isNotEmpty) ...[
@@ -587,7 +591,9 @@ class _RuleListItem extends StatelessWidget {
             Text(
               rule.description!,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: isDark ? AppColors.onDarkMuted : AppColors.onSurfaceVariant,
+                color: isDark
+                    ? AppColors.onDarkMuted
+                    : AppColors.onSurfaceVariant,
                 height: 1.4,
               ),
               maxLines: 2,
@@ -647,12 +653,16 @@ class _RuleListItem extends StatelessWidget {
                       child: Text(
                         rule.conditions.isEmpty
                             ? (rule.triggerType == 'SCHEDULE'
-                                ? 'Theo lịch trình đã cài đặt'
-                                : 'Luôn kích hoạt khi có sự kiện')
+                                  ? 'Theo lịch trình đã cài đặt'
+                                  : 'Luôn kích hoạt khi có sự kiện')
                             : rule.conditions
-                                .map((c) =>
-                                    '${c.deviceName ?? c.attribute} ${c.operatorSymbol} ${c.expectedValue}')
-                                .join(' ${rule.conditions.first.logicalOperator} '),
+                                  .map(
+                                    (c) =>
+                                        '${c.deviceName ?? c.attribute} ${c.operatorSymbol} ${c.expectedValue}',
+                                  )
+                                  .join(
+                                    ' ${rule.conditions.first.logicalOperator} ',
+                                  ),
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: isDark
@@ -687,9 +697,7 @@ class _RuleListItem extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: mint.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: mint.withValues(alpha: 0.35),
-                        ),
+                        border: Border.all(color: mint.withValues(alpha: 0.35)),
                       ),
                       child: Text(
                         'THÌ (THEN)',
@@ -757,11 +765,7 @@ class _RuleListItem extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: accent,
-                  ),
+                  Icon(Icons.chevron_right_rounded, size: 18, color: accent),
                 ],
               ),
             ],

@@ -35,7 +35,10 @@ class AssistantController extends StateNotifier<AssistantChatState> {
     }
     final history = state.messages;
     state = state.copyWith(
-      messages: [...history, ChatMessage(text: trimmed, isUser: true)],
+      messages: [
+        ...history,
+        ChatMessage(text: trimmed, isUser: true),
+      ],
       isSending: true,
     );
     try {

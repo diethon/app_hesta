@@ -17,10 +17,7 @@ const _deviceHestaJson = {
   'roomId': 'a1b2c3d4-0000-0000-0000-000000000001',
   'deviceType': 'LIGHT',
   'status': 'ONLINE',
-  'currentState': {
-    'power': true,
-    'brightness': 80,
-  },
+  'currentState': {'power': true, 'brightness': 80},
   'isFavorite': true,
 };
 
@@ -35,7 +32,8 @@ void main() {
     server.listen((request) async {
       final path = request.uri.path;
       Object body;
-      if (request.method == 'GET' && (path == '/api/v1/devices' || path.endsWith('/devices'))) {
+      if (request.method == 'GET' &&
+          (path == '/api/v1/devices' || path.endsWith('/devices'))) {
         body = {
           'code': 1000,
           'message': 'Success',
@@ -57,7 +55,8 @@ void main() {
         };
       } else {
         final dev = Map<String, dynamic>.from(_deviceHestaJson);
-        if (lastCommandBody != null && lastCommandBody!['action'] == 'POWER_OFF') {
+        if (lastCommandBody != null &&
+            lastCommandBody!['action'] == 'POWER_OFF') {
           dev['currentState'] = {'power': false, 'brightness': 80};
         }
         body = {'code': 1000, 'message': 'Success', 'result': dev};
@@ -77,10 +76,7 @@ void main() {
       authRepository: MockAuthRepository(storage),
       logger: Logger(level: Level.off),
     );
-    repository = ApiDeviceRepository(
-      client,
-      getHomeId: () => 'h-0001',
-    );
+    repository = ApiDeviceRepository(client, getHomeId: () => 'h-0001');
   });
 
   tearDown(() async {
@@ -101,7 +97,9 @@ void main() {
   });
 
   test('getDeviceById trả về đúng device', () async {
-    final device = await repository.getDeviceById(_deviceHestaJson['id']! as String);
+    final device = await repository.getDeviceById(
+      _deviceHestaJson['id']! as String,
+    );
     expect(device.name, 'Ceiling Light');
   });
 

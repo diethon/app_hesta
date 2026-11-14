@@ -30,18 +30,13 @@ void main() {
       expect(domain.g, 128);
       expect(domain.b, 0);
       expect(domain.rgbColor, isNotNull);
-      expect(domain.rgbColor?.red, 255);
-      expect(domain.rgbColor?.green, 128);
-      expect(domain.rgbColor?.blue, 0);
+      expect((domain.rgbColor!.r * 255).round(), 255);
+      expect((domain.rgbColor!.g * 255).round(), 128);
+      expect((domain.rgbColor!.b * 255).round(), 0);
     });
 
     test('deviceCommandToRequestBody creates SET_RGB command', () {
-      const command = DeviceCommand(
-        r: 0,
-        g: 229,
-        b: 255,
-        isOn: true,
-      );
+      const command = DeviceCommand(r: 0, g: 229, b: 255, isOn: true);
 
       final body = deviceCommandToRequestBody(command);
       expect(body['action'], 'SET_RGB');
@@ -62,20 +57,14 @@ void main() {
     });
 
     test('deviceCommandToRequestBody creates POWER_ON / POWER_OFF command', () {
-      expect(
-        deviceCommandToRequestBody(const DeviceCommand(isOn: true)),
-        {
-          'action': 'POWER_ON',
-          'parameters': {'power': true},
-        },
-      );
-      expect(
-        deviceCommandToRequestBody(const DeviceCommand(isOn: false)),
-        {
-          'action': 'POWER_OFF',
-          'parameters': {'power': false},
-        },
-      );
+      expect(deviceCommandToRequestBody(const DeviceCommand(isOn: true)), {
+        'action': 'POWER_ON',
+        'parameters': {'power': true},
+      });
+      expect(deviceCommandToRequestBody(const DeviceCommand(isOn: false)), {
+        'action': 'POWER_OFF',
+        'parameters': {'power': false},
+      });
     });
   });
 
@@ -113,76 +102,74 @@ void main() {
       expect(domain.timerHalfHour, isTrue);
     });
 
-    test('deviceCommandToRequestBody formats AC commands according to iot-ac.http', () {
-      // 1. SET_POWER
-      expect(
-        deviceCommandToRequestBody(const DeviceCommand(
-          isAc: true,
-          acAction: 'SET_POWER',
-          isOn: true,
-        )),
-        {'action': 'SET_POWER', 'power': true},
-      );
+    test(
+      'deviceCommandToRequestBody formats AC commands according to iot-ac.http',
+      () {
+        // 1. SET_POWER
+        expect(
+          deviceCommandToRequestBody(
+            const DeviceCommand(isAc: true, acAction: 'SET_POWER', isOn: true),
+          ),
+          {'action': 'SET_POWER', 'power': true},
+        );
 
-      // 2. SET_TEMPERATURE
-      expect(
-        deviceCommandToRequestBody(const DeviceCommand(
-          isAc: true,
-          acAction: 'SET_TEMPERATURE',
-          temperature: 26,
-        )),
-        {'action': 'SET_TEMPERATURE', 'temperature': 26},
-      );
+        // 2. SET_TEMPERATURE
+        expect(
+          deviceCommandToRequestBody(
+            const DeviceCommand(
+              isAc: true,
+              acAction: 'SET_TEMPERATURE',
+              temperature: 26,
+            ),
+          ),
+          {'action': 'SET_TEMPERATURE', 'temperature': 26},
+        );
 
-      // 3. SET_MODE
-      expect(
-        deviceCommandToRequestBody(const DeviceCommand(
-          isAc: true,
-          acAction: 'SET_MODE',
-          mode: 'COOL',
-        )),
-        {'action': 'SET_MODE', 'mode': 'COOL'},
-      );
+        // 3. SET_MODE
+        expect(
+          deviceCommandToRequestBody(
+            const DeviceCommand(isAc: true, acAction: 'SET_MODE', mode: 'COOL'),
+          ),
+          {'action': 'SET_MODE', 'mode': 'COOL'},
+        );
 
-      // 4. SET_FAN
-      expect(
-        deviceCommandToRequestBody(const DeviceCommand(
-          isAc: true,
-          acAction: 'SET_FAN',
-          fan: 'AUTO',
-        )),
-        {'action': 'SET_FAN', 'fan': 'AUTO'},
-      );
+        // 4. SET_FAN
+        expect(
+          deviceCommandToRequestBody(
+            const DeviceCommand(isAc: true, acAction: 'SET_FAN', fan: 'AUTO'),
+          ),
+          {'action': 'SET_FAN', 'fan': 'AUTO'},
+        );
 
-      // 5. SET_SWING
-      expect(
-        deviceCommandToRequestBody(const DeviceCommand(
-          isAc: true,
-          acAction: 'SET_SWING',
-          swing: true,
-        )),
-        {'action': 'SET_SWING', 'swing': true},
-      );
+        // 5. SET_SWING
+        expect(
+          deviceCommandToRequestBody(
+            const DeviceCommand(isAc: true, acAction: 'SET_SWING', swing: true),
+          ),
+          {'action': 'SET_SWING', 'swing': true},
+        );
 
-      // 6. SET_TIMER
-      expect(
-        deviceCommandToRequestBody(const DeviceCommand(
-          isAc: true,
-          acAction: 'SET_TIMER',
-          hour: 3,
-          halfHour: true,
-        )),
-        {'action': 'SET_TIMER', 'hour': 3, 'halfHour': true},
-      );
+        // 6. SET_TIMER
+        expect(
+          deviceCommandToRequestBody(
+            const DeviceCommand(
+              isAc: true,
+              acAction: 'SET_TIMER',
+              hour: 3,
+              halfHour: true,
+            ),
+          ),
+          {'action': 'SET_TIMER', 'hour': 3, 'halfHour': true},
+        );
 
-      // 7. CANCEL_TIMER
-      expect(
-        deviceCommandToRequestBody(const DeviceCommand(
-          isAc: true,
-          cancelTimer: true,
-        )),
-        {'action': 'CANCEL_TIMER'},
-      );
-    });
+        // 7. CANCEL_TIMER
+        expect(
+          deviceCommandToRequestBody(
+            const DeviceCommand(isAc: true, cancelTimer: true),
+          ),
+          {'action': 'CANCEL_TIMER'},
+        );
+      },
+    );
   });
 }

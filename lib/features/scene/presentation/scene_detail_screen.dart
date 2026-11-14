@@ -43,8 +43,9 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
     await HapticFeedback.mediumImpact();
     if (!mounted) return;
     setState(() => _isExecuting = true);
-    final success =
-        await ref.read(scenesListProvider.notifier).executeScene(_scene.id);
+    final error = await ref
+        .read(scenesListProvider.notifier)
+        .executeScene(_scene.id);
 
     if (mounted) {
       setState(() => _isExecuting = false);
@@ -53,22 +54,22 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
           content: Row(
             children: [
               Icon(
-                success ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+                error == null
+                    ? Icons.check_circle_rounded
+                    : Icons.error_outline_rounded,
                 color: Colors.white,
                 size: 20,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  success
-                      ? 'Đã kích hoạt kịch bản: ${_scene.name}'
-                      : 'Kích hoạt thất bại',
+                  error ?? 'Đã kích hoạt kịch bản: ${_scene.name}',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
-          backgroundColor: success
+          backgroundColor: error == null
               ? (isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight)
               : AppColors.error,
           behavior: SnackBarBehavior.floating,
@@ -225,8 +226,9 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                               end: Alignment.bottomRight,
                             ),
                             border: Border.all(
-                              color:
-                                  atmosphere.accentColor.withValues(alpha: 0.5),
+                              color: atmosphere.accentColor.withValues(
+                                alpha: 0.5,
+                              ),
                               width: 2,
                             ),
                             boxShadow: GlassTokens.glow(
@@ -273,12 +275,13 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                             ),
                             const SizedBox(width: AppSpacing.sm),
                             GlassStatusPill(
-                              label:
-                                  _scene.enabled ? 'Đang kích hoạt' : 'Đã tắt',
+                              label: _scene.enabled
+                                  ? 'Đang kích hoạt'
+                                  : 'Đã tắt',
                               color: _scene.enabled
                                   ? (isDark
-                                      ? AppColors.auroraMint
-                                      : AppColors.auroraMintOnLight)
+                                        ? AppColors.auroraMint
+                                        : AppColors.auroraMintOnLight)
                                   : Colors.grey,
                             ),
                           ],
@@ -349,8 +352,7 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                                     alignment: Alignment.center,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color:
-                                          accent.withValues(alpha: 0.15),
+                                      color: accent.withValues(alpha: 0.15),
                                       border: Border.all(
                                         color: accent.withValues(alpha: 0.3),
                                       ),
@@ -371,19 +373,20 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                                           act.targetDeviceName,
                                           style: theme.textTheme.bodyMedium
                                               ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
                                           'Hành động: ${act.action}${act.value != null ? ' (${act.value})' : ''}',
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                            color: isDark
-                                                ? AppColors.onDarkMuted
-                                                : AppColors.onSurfaceVariant,
-                                            fontSize: 12,
-                                          ),
+                                                color: isDark
+                                                    ? AppColors.onDarkMuted
+                                                    : AppColors
+                                                          .onSurfaceVariant,
+                                                fontSize: 12,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -396,7 +399,9 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                                     decoration: BoxDecoration(
                                       color: isDark
                                           ? Colors.white.withValues(alpha: 0.06)
-                                          : Colors.black.withValues(alpha: 0.05),
+                                          : Colors.black.withValues(
+                                              alpha: 0.05,
+                                            ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -434,8 +439,9 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                       child: schedules.isEmpty
                           ? Center(
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 child: Text(
                                   'Chưa có lịch hẹn giờ nào.',
                                   style: TextStyle(
@@ -467,8 +473,8 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                                               sched.time,
                                               style: theme.textTheme.titleMedium
                                                   ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                             ),
                                           ],
                                         ),

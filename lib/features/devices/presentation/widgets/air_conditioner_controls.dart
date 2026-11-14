@@ -31,10 +31,12 @@ class AirConditionerControls extends ConsumerStatefulWidget {
   final Color accent;
 
   @override
-  ConsumerState<AirConditionerControls> createState() => _AirConditionerControlsState();
+  ConsumerState<AirConditionerControls> createState() =>
+      _AirConditionerControlsState();
 }
 
-class _AirConditionerControlsState extends ConsumerState<AirConditionerControls> {
+class _AirConditionerControlsState
+    extends ConsumerState<AirConditionerControls> {
   int _selectedTimerHour = 2;
   bool _isHalfHour = false;
   bool _showTimerSheet = false;
@@ -50,19 +52,16 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
   }
 
   void _sendAcCommand(DeviceCommand command) {
-    ref.read(devicesControllerProvider.notifier).updateDevice(
-          widget.device.id,
-          command,
-        );
+    ref
+        .read(devicesControllerProvider.notifier)
+        .updateDevice(widget.device.id, command);
   }
 
   void _setPower(bool power) {
     HapticFeedback.mediumImpact();
-    _sendAcCommand(DeviceCommand(
-      isAc: true,
-      acAction: 'SET_POWER',
-      isOn: power,
-    ));
+    _sendAcCommand(
+      DeviceCommand(isAc: true, acAction: 'SET_POWER', isOn: power),
+    );
   }
 
   void _adjustTemp(int delta) {
@@ -70,69 +69,64 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
     final action = delta > 0 ? 'TEMPERATURE_PLUS' : 'TEMPERATURE_MINUS';
     final current = widget.device.temperature ?? 24;
     final next = (current + delta).clamp(20, 30);
-    _sendAcCommand(DeviceCommand(
-      isAc: true,
-      acAction: action,
-      temperature: next,
-    ));
+    _sendAcCommand(
+      DeviceCommand(isAc: true, acAction: action, temperature: next),
+    );
   }
 
   void _setTemp(int temp) {
     HapticFeedback.selectionClick();
-    _sendAcCommand(DeviceCommand(
-      isAc: true,
-      acAction: 'SET_TEMPERATURE',
-      temperature: temp.clamp(20, 30),
-    ));
+    _sendAcCommand(
+      DeviceCommand(
+        isAc: true,
+        acAction: 'SET_TEMPERATURE',
+        temperature: temp.clamp(20, 30),
+      ),
+    );
   }
 
   void _setMode(String mode) {
     HapticFeedback.selectionClick();
-    _sendAcCommand(DeviceCommand(
-      isAc: true,
-      acAction: 'SET_MODE',
-      mode: mode,
-      isOn: true,
-    ));
+    _sendAcCommand(
+      DeviceCommand(isAc: true, acAction: 'SET_MODE', mode: mode, isOn: true),
+    );
   }
 
   void _setFan(String fan) {
     HapticFeedback.selectionClick();
-    _sendAcCommand(DeviceCommand(
-      isAc: true,
-      acAction: 'SET_FAN',
-      fan: fan,
-    ));
+    _sendAcCommand(DeviceCommand(isAc: true, acAction: 'SET_FAN', fan: fan));
   }
 
   void _toggleSwing() {
     HapticFeedback.selectionClick();
     final current = widget.device.acSwing ?? false;
-    _sendAcCommand(DeviceCommand(
-      isAc: true,
-      acAction: 'SET_SWING',
-      swing: !current,
-    ));
+    _sendAcCommand(
+      DeviceCommand(isAc: true, acAction: 'SET_SWING', swing: !current),
+    );
   }
 
   void _applyTimer() {
     HapticFeedback.mediumImpact();
-    _sendAcCommand(DeviceCommand(
-      isAc: true,
-      acAction: 'SET_TIMER',
-      hour: _selectedTimerHour,
-      halfHour: _isHalfHour,
-    ));
+    _sendAcCommand(
+      DeviceCommand(
+        isAc: true,
+        acAction: 'SET_TIMER',
+        hour: _selectedTimerHour,
+        halfHour: _isHalfHour,
+      ),
+    );
     setState(() => _showTimerSheet = false);
   }
 
   void _cancelTimer() {
     HapticFeedback.mediumImpact();
-    _sendAcCommand(const DeviceCommand(
-      isAc: true,
-      cancelTimer: true,
-      acAction: 'CANCEL_TIMER',
-    ));
+    _sendAcCommand(
+      const DeviceCommand(
+        isAc: true,
+        cancelTimer: true,
+        acAction: 'CANCEL_TIMER',
+      ),
+    );
     setState(() => _showTimerSheet = false);
   }
 
@@ -140,30 +134,36 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
     HapticFeedback.mediumImpact();
     switch (preset) {
       case 'TURBO':
-        _sendAcCommand(const DeviceCommand(
-          isAc: true,
-          mode: 'COOL',
-          fan: 'HIGH',
-          temperature: 20,
-          isOn: true,
-        ));
+        _sendAcCommand(
+          const DeviceCommand(
+            isAc: true,
+            mode: 'COOL',
+            fan: 'HIGH',
+            temperature: 20,
+            isOn: true,
+          ),
+        );
       case 'ECO':
-        _sendAcCommand(const DeviceCommand(
-          isAc: true,
-          mode: 'COOL',
-          fan: 'AUTO',
-          temperature: 26,
-          isOn: true,
-        ));
+        _sendAcCommand(
+          const DeviceCommand(
+            isAc: true,
+            mode: 'COOL',
+            fan: 'AUTO',
+            temperature: 26,
+            isOn: true,
+          ),
+        );
       case 'SLEEP':
-        _sendAcCommand(const DeviceCommand(
-          isAc: true,
-          mode: 'COOL',
-          fan: 'LOW',
-          swing: false,
-          temperature: 27,
-          isOn: true,
-        ));
+        _sendAcCommand(
+          const DeviceCommand(
+            isAc: true,
+            mode: 'COOL',
+            fan: 'LOW',
+            swing: false,
+            temperature: 27,
+            isOn: true,
+          ),
+        );
     }
   }
 
@@ -212,7 +212,9 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isOn ? 'ĐIỀU HÒA • $currentMode' : 'ĐIỀU HÒA • ĐÃ TẮT',
+                            isOn
+                                ? 'ĐIỀU HÒA • $currentMode'
+                                : 'ĐIỀU HÒA • ĐÃ TẮT',
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: isOn ? activeAccent : Colors.white54,
                               fontWeight: FontWeight.w700,
@@ -274,7 +276,9 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
                   GlassIconButton(
                     icon: Icons.remove_rounded,
                     size: 60,
-                    onTap: (isOn && currentTemp > 20) ? () => _adjustTemp(-1) : null,
+                    onTap: (isOn && currentTemp > 20)
+                        ? () => _adjustTemp(-1)
+                        : null,
                   ),
 
                   // Nhiệt độ trung tâm
@@ -310,7 +314,9 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
                   GlassIconButton(
                     icon: Icons.add_rounded,
                     size: 60,
-                    onTap: (isOn && currentTemp < 30) ? () => _adjustTemp(1) : null,
+                    onTap: (isOn && currentTemp < 30)
+                        ? () => _adjustTemp(1)
+                        : null,
                   ),
                 ],
               ),
@@ -375,13 +381,33 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
               ),
               Row(
                 children: [
-                  _modeCard('COOL', 'Làm lạnh', Icons.ac_unit_rounded, currentMode),
+                  _modeCard(
+                    'COOL',
+                    'Làm lạnh',
+                    Icons.ac_unit_rounded,
+                    currentMode,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
-                  _modeCard('DRY', 'Hút ẩm', Icons.water_drop_outlined, currentMode),
+                  _modeCard(
+                    'DRY',
+                    'Hút ẩm',
+                    Icons.water_drop_outlined,
+                    currentMode,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
-                  _modeCard('HEAT', 'Sưởi ấm', Icons.wb_sunny_rounded, currentMode),
+                  _modeCard(
+                    'HEAT',
+                    'Sưởi ấm',
+                    Icons.wb_sunny_rounded,
+                    currentMode,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
-                  _modeCard('AUTO', 'Tự động', Icons.auto_mode_rounded, currentMode),
+                  _modeCard(
+                    'AUTO',
+                    'Tự động',
+                    Icons.auto_mode_rounded,
+                    currentMode,
+                  ),
                 ],
               ),
             ],
@@ -563,7 +589,8 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
                     )
                   else
                     GestureDetector(
-                      onTap: () => setState(() => _showTimerSheet = !_showTimerSheet),
+                      onTap: () =>
+                          setState(() => _showTimerSheet = !_showTimerSheet),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -729,7 +756,9 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
               color: isSelected ? color : Colors.white.withValues(alpha: 0.12),
               width: 1.5,
             ),
-            boxShadow: isSelected ? GlassTokens.glow(color, intensity: 0.7) : null,
+            boxShadow: isSelected
+                ? GlassTokens.glow(color, intensity: 0.7)
+                : null,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -769,7 +798,9 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
                 : Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(AppRadius.sm),
             border: Border.all(
-              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.12),
+              color: isSelected
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.12),
               width: 1,
             ),
           ),
@@ -797,9 +828,7 @@ class _AirConditionerControlsState extends ConsumerState<AirConditionerControls>
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.12),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
