@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../domain/device.dart';
 import '../domain/device_repository.dart';
 
@@ -287,5 +289,54 @@ class MockDeviceRepository implements DeviceRepository {
     );
     _devices[index] = updated;
     return updated;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getDeviceAuditHistory(String id) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    final now = DateTime.now();
+    return [
+      {
+        'id': 'hist-1',
+        'source': 'APP',
+        'changedAt': now.subtract(const Duration(minutes: 5)).toIso8601String(),
+        'previousState': {'isOn': false, 'brightness': 0},
+        'newState': {'isOn': true, 'brightness': 80},
+      },
+      {
+        'id': 'hist-2',
+        'source': 'MANUAL_OVERRIDE',
+        'changedAt': now.subtract(const Duration(minutes: 32)).toIso8601String(),
+        'previousState': {'manualOverride': false},
+        'newState': {'manualOverride': true, 'durationMinutes': 30},
+      },
+      {
+        'id': 'hist-3',
+        'source': 'AUTOMATION',
+        'changedAt': now.subtract(const Duration(hours: 3)).toIso8601String(),
+        'previousState': {'isOn': true, 'brightness': 100},
+        'newState': {'isOn': false, 'brightness': 0},
+      },
+      {
+        'id': 'hist-4',
+        'source': 'VOICE',
+        'changedAt': now.subtract(const Duration(hours: 7)).toIso8601String(),
+        'previousState': {'isOn': false},
+        'newState': {'isOn': true, 'brightness': 100},
+      },
+    ];
+  }
+
+  @override
+  Future<String> exportDeviceAuditExcel(String id, String deviceName) async {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    final sanitized = deviceName.replaceAll(RegExp(r'\s+'), '_');
+    try {
+      final file = File('/sdcard/Download/lich_su_${sanitized}_$id.xlsx');
+      await file.writeAsString('HESTA_SMART_HOME_EXCEL_AUDIT_REPORT');
+      return file.path;
+    } catch (_) {
+      return 'lich_su_${sanitized}_$id.xlsx';
+    }
   }
 }

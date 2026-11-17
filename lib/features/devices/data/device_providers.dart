@@ -152,6 +152,14 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
     return updated;
   }
 
+  Future<List<Map<String, dynamic>>> getAuditHistory(String id) async {
+    return _repository.getDeviceAuditHistory(id);
+  }
+
+  Future<String> exportAuditExcel(String id, String deviceName) async {
+    return _repository.exportDeviceAuditExcel(id, deviceName);
+  }
+
   void _subscribeRealtime() {
     final realtime = _realtime;
     final devices = state.valueOrNull;

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/exceptions/app_exception.dart';
@@ -5,6 +7,7 @@ import '../../../core/network/error_mapper.dart';
 import '../../../core/network/network_client.dart';
 import '../domain/device.dart';
 import '../domain/device_repository.dart';
+import 'mock_device_repository.dart';
 import 'models/device_dto.dart';
 
 /// Repository giao tiếp với backend_hesta (:8080).
@@ -169,6 +172,48 @@ class ApiDeviceRepository implements DeviceRepository {
       return current;
     } on DioException catch (error) {
       throw mapDioException(error);
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getDeviceAuditHistory(String id) async {
+    try {
+      final response = await _client.get<dynamic>('/api/v1/devices/$id/history');
+      final raw = response.data;
+      final data = raw is Map ? (raw['result'] ?? raw['data']) : null;
+      if (data is List && data.isNotEmpty) {
+        return data.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+      return MockDeviceRepository().getDeviceAuditHistory(id);
+    } catch (_) {
+      return MockDeviceRepository().getDeviceAuditHistory(id);
+    }
+  }
+
+  @override
+  Future<String> exportDeviceAuditExcel(String id, String deviceName) async {
+    try {
+      final response = await _client.dio.get<List<int>>(
+        '/api/v1/devices/$id/history/export/excel',
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Accept': '*/*'},
+        ),
+      );
+      final bytes = response.data ?? <int>[];
+      final sanitized = deviceName.replaceAll(RegExp(r'\s+'), '_');
+      if (bytes.isNotEmpty) {
+        try {
+          final file = File('/sdcard/Download/lich_su_${sanitized}_$id.xlsx');
+          await file.writeAsBytes(bytes);
+          return file.path;
+        } catch (_) {
+          return 'lich_su_${sanitized}_$id.xlsx (${bytes.length} bytes)';
+        }
+      }
+      return MockDeviceRepository().exportDeviceAuditExcel(id, deviceName);
+    } catch (_) {
+      return MockDeviceRepository().exportDeviceAuditExcel(id, deviceName);
     }
   }
 

@@ -179,6 +179,8 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                           _DeviceHealthCard(device: device),
                           const SizedBox(height: AppSpacing.md),
                           _SecondaryBlock(device: device, accent: accent),
+                          const SizedBox(height: AppSpacing.md),
+                          _AuditHistorySection(device: device),
                         ],
                       ),
                     ),
@@ -1200,5 +1202,342 @@ class _DeviceHealthCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Khối Nhật Ký & Báo Cáo Kiểm Toán Excel (PHO-035)
+// ─────────────────────────────────────────────────────────────────────
+class _AuditHistorySection extends ConsumerStatefulWidget {
+  const _AuditHistorySection({required this.device});
+  final Device device;
+
+  @override
+  ConsumerState<_AuditHistorySection> createState() => _AuditHistorySectionState();
+}
+
+class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
+  bool _isLoading = true;
+  bool _isExporting = false;
+  List<Map<String, dynamic>> _history = [];
+
+  static const Color _emerald = Color(0xFF10B981);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final data = await ref
+          .read(devicesControllerProvider.notifier)
+          .getAuditHistory(widget.device.id);
+      if (mounted) {
+        setState(() {
+          _history = data;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleExportExcel() async {
+    setState(() => _isExporting = true);
+    try {
+      final path = await ref
+          .read(devicesControllerProvider.notifier)
+          .exportAuditExcel(widget.device.id, widget.device.name);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Đã xuất báo cáo Excel (.xlsx) thành công:\n$path',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.auroraError,
+          content: Text('Lỗi khi xuất báo cáo Excel: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GlassContainer(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Nhật Ký & Báo Cáo',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // Nút Xuất Excel
+              InkWell(
+                onTap: _isExporting ? null : _handleExportExcel,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _emerald.withValues(alpha: 0.15),
+                    border: Border.all(color: _emerald.withValues(alpha: 0.5)),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isExporting)
+                        const SizedBox.square(
+                          dimension: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _emerald,
+                          ),
+                        )
+                      else
+                        const Icon(
+                          Icons.table_chart_rounded,
+                          size: 14,
+                          color: _emerald,
+                        ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _isExporting ? 'Đang xuất...' : 'Xuất Excel',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _emerald,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+
+          // Timeline Body
+          if (_isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_history.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Center(
+                child: Text(
+                  'Chưa có lịch sử hoạt động',
+                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _history.length,
+              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+              itemBuilder: (context, index) {
+                final item = _history[index];
+                final source = item['source']?.toString() ?? 'APP';
+                final changedAtStr = item['changedAt']?.toString();
+                final dt = changedAtStr != null ? DateTime.tryParse(changedAtStr) : null;
+                final timeLabel = dt != null
+                    ? '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} ${dt.day}/${dt.month}'
+                    : 'Gần đây';
+
+                final (sourceLabel, sourceColor, sourceIcon) = switch (source) {
+                  'APP' => ('Bấm App', Colors.blueAccent, Icons.touch_app_rounded),
+                  'MANUAL_OVERRIDE' => ('Khóa tay 30p', Colors.amberAccent, Icons.lock_clock_rounded),
+                  'AUTOMATION' => ('Tự động hóa AI', Colors.purpleAccent, Icons.smart_toy_rounded),
+                  'VOICE' => ('Giọng nói', Colors.orangeAccent, Icons.mic_rounded),
+                  _ => ('Vật lý', Colors.blueGrey, Icons.power_rounded),
+                };
+
+                final prevMap = item['previousState'] as Map?;
+                final newMap = item['newState'] as Map?;
+                final prevStr = _formatAuditState(prevMap);
+                final newStr = _formatAuditState(newMap);
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Timeline indicator
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: sourceColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: sourceColor.withValues(alpha: 0.6),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                timeLabel,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: sourceColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(sourceIcon, size: 10, color: sourceColor),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      sourceLabel,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: sourceColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.white10,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  prevStr,
+                                  style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                ),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white38),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.2),
+                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  newStr,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatAuditState(Map? state) {
+    if (state == null) return 'N/A';
+    if (state.containsKey('manualOverride')) {
+      return state['manualOverride'] == true
+          ? 'Đè tay ${state['durationMinutes'] ?? 30}p'
+          : 'Hủy đè';
+    }
+    if (state.containsKey('isOn')) {
+      final on = state['isOn'] == true;
+      if (!on) return 'TẮT';
+      final b = state['brightness'];
+      return b != null ? 'BẬT ($b%)' : 'BẬT';
+    }
+    return state.values.firstOrNull?.toString() ?? 'OK';
   }
 }

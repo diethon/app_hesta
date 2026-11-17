@@ -12,4 +12,8 @@ abstract interface class DeviceRepository {
   Future<Device> resumeDeviceAutomation(String id);
 
   Future<Device> getDeviceHealth(String id);
+
+  Future<List<Map<String, dynamic>>> getDeviceAuditHistory(String id);
+
+  Future<String> exportDeviceAuditExcel(String id, String deviceName);
 }
