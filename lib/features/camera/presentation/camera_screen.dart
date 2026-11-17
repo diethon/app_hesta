@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -10,15 +11,18 @@ import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/glass/glass.dart';
+import '../data/camera_providers.dart';
+import '../domain/fall_incident.dart';
+import 'widgets/emergency_sos_dialog.dart';
 
-class CameraScreen extends StatefulWidget {
+class CameraScreen extends ConsumerStatefulWidget {
   const CameraScreen({super.key});
 
   @override
-  State<CameraScreen> createState() => _CameraScreenState();
+  ConsumerState<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen>
+class _CameraScreenState extends ConsumerState<CameraScreen>
     with SingleTickerProviderStateMixin {
   int _selectedFeed = 0;
   bool _isRecording = false;
@@ -102,6 +106,34 @@ class _CameraScreenState extends State<CameraScreen>
     final theme = Theme.of(context);
     final feed = _feeds[_selectedFeed];
 
+    ref.listen<ActiveFallState>(activeFallControllerProvider, (prev, next) {
+      if (next.hasActiveAlert && (prev == null || !prev.hasActiveAlert)) {
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => Consumer(
+            builder: (context, ref, _) {
+              final current = ref.watch(activeFallControllerProvider);
+              if (!current.hasActiveAlert) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (Navigator.of(ctx, rootNavigator: true).canPop()) {
+                    Navigator.of(ctx, rootNavigator: true).pop();
+                  }
+                });
+                return const SizedBox.shrink();
+              }
+              return EmergencySosDialog(
+                incident: current.incident!,
+                countdown: current.countdown,
+              );
+            },
+          ),
+        );
+      }
+    });
+
+    final fallState = ref.watch(activeFallControllerProvider);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: CustomScrollView(
@@ -158,6 +190,15 @@ class _CameraScreenState extends State<CameraScreen>
                       );
                     },
                   ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+
+                // AI Vision HUD & Demo Trigger
+                _AiVisionHud(
+                  aiStatus: fallState.aiStatus,
+                  onTriggerDemo: () {
+                    ref.read(activeFallControllerProvider.notifier).triggerDemoFall();
+                  },
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
@@ -612,4 +653,105 @@ class _HistoryEvent {
   final String time;
   final String imageUrl;
   final bool highlighted;
+}
+
+class _AiVisionHud extends StatelessWidget {
+  const _AiVisionHud({
+    required this.aiStatus,
+    required this.onTriggerDemo,
+  });
+
+  final AiStatus? aiStatus;
+  final VoidCallback onTriggerDemo;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isOnline = aiStatus?.isOnline ?? true;
+    final fps = aiStatus?.fps ?? 30;
+    final stateStr = aiStatus?.state ?? 'STANDING';
+
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isOnline ? AppColors.success : Colors.grey,
+                  boxShadow: isOnline
+                      ? [
+                          BoxShadow(
+                            color: AppColors.success.withValues(alpha: 0.6),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'YOLOv8-Pose AI Engine ($fps FPS)',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: stateStr == 'FALLEN'
+                      ? Colors.red.withValues(alpha: 0.2)
+                      : theme.colorScheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Text(
+                  stateStr == 'FALLEN' ? 'NGHI VẤN NGÃ' : 'BÌNH THƯỜNG',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: stateStr == 'FALLEN'
+                        ? Colors.redAccent
+                        : theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Hệ thống AI liên tục giám sát động học tư thế và phát hiện sự cố té ngã trong thời gian thực.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.redAccent,
+                side: const BorderSide(color: Colors.redAccent, width: 1.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              onPressed: onTriggerDemo,
+              icon: const Icon(Icons.bolt_rounded, size: 18),
+              label: const Text(
+                'Bắn Sự Kiện Ngã Demo (Test SOS 30s)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
