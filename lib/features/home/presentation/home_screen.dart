@@ -19,6 +19,7 @@ import '../../devices/presentation/device_visuals.dart';
 import '../../scene/data/scene_providers.dart';
 import '../../scene/domain/scene.dart';
 import '../../scene/presentation/scene_icons.dart';
+import '../../groups/presentation/device_group_strip.dart';
 import 'widgets/hero_house_model.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -303,6 +304,8 @@ class _DashboardContent extends ConsumerWidget {
         const SizedBox(height: AppSpacing.md),
         const _QuickScenes(),
         const SizedBox(height: AppSpacing.lg),
+
+        const DeviceGroupStrip(),
 
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
