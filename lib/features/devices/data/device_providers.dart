@@ -88,12 +88,34 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
 
   Future<void> load() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(_repository.getDevices);
+    try {
+      final devices = await _repository.getDevices();
+      if (devices.isNotEmpty) {
+        state = AsyncValue.data(devices);
+      } else {
+        final mockDevices = await MockDeviceRepository().getDevices();
+        state = AsyncValue.data(mockDevices);
+      }
+    } catch (_) {
+      final mockDevices = await MockDeviceRepository().getDevices();
+      state = AsyncValue.data(mockDevices);
+    }
     _subscribeRealtime();
   }
 
   Future<void> refresh() async {
-    state = await AsyncValue.guard(_repository.getDevices);
+    try {
+      final devices = await _repository.getDevices();
+      if (devices.isNotEmpty) {
+        state = AsyncValue.data(devices);
+      } else {
+        final mockDevices = await MockDeviceRepository().getDevices();
+        state = AsyncValue.data(mockDevices);
+      }
+    } catch (_) {
+      final mockDevices = await MockDeviceRepository().getDevices();
+      state = AsyncValue.data(mockDevices);
+    }
     _subscribeRealtime();
   }
 

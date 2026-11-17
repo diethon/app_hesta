@@ -1064,31 +1064,31 @@ class _DeviceHealthCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: healthColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    ),
-                    child: Icon(
-                      Icons.health_and_safety_rounded,
-                      color: healthColor,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'Sức Khỏe & Độ Bền Relay',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: healthColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Icon(
+                  Icons.health_and_safety_rounded,
+                  color: healthColor,
+                  size: 18,
+                ),
               ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Sức Khỏe & Độ Bền Relay',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(

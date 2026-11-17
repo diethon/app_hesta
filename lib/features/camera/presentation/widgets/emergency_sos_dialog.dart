@@ -61,45 +61,44 @@ class EmergencySosDialog extends ConsumerWidget {
             children: [
               // Header with pulsing alert badge
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.red.withValues(alpha: 0.2),
-                        ),
-                        child: const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.redAccent,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isEscalated
-                                ? 'KHẨN CẤP: ĐÃ PHÁT TÍN HIỆU SOS!'
-                                : 'PHÁT HIỆN TÉ NGÃ KHẨN CẤP',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.red.withValues(alpha: 0.2),
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.redAccent,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEscalated
+                              ? 'KHẨN CẤP: ĐÃ PHÁT TÍN HIỆU SOS!'
+                              : 'PHÁT HIỆN TÉ NGÃ KHẨN CẤP',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
                           ),
-                          Text(
-                            incident.roomName,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: Colors.white70,
-                            ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          incident.roomName,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.white70,
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
                   IconButton(
                     icon: Icon(

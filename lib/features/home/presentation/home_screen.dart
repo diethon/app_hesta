@@ -233,17 +233,15 @@ class _DashboardContent extends ConsumerWidget {
     final theme = Theme.of(context);
     final favorites = devices.where((d) => d.isFavorite).toList();
 
-    if (devices.isEmpty) {
-      return EmptyView(message: l10n.emptyTitle);
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _HomeHeroCard(devices: devices),
-        const SizedBox(height: AppSpacing.md),
-        _StatusPillsRow(devices: devices),
-        const SizedBox(height: AppSpacing.lg),
+        if (devices.isNotEmpty) ...[
+          _HomeHeroCard(devices: devices),
+          const SizedBox(height: AppSpacing.md),
+          _StatusPillsRow(devices: devices),
+          const SizedBox(height: AppSpacing.lg),
+        ],
 
         // Lối vào Automation, Recommendation, Scenes, Camera.
         _SectionLabel(label: l10n.quickAccess),
@@ -324,24 +322,30 @@ class _DashboardContent extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final cols = constraints.maxWidth > 560 ? 3 : 2;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: favorites.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                crossAxisSpacing: AppSpacing.md,
-                mainAxisSpacing: AppSpacing.md,
-                childAspectRatio: 0.92,
-              ),
-              itemBuilder: (context, index) =>
-                  DeviceCard(device: favorites[index]),
-            );
-          },
-        ),
+        if (favorites.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: EmptyView(message: l10n.emptyTitle),
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cols = constraints.maxWidth > 560 ? 3 : 2;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: favorites.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  crossAxisSpacing: AppSpacing.md,
+                  mainAxisSpacing: AppSpacing.md,
+                  childAspectRatio: 0.92,
+                ),
+                itemBuilder: (context, index) =>
+                    DeviceCard(device: favorites[index]),
+              );
+            },
+          ),
         const SizedBox(height: AppSpacing.lg),
 
         _SectionLabel(label: l10n.recentActivity),

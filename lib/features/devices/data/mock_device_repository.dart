@@ -14,6 +14,11 @@ class MockDeviceRepository implements DeviceRepository {
       energyWatts: 9.4,
       subtitle: '80% Brightness',
       isFavorite: true,
+      switchCycles: 3820,
+      maxRatedCycles: 100000,
+      healthPercent: 96.18,
+      uptimePercent: 99.4,
+      manualOverrideActive: true,
     ),
     const Device(
       id: 'living-ceiling',
@@ -183,14 +188,28 @@ class MockDeviceRepository implements DeviceRepository {
 
   @override
   Future<List<Device>> getDevices() async {
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    return List<Device>.unmodifiable(_devices);
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    final now = DateTime.now();
+    return _devices.map((d) {
+      if (d.manualOverrideActive == true && (d.manualOverrideUntil == null || d.manualOverrideUntil!.isEmpty)) {
+        return d.copyWith(
+          manualOverrideUntil: now.add(const Duration(minutes: 28, seconds: 30)).toIso8601String(),
+        );
+      }
+      return d;
+    }).toList();
   }
 
   @override
   Future<Device> getDeviceById(String id) async {
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    return _devices.firstWhere((device) => device.id == id);
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    final device = _devices.firstWhere((device) => device.id == id);
+    if (device.manualOverrideActive == true && (device.manualOverrideUntil == null || device.manualOverrideUntil!.isEmpty)) {
+      return device.copyWith(
+        manualOverrideUntil: DateTime.now().add(const Duration(minutes: 28, seconds: 30)).toIso8601String(),
+      );
+    }
+    return device;
   }
 
   @override
