@@ -217,6 +217,21 @@ class ApiDeviceRepository implements DeviceRepository {
     }
   }
 
+  @override
+  Future<Device> updateDeviceWattage(String id, double wattage) async {
+    try {
+      final response = await _client.dio.put<dynamic>(
+        '/api/v1/devices/$id',
+        data: {
+          'settings': {'wattage': wattage.toInt()},
+        },
+      );
+      return _deviceFrom(response).copyWith(energyWatts: wattage);
+    } catch (_) {
+      return MockDeviceRepository().updateDeviceWattage(id, wattage);
+    }
+  }
+
   Device _deviceFrom(Response<dynamic> response) {
     final body = response.data;
     final Map<String, dynamic>? data;

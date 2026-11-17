@@ -151,7 +151,7 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                     actions: [
                       GlassIconButton(
                         icon: Icons.more_horiz_rounded,
-                        onTap: () {},
+                        onTap: () => _showDeviceMoreOptions(context, ref, device),
                       ),
                     ],
                   ),
@@ -170,7 +170,11 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                           SizedBox(
                             height: MediaQuery.sizeOf(context).height * 0.16,
                           ),
-                          _StatusBlock(device: device, accent: accent),
+                          _StatusBlock(
+                            device: device,
+                            accent: accent,
+                            onEditWattage: () => _showEditWattageDialog(context, ref, device),
+                          ),
                           const SizedBox(height: AppSpacing.md),
                           _MainControls(device: device, accent: accent),
                           const SizedBox(height: AppSpacing.md),
@@ -214,14 +218,302 @@ class _DeviceDetailScaffold extends ConsumerWidget {
   }
 }
 
+void _showDeviceMoreOptions(BuildContext context, WidgetRef ref, Device device) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) {
+      final isOverride = device.isOverrideActive;
+      return Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF141A29),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bolt_rounded, color: AppColors.auroraAccent),
+              title: const Text('Đổi công suất định mức', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              subtitle: Text(
+                'Hiện tại: ${device.energyWatts?.toStringAsFixed(1) ?? 40}W',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showEditWattageDialog(context, ref, device);
+              },
+            ),
+            Divider(color: Colors.white.withValues(alpha: 0.08)),
+            ListTile(
+              leading: Icon(
+                isOverride ? Icons.play_arrow_rounded : Icons.lock_clock_rounded,
+                color: isOverride ? AppColors.auroraMint : AppColors.auroraWarning,
+              ),
+              title: Text(
+                isOverride ? 'Khôi phục tự động hóa AI' : 'Khóa ưu tiên thủ công (30 phút)',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                isOverride
+                    ? 'Hủy bỏ đè tay và cho phép AI tiếp tục điều khiển'
+                    : 'Giữ nguyên trạng thái thiết bị trong 30 phút tới',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                if (isOverride) {
+                  ref.read(devicesControllerProvider.notifier).resumeAutomation(device.id);
+                } else {
+                  ref.read(devicesControllerProvider.notifier).cancelAutomation(device.id, minutes: 30);
+                }
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+void _showEditWattageDialog(BuildContext context, WidgetRef ref, Device device) {
+  final controller = TextEditingController(
+    text: device.energyWatts != null && device.energyWatts! > 0
+        ? device.energyWatts!.toStringAsFixed(0)
+        : '40',
+  );
+
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (sheetContext) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+        ),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF141A29),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.auroraAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.bolt_rounded,
+                      color: AppColors.auroraAccent,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Cấu Hình Công Suất Định Mức',
+                          style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          device.name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Công suất danh định (Watts) được HESTA dùng để tính toán năng lượng tiêu thụ, tích phân Riemann kWh và đối soát bậc thang EVN.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withValues(alpha: 0.7),
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Công suất tiêu thụ',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  suffixText: 'W',
+                  suffixStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.auroraAccent,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.05),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: AppColors.auroraAccent,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [15, 40, 60, 100, 680, 1500, 2200].map((w) {
+                  return ActionChip(
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                    label: Text(
+                      '${w}W',
+                      style: const TextStyle(fontSize: 11, color: Colors.white),
+                    ),
+                    onPressed: () => controller.text = w.toString(),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      child: const Text('Hủy'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.auroraAccent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final val = double.tryParse(controller.text.trim());
+                        if (val == null || val <= 0 || val > 25000) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Vui lòng nhập công suất hợp lệ (1W - 25000W)'),
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.of(sheetContext).pop();
+                        await ref
+                            .read(devicesControllerProvider.notifier)
+                            .updateDeviceWattage(device.id, val);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.success,
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Đã cập nhật công suất ${device.name}: ${val.toStringAsFixed(0)}W',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text(
+                        'Lưu Công Suất',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Khối trạng thái (hàng status pill)
 // ─────────────────────────────────────────────────────────────────────
 class _StatusBlock extends StatelessWidget {
-  const _StatusBlock({required this.device, required this.accent});
+  const _StatusBlock({
+    required this.device,
+    required this.accent,
+    this.onEditWattage,
+  });
 
   final Device device;
   final Color accent;
+  final VoidCallback? onEditWattage;
 
   @override
   Widget build(BuildContext context) {
@@ -264,8 +556,9 @@ class _StatusBlock extends StatelessWidget {
           GlassStatusPill(
             icon: Icons.bolt_rounded,
             value: '${device.energyWatts!.toStringAsFixed(1)}W',
-            label: l10n.energy,
+            label: '${l10n.energy} • Đổi',
             color: accent,
+            onTap: onEditWattage,
           ),
         if (device.isOverrideActive)
           GlassStatusPill(

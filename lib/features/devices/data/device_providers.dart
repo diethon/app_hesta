@@ -160,6 +160,14 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
     return _repository.exportDeviceAuditExcel(id, deviceName);
   }
 
+  Future<void> updateDeviceWattage(String id, double wattage) async {
+    final updated = await _repository.updateDeviceWattage(id, wattage);
+    final previous = state.valueOrNull ?? const <Device>[];
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+  }
+
   void _subscribeRealtime() {
     final realtime = _realtime;
     final devices = state.valueOrNull;

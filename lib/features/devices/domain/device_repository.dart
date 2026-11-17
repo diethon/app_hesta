@@ -16,4 +16,6 @@ abstract interface class DeviceRepository {
   Future<List<Map<String, dynamic>>> getDeviceAuditHistory(String id);
 
   Future<String> exportDeviceAuditExcel(String id, String deviceName);
+
+  Future<Device> updateDeviceWattage(String id, double wattage);
 }

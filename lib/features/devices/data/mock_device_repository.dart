@@ -339,4 +339,14 @@ class MockDeviceRepository implements DeviceRepository {
       return 'lich_su_${sanitized}_$id.xlsx';
     }
   }
+
+  @override
+  Future<Device> updateDeviceWattage(String id, double wattage) async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    final index = _devices.indexWhere((d) => d.id == id);
+    if (index == -1) throw StateError('Device not found: $id');
+    final updated = _devices[index].copyWith(energyWatts: wattage);
+    _devices[index] = updated;
+    return updated;
+  }
 }
