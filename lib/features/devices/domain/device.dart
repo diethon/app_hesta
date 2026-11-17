@@ -28,6 +28,14 @@ class Device {
     this.timerHour,
     this.timerHalfHour,
     this.rawType,
+    this.manualOverrideUntil,
+    this.manualOverrideActive,
+    this.switchCycles,
+    this.maxRatedCycles,
+    this.healthPercent,
+    this.uptimePercent,
+    this.chatteringWarning,
+    this.safetyTripped,
   });
 
   final String id;
@@ -57,6 +65,49 @@ class Device {
   final bool? timerHalfHour;
   final String? rawType;
 
+  // PHO-043: Manual Override (Khóa tự động hóa 30 phút)
+  final String? manualOverrideUntil;
+  final bool? manualOverrideActive;
+
+  // PHO-034 & PHO-042: Sức khỏe phần cứng & Tuổi thọ Relay
+  final int? switchCycles;
+  final int? maxRatedCycles;
+  final double? healthPercent;
+  final double? uptimePercent;
+  final bool? chatteringWarning;
+  final bool? safetyTripped;
+
+  bool get isOverrideActive {
+    if (manualOverrideActive == true) return true;
+    if (manualOverrideUntil == null || manualOverrideUntil!.isEmpty) return false;
+    final dt = DateTime.tryParse(manualOverrideUntil!);
+    return dt != null && dt.isAfter(DateTime.now());
+  }
+
+  double get calculatedHealthPercent {
+    if (healthPercent != null) return healthPercent!;
+    if (switchCycles != null && maxRatedCycles != null && maxRatedCycles! > 0) {
+      final val = ((1.0 - (switchCycles! / maxRatedCycles!)) * 100).clamp(0.0, 100.0);
+      return double.parse(val.toStringAsFixed(1));
+    }
+    return 100.0;
+  }
+
+  Duration get overrideRemaining {
+    if (manualOverrideUntil == null || manualOverrideUntil!.isEmpty) return Duration.zero;
+    final dt = DateTime.tryParse(manualOverrideUntil!);
+    if (dt == null) return Duration.zero;
+    final diff = dt.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  String get formattedOverrideTime {
+    final rem = overrideRemaining;
+    final m = rem.inMinutes;
+    final s = rem.inSeconds % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
   Color? get rgbColor {
     if (r == null || g == null || b == null) return null;
     return Color.fromARGB(255, r!.clamp(0, 255), g!.clamp(0, 255), b!.clamp(0, 255));
@@ -81,6 +132,14 @@ class Device {
     int? timerHour,
     bool? timerHalfHour,
     String? rawType,
+    String? manualOverrideUntil,
+    bool? manualOverrideActive,
+    int? switchCycles,
+    int? maxRatedCycles,
+    double? healthPercent,
+    double? uptimePercent,
+    bool? chatteringWarning,
+    bool? safetyTripped,
   }) {
     return Device(
       id: id,
@@ -105,6 +164,14 @@ class Device {
       timerHour: timerHour ?? this.timerHour,
       timerHalfHour: timerHalfHour ?? this.timerHalfHour,
       rawType: rawType ?? this.rawType,
+      manualOverrideUntil: manualOverrideUntil ?? this.manualOverrideUntil,
+      manualOverrideActive: manualOverrideActive ?? this.manualOverrideActive,
+      switchCycles: switchCycles ?? this.switchCycles,
+      maxRatedCycles: maxRatedCycles ?? this.maxRatedCycles,
+      healthPercent: healthPercent ?? this.healthPercent,
+      uptimePercent: uptimePercent ?? this.uptimePercent,
+      chatteringWarning: chatteringWarning ?? this.chatteringWarning,
+      safetyTripped: safetyTripped ?? this.safetyTripped,
     );
   }
 }

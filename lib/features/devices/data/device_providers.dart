@@ -105,6 +105,31 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
     ]);
   }
 
+  Future<void> cancelAutomation(String id, {int minutes = 30}) async {
+    final previous = state.valueOrNull ?? const <Device>[];
+    final updated = await _repository.cancelDeviceAutomation(id, minutes: minutes);
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+  }
+
+  Future<void> resumeAutomation(String id) async {
+    final previous = state.valueOrNull ?? const <Device>[];
+    final updated = await _repository.resumeDeviceAutomation(id);
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+  }
+
+  Future<Device> fetchDeviceHealth(String id) async {
+    final previous = state.valueOrNull ?? const <Device>[];
+    final updated = await _repository.getDeviceHealth(id);
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+    return updated;
+  }
+
   void _subscribeRealtime() {
     final realtime = _realtime;
     final devices = state.valueOrNull;

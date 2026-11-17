@@ -779,6 +779,35 @@ class DeviceCard extends ConsumerWidget {
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                 ),
               ),
+              if (device.isOverrideActive) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    border: Border.all(
+                      color: Colors.amber.withValues(alpha: 0.35),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.lock_clock_rounded, size: 11, color: Colors.amber),
+                      const SizedBox(width: 3),
+                      Text(
+                        device.formattedOverrideTime,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.md),
               _DeviceCardFooter(device: device, accent: accent),
             ],

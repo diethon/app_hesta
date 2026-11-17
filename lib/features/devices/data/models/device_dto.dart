@@ -25,6 +25,14 @@ class DeviceDto {
     this.timerEnabled,
     this.timerHour,
     this.timerHalfHour,
+    this.manualOverrideUntil,
+    this.manualOverrideActive,
+    this.switchCycles,
+    this.maxRatedCycles,
+    this.healthPercent,
+    this.uptimePercent,
+    this.chatteringWarning,
+    this.safetyTripped,
   });
 
   factory DeviceDto.fromJson(Map<String, dynamic> json) {
@@ -105,6 +113,17 @@ class DeviceDto {
 
     final isFavorite = json['isFavorite'] == true;
 
+    final manualOverrideUntil = json['manualOverrideUntil']?.toString();
+    final manualOverrideActive = json['manualOverrideActive'] == true ||
+        (manualOverrideUntil != null && manualOverrideUntil.isNotEmpty);
+
+    final switchCycles = (json['switchCycles'] as num?)?.toInt();
+    final maxRatedCycles = (json['maxRatedCycles'] as num?)?.toInt() ?? 100000;
+    final healthPercent = (json['healthPercent'] as num?)?.toDouble();
+    final uptimePercent = (json['uptimePercent'] as num?)?.toDouble();
+    final chatteringWarning = json['chatteringWarning'] == true;
+    final safetyTripped = json['safetyTripped'] == true;
+
     return DeviceDto(
       id: id,
       name: name,
@@ -127,6 +146,14 @@ class DeviceDto {
       timerEnabled: timerEnabled,
       timerHour: timerHour,
       timerHalfHour: timerHalfHour,
+      manualOverrideUntil: manualOverrideUntil,
+      manualOverrideActive: manualOverrideActive,
+      switchCycles: switchCycles,
+      maxRatedCycles: maxRatedCycles,
+      healthPercent: healthPercent,
+      uptimePercent: uptimePercent,
+      chatteringWarning: chatteringWarning,
+      safetyTripped: safetyTripped,
     );
   }
 
@@ -152,6 +179,14 @@ class DeviceDto {
   final bool? timerEnabled;
   final int? timerHour;
   final bool? timerHalfHour;
+  final String? manualOverrideUntil;
+  final bool? manualOverrideActive;
+  final int? switchCycles;
+  final int? maxRatedCycles;
+  final double? healthPercent;
+  final double? uptimePercent;
+  final bool? chatteringWarning;
+  final bool? safetyTripped;
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -175,6 +210,14 @@ class DeviceDto {
     'timerEnabled': timerEnabled,
     'timerHour': timerHour,
     'timerHalfHour': timerHalfHour,
+    'manualOverrideUntil': manualOverrideUntil,
+    'manualOverrideActive': manualOverrideActive,
+    'switchCycles': switchCycles,
+    'maxRatedCycles': maxRatedCycles,
+    'healthPercent': healthPercent,
+    'uptimePercent': uptimePercent,
+    'chatteringWarning': chatteringWarning,
+    'safetyTripped': safetyTripped,
   };
 
   Device toDomain() {
@@ -201,6 +244,14 @@ class DeviceDto {
       timerHour: timerHour,
       timerHalfHour: timerHalfHour,
       rawType: type,
+      manualOverrideUntil: manualOverrideUntil,
+      manualOverrideActive: manualOverrideActive,
+      switchCycles: switchCycles,
+      maxRatedCycles: maxRatedCycles,
+      healthPercent: healthPercent,
+      uptimePercent: uptimePercent,
+      chatteringWarning: chatteringWarning,
+      safetyTripped: safetyTripped,
     );
   }
 

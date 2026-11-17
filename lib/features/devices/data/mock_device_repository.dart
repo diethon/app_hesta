@@ -229,4 +229,44 @@ class MockDeviceRepository implements DeviceRepository {
     return updated;
   }
 
+  @override
+  Future<Device> cancelDeviceAutomation(String id, {int minutes = 30}) async {
+    final index = _devices.indexWhere((d) => d.id == id);
+    if (index == -1) throw StateError('Device not found: $id');
+    final until = DateTime.now().add(Duration(minutes: minutes)).toIso8601String();
+    final updated = _devices[index].copyWith(
+      manualOverrideUntil: until,
+      manualOverrideActive: true,
+    );
+    _devices[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Device> resumeDeviceAutomation(String id) async {
+    final index = _devices.indexWhere((d) => d.id == id);
+    if (index == -1) throw StateError('Device not found: $id');
+    final updated = _devices[index].copyWith(
+      manualOverrideUntil: '',
+      manualOverrideActive: false,
+    );
+    _devices[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Device> getDeviceHealth(String id) async {
+    final index = _devices.indexWhere((d) => d.id == id);
+    if (index == -1) throw StateError('Device not found: $id');
+    final updated = _devices[index].copyWith(
+      switchCycles: 1450,
+      maxRatedCycles: 100000,
+      healthPercent: 98.55,
+      uptimePercent: 99.4,
+      chatteringWarning: false,
+      safetyTripped: false,
+    );
+    _devices[index] = updated;
+    return updated;
+  }
 }

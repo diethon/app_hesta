@@ -117,6 +117,61 @@ class ApiDeviceRepository implements DeviceRepository {
     }
   }
 
+  @override
+  Future<Device> cancelDeviceAutomation(String id, {int minutes = 30}) async {
+    try {
+      final response = await _client.post<dynamic>(
+        '/api/v1/devices/$id/automation/cancel',
+        data: {'minutes': minutes},
+      );
+      final raw = response.data;
+      final until = raw is Map ? (raw['result'] ?? raw['data'])?.toString() : null;
+      final current = await getDeviceById(id);
+      return current.copyWith(
+        manualOverrideUntil: until ?? DateTime.now().add(Duration(minutes: minutes)).toIso8601String(),
+        manualOverrideActive: true,
+      );
+    } on DioException catch (error) {
+      throw mapDioException(error);
+    }
+  }
+
+  @override
+  Future<Device> resumeDeviceAutomation(String id) async {
+    try {
+      await _client.post<dynamic>('/api/v1/devices/$id/automation/resume');
+      final current = await getDeviceById(id);
+      return current.copyWith(
+        manualOverrideUntil: '',
+        manualOverrideActive: false,
+      );
+    } on DioException catch (error) {
+      throw mapDioException(error);
+    }
+  }
+
+  @override
+  Future<Device> getDeviceHealth(String id) async {
+    try {
+      final response = await _client.get<dynamic>('/api/v1/devices/$id/health');
+      final raw = response.data;
+      final data = raw is Map ? (raw['result'] ?? raw['data']) : null;
+      final current = await getDeviceById(id);
+      if (data is Map) {
+        return current.copyWith(
+          switchCycles: (data['switchCycles'] as num?)?.toInt(),
+          maxRatedCycles: (data['maxRatedCycles'] as num?)?.toInt() ?? 100000,
+          healthPercent: (data['healthPercent'] as num?)?.toDouble() ?? 99.0,
+          chatteringWarning: data['chatteringWarning'] == true,
+          safetyTripped: data['safetyTripped'] == true,
+        );
+      }
+      return current;
+    } on DioException catch (error) {
+      throw mapDioException(error);
+    }
+  }
+
   Device _deviceFrom(Response<dynamic> response) {
     final body = response.data;
     final Map<String, dynamic>? data;

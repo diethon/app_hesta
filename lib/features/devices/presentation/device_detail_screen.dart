@@ -31,6 +31,14 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   bool _precached = false;
 
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(devicesControllerProvider.notifier).fetchDeviceHealth(widget.deviceId);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final devices = ref.watch(devicesControllerProvider).valueOrNull ?? [];
     final matches = devices.where((item) => item.id == widget.deviceId);
@@ -166,6 +174,10 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                           const SizedBox(height: AppSpacing.md),
                           _MainControls(device: device, accent: accent),
                           const SizedBox(height: AppSpacing.md),
+                          _ManualOverrideCard(device: device),
+                          const SizedBox(height: AppSpacing.md),
+                          _DeviceHealthCard(device: device),
+                          const SizedBox(height: AppSpacing.md),
                           _SecondaryBlock(device: device, accent: accent),
                         ],
                       ),
@@ -252,6 +264,22 @@ class _StatusBlock extends StatelessWidget {
             value: '${device.energyWatts!.toStringAsFixed(1)}W',
             label: l10n.energy,
             color: accent,
+          ),
+        if (device.isOverrideActive)
+          GlassStatusPill(
+            icon: Icons.lock_clock_rounded,
+            value: device.formattedOverrideTime,
+            label: 'Khóa tay',
+            color: AppColors.auroraWarning,
+          ),
+        if (device.healthPercent != null)
+          GlassStatusPill(
+            icon: Icons.health_and_safety_rounded,
+            value: '${device.healthPercent!.toStringAsFixed(1)}%',
+            label: 'Độ bền',
+            color: device.healthPercent! >= 80
+                ? AppColors.auroraMint
+                : AppColors.auroraWarning,
           ),
       ]);
     }
@@ -847,6 +875,328 @@ class _EnergyHistory extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PHO-043: Manual Override Card (Khóa ưu tiên điều khiển tay 30 phút)
+// ─────────────────────────────────────────────────────────────────────
+class _ManualOverrideCard extends ConsumerStatefulWidget {
+  const _ManualOverrideCard({required this.device});
+
+  final Device device;
+
+  @override
+  ConsumerState<_ManualOverrideCard> createState() => _ManualOverrideCardState();
+}
+
+class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final device = widget.device;
+    final isOverride = device.isOverrideActive;
+
+    return GlassContainer(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.auroraWarning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: const Icon(
+                      Icons.lock_clock_rounded,
+                      color: AppColors.auroraWarning,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Khóa Ưu Tiên Thủ Công',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (isOverride ? AppColors.auroraWarning : AppColors.auroraMint)
+                      .withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: (isOverride ? AppColors.auroraWarning : AppColors.auroraMint)
+                        .withValues(alpha: 0.5),
+                  ),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  isOverride ? '🔒 ${device.formattedOverrideTime}' : '🟢 Tự động AI',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: isOverride ? AppColors.auroraWarning : AppColors.auroraMint,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            isOverride
+                ? 'Thiết bị đang được ưu tiên điều khiển tay. Mọi kịch bản tự động hóa AI sẽ bị khóa đến khi hết đếm lùi.'
+                : 'Bật chế độ khóa thủ công để giữ nguyên trạng thái hiện tại và ngăn kịch bản AI tự ý thay đổi.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.white.withValues(alpha: 0.65),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              if (isOverride) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.auroraMint,
+                      side: BorderSide(
+                        color: AppColors.auroraMint.withValues(alpha: 0.6),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                    ),
+                    onPressed: () {
+                      ref
+                          .read(devicesControllerProvider.notifier)
+                          .resumeAutomation(device.id);
+                    },
+                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                    label: const Text('Khôi phục AI'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.auroraWarning,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                    ),
+                    onPressed: () {
+                      ref
+                          .read(devicesControllerProvider.notifier)
+                          .cancelAutomation(device.id, minutes: 30);
+                    },
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('+30 Phút'),
+                  ),
+                ),
+              ] else ...[
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.auroraWarning,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                    ),
+                    onPressed: () {
+                      ref
+                          .read(devicesControllerProvider.notifier)
+                          .cancelAutomation(device.id, minutes: 30);
+                    },
+                    icon: const Icon(Icons.lock_rounded, size: 16),
+                    label: const Text('Khóa Tự Động 30 Phút'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PHO-034 & PHO-042: Device Hardware Health & Relay Lifespan Card
+// ─────────────────────────────────────────────────────────────────────
+class _DeviceHealthCard extends StatelessWidget {
+  const _DeviceHealthCard({required this.device});
+
+  final Device device;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final healthPercent = device.healthPercent ?? 98.5;
+    final switchCycles = device.switchCycles ?? 1450;
+    final maxRatedCycles = device.maxRatedCycles ?? 100000;
+    final uptimePercent = device.uptimePercent ?? 99.4;
+    final isChattering = device.chatteringWarning == true;
+    final isTripped = device.safetyTripped == true;
+
+    final healthColor = isChattering || isTripped
+        ? AppColors.auroraError
+        : (healthPercent >= 80 ? AppColors.auroraMint : AppColors.auroraWarning);
+
+    return GlassContainer(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: healthColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Icon(
+                      Icons.health_and_safety_rounded,
+                      color: healthColor,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Sức Khỏe & Độ Bền Relay',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: healthColor.withValues(alpha: 0.15),
+                  border: Border.all(color: healthColor.withValues(alpha: 0.5)),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  isChattering
+                      ? '⚠️ Dội Xung'
+                      : '${healthPercent.toStringAsFixed(1)}% còn lại',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: healthColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Lifespan progress bar
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tuổi thọ cơ học relay:',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.65),
+                ),
+              ),
+              Text(
+                '${switchCycles.toString()} / $maxRatedCycles chu kỳ',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              value: (healthPercent / 100).clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              valueColor: AlwaysStoppedAnimation<Color>(healthColor),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // Uptime indicator
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Độ sẵn sàng (Uptime 7 ngày):',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.65),
+                ),
+              ),
+              Text(
+                '🟢 ${uptimePercent.toStringAsFixed(1)}%',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.auroraMint,
+                ),
+              ),
+            ],
+          ),
+
+          if (isChattering || isTripped) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.auroraError.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: AppColors.auroraError.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.auroraError,
+                    size: 16,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Cảnh báo: Phát hiện tiếp điểm đổi trạng thái >10 lần/phút! Mạch đã ngắt an toàn chống dội xung chattering.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: AppColors.auroraError,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

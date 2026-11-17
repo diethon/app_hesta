@@ -30,9 +30,9 @@ void main() {
       expect(domain.g, 128);
       expect(domain.b, 0);
       expect(domain.rgbColor, isNotNull);
-      expect(domain.rgbColor?.red, 255);
-      expect(domain.rgbColor?.green, 128);
-      expect(domain.rgbColor?.blue, 0);
+      expect((domain.rgbColor!.r * 255).round(), 255);
+      expect((domain.rgbColor!.g * 255).round(), 128);
+      expect((domain.rgbColor!.b * 255).round(), 0);
     });
 
     test('deviceCommandToRequestBody creates SET_RGB command', () {
