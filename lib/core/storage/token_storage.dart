@@ -78,7 +78,8 @@ class TokenStorage implements TokenStore {
   }
 
   @override
-  Future<({String? userId, String? email, String? name})> readUserSession() async {
+  Future<({String? userId, String? email, String? name})>
+  readUserSession() async {
     final userId = await _storage.read(key: _userIdKey);
     final email = await _storage.read(key: _userEmailKey);
     final name = await _storage.read(key: _userNameKey);

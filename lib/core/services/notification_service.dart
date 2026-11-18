@@ -46,7 +46,8 @@ class DeferredNotificationService implements NotificationService {
 /// Local notification qua flutter_local_notifications — dùng cho thông báo
 /// automation khi app đang chạy (chưa có FCM/phần cứng).
 class LocalNotificationService implements NotificationService {
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   bool _initialized = false;
   int _notificationId = 0;
 

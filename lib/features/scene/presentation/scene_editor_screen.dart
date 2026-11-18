@@ -59,7 +59,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.scene?.name ?? '');
-    _descController = TextEditingController(text: widget.scene?.description ?? '');
+    _descController = TextEditingController(
+      text: widget.scene?.description ?? '',
+    );
     _selectedIcon = widget.scene?.icon ?? 'home';
     _enabled = widget.scene?.enabled ?? true;
     _actions = List.of(widget.scene?.actions ?? []);
@@ -78,8 +80,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
     if (_actions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content:
-              Text('Vui lòng thêm ít nhất 1 hành động thiết bị cho ngữ cảnh.'),
+          content: Text(
+            'Vui lòng thêm ít nhất 1 hành động thiết bị cho ngữ cảnh.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -128,9 +131,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lưu thất bại: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lưu thất bại: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -144,10 +147,8 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) => _AddActionSheet(
-        devices: devices,
-        currentOrder: _actions.length,
-      ),
+      builder: (ctx) =>
+          _AddActionSheet(devices: devices, currentOrder: _actions.length),
     ).then((newAction) {
       if (newAction != null) {
         setState(() {
@@ -212,8 +213,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                             const SizedBox(height: AppSpacing.sm),
                             Builder(
                               builder: (context) {
-                                final atmosphere =
-                                    SceneIcons.getAtmosphere(_selectedIcon);
+                                final atmosphere = SceneIcons.getAtmosphere(
+                                  _selectedIcon,
+                                );
                                 return GlassCard(
                                   radius: AppRadius.card,
                                   padding: const EdgeInsets.all(AppSpacing.md),
@@ -221,8 +223,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                     colors: [
-                                      atmosphere.accentColor
-                                          .withValues(alpha: 0.5),
+                                      atmosphere.accentColor.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       Colors.white.withValues(alpha: 0.08),
                                     ],
                                   ),
@@ -239,8 +242,10 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                           shape: BoxShape.circle,
                                           gradient: LinearGradient(
                                             colors: atmosphere.gradient
-                                                .map((c) =>
-                                                    c.withValues(alpha: 0.35))
+                                                .map(
+                                                  (c) =>
+                                                      c.withValues(alpha: 0.35),
+                                                )
                                                 .toList(),
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
@@ -263,14 +268,16 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              _nameController.text.trim().isEmpty
+                                              _nameController.text
+                                                      .trim()
+                                                      .isEmpty
                                                   ? 'Tên ngữ cảnh'
                                                   : _nameController.text.trim(),
                                               style: theme.textTheme.titleMedium
                                                   ?.copyWith(
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: -0.2,
-                                              ),
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: -0.2,
+                                                  ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -279,11 +286,12 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                               '${_actions.length} hành động • ${atmosphere.vietnameseLabel}',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                fontSize: 11.5,
-                                                color: isDark
-                                                    ? AppColors.onDarkMuted
-                                                    : AppColors.onSurfaceVariant,
-                                              ),
+                                                    fontSize: 11.5,
+                                                    color: isDark
+                                                        ? AppColors.onDarkMuted
+                                                        : AppColors
+                                                              .onSurfaceVariant,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -330,7 +338,8 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                               maxLines: 2,
                               decoration: const InputDecoration(
                                 labelText: 'Mô tả (tùy chọn)',
-                                hintText: 'Mô tả ngắn gọn mục đích của kịch bản',
+                                hintText:
+                                    'Mô tả ngắn gọn mục đích của kịch bản',
                               ),
                             ),
                             const SizedBox(height: AppSpacing.md),
@@ -383,8 +392,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                 itemBuilder: (context, i) {
                                   final iconName = _availableIcons[i];
                                   final isSelected = _selectedIcon == iconName;
-                                  final atmosphere =
-                                      SceneIcons.getAtmosphere(iconName);
+                                  final atmosphere = SceneIcons.getAtmosphere(
+                                    iconName,
+                                  );
                                   return Tooltip(
                                     message: atmosphere.vietnameseLabel,
                                     child: GestureDetector(
@@ -395,30 +405,33 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                         );
                                       },
                                       child: AnimatedContainer(
-                                        duration:
-                                            const Duration(milliseconds: 200),
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
                                         width: 50,
                                         height: 50,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: isSelected
                                               ? atmosphere.accentColor
-                                                  .withValues(alpha: 0.28)
+                                                    .withValues(alpha: 0.28)
                                               : isDark
-                                                  ? Colors.white
-                                                      .withValues(alpha: 0.05)
-                                                  : Colors.black
-                                                      .withValues(alpha: 0.04),
+                                              ? Colors.white.withValues(
+                                                  alpha: 0.05,
+                                                )
+                                              : Colors.black.withValues(
+                                                  alpha: 0.04,
+                                                ),
                                           border: Border.all(
                                             color: isSelected
                                                 ? atmosphere.accentColor
                                                 : isDark
-                                                    ? Colors.white.withValues(
-                                                        alpha: 0.15,
-                                                      )
-                                                    : Colors.black.withValues(
-                                                        alpha: 0.12,
-                                                      ),
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.15,
+                                                  )
+                                                : Colors.black.withValues(
+                                                    alpha: 0.12,
+                                                  ),
                                             width: isSelected ? 2 : 1,
                                           ),
                                           boxShadow: isSelected
@@ -433,8 +446,8 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                           color: isSelected
                                               ? atmosphere.accentColor
                                               : (isDark
-                                                  ? AppColors.onDarkMuted
-                                                  : Colors.grey.shade600),
+                                                    ? AppColors.onDarkMuted
+                                                    : Colors.grey.shade600),
                                           size: 24,
                                         ),
                                       ),
@@ -466,14 +479,18 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                 ),
                                 InkWell(
                                   onTap: _showAddActionModal,
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.sm),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.sm,
+                                  ),
                                   child: Padding(
                                     padding: const EdgeInsets.all(4.0),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.add_circle_outline_rounded,
-                                            size: 18, color: accent),
+                                        Icon(
+                                          Icons.add_circle_outline_rounded,
+                                          size: 18,
+                                          color: accent,
+                                        ),
                                         const SizedBox(width: 4),
                                         Text(
                                           'Thêm',
@@ -492,8 +509,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
 
                             if (_actions.isEmpty)
                               Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 20),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 20,
+                                ),
                                 child: Center(
                                   child: Text(
                                     'Chưa có hành động nào. Nhấn "+ Thêm" để chỉ định thiết bị hoạt động khi kịch bản chạy.',
@@ -511,8 +529,10 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: _actions.length,
-                                separatorBuilder: (_, __) =>
-                                    const Divider(height: 16, color: Colors.white10),
+                                separatorBuilder: (_, __) => const Divider(
+                                  height: 16,
+                                  color: Colors.white10,
+                                ),
                                 itemBuilder: (context, index) {
                                   final act = _actions[index];
                                   return Row(
@@ -544,24 +564,28 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                               act.targetDeviceName,
                                               style: theme.textTheme.bodyMedium
                                                   ?.copyWith(
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
                                             ),
                                             Text(
                                               'Lệnh: ${act.action}${act.value != null ? ' (${act.value})' : ''}',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                color: isDark
-                                                    ? AppColors.onDarkMuted
-                                                    : AppColors.onSurfaceVariant,
-                                              ),
+                                                    color: isDark
+                                                        ? AppColors.onDarkMuted
+                                                        : AppColors
+                                                              .onSurfaceVariant,
+                                                  ),
                                             ),
                                           ],
                                         ),
                                       ),
                                       IconButton(
-                                        icon: const Icon(Icons.delete_outline_rounded,
-                                            size: 20, color: AppColors.error),
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 20,
+                                          color: AppColors.error,
+                                        ),
                                         onPressed: () {
                                           setState(() {
                                             _actions.removeAt(index);
@@ -598,10 +622,7 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
 }
 
 class _AddActionSheet extends StatefulWidget {
-  const _AddActionSheet({
-    required this.devices,
-    required this.currentOrder,
-  });
+  const _AddActionSheet({required this.devices, required this.currentOrder});
 
   final List<Device> devices;
   final int currentOrder;
@@ -680,17 +701,18 @@ class _AddActionSheetState extends State<_AddActionSheet> {
           const SizedBox(height: AppSpacing.xs),
           DropdownButtonFormField<Device>(
             initialValue: _selectedDevice,
-            dropdownColor:
-                isDark ? AppColors.auroraCanvasMid : AppColors.surface,
+            dropdownColor: isDark
+                ? AppColors.auroraCanvasMid
+                : AppColors.surface,
             items: widget.devices
-                .map((d) => DropdownMenuItem(
-                      value: d,
-                      child: Text(d.name),
-                    ))
+                .map((d) => DropdownMenuItem(value: d, child: Text(d.name)))
                 .toList(),
             onChanged: (d) => setState(() => _selectedDevice = d),
             decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -700,27 +722,30 @@ class _AddActionSheetState extends State<_AddActionSheet> {
           const SizedBox(height: AppSpacing.xs),
           DropdownButtonFormField<String>(
             initialValue: _selectedAction,
-            dropdownColor:
-                isDark ? AppColors.auroraCanvasMid : AppColors.surface,
+            dropdownColor: isDark
+                ? AppColors.auroraCanvasMid
+                : AppColors.surface,
             items: _commonActions
-                .map((a) => DropdownMenuItem(
-                      value: a,
-                      child: Text(a),
-                    ))
+                .map((a) => DropdownMenuItem(value: a, child: Text(a)))
                 .toList(),
             onChanged: (a) {
               if (a != null) setState(() => _selectedAction = a);
             },
             decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
           ),
 
           // Optional value slider if brightness or temperature
           if (_selectedAction == 'SET_BRIGHTNESS') ...[
             const SizedBox(height: AppSpacing.md),
-            Text('Độ sáng: ${_actionValue.round()}%',
-                style: theme.textTheme.labelMedium),
+            Text(
+              'Độ sáng: ${_actionValue.round()}%',
+              style: theme.textTheme.labelMedium,
+            ),
             Slider(
               value: _actionValue,
               min: 1,
@@ -729,8 +754,10 @@ class _AddActionSheetState extends State<_AddActionSheet> {
             ),
           ] else if (_selectedAction == 'SET_TEMPERATURE') ...[
             const SizedBox(height: AppSpacing.md),
-            Text('Nhiệt độ: ${_actionValue.round()}°C',
-                style: theme.textTheme.labelMedium),
+            Text(
+              'Nhiệt độ: ${_actionValue.round()}°C',
+              style: theme.textTheme.labelMedium,
+            ),
             Slider(
               value: _actionValue.clamp(16, 30),
               min: 16,
@@ -750,7 +777,8 @@ class _AddActionSheetState extends State<_AddActionSheet> {
                       targetDeviceId: _selectedDevice!.id,
                       targetDeviceName: _selectedDevice!.name,
                       action: _selectedAction,
-                      value: (_selectedAction == 'SET_BRIGHTNESS' ||
+                      value:
+                          (_selectedAction == 'SET_BRIGHTNESS' ||
                               _selectedAction == 'SET_TEMPERATURE')
                           ? _actionValue.round()
                           : null,

@@ -36,30 +36,21 @@ class RecommendationRepository {
         .toList();
   }
 
-  Future<Recommendation> approve(
-    String homeId,
-    String recommendationId,
-  ) async {
+  Future<Recommendation> approve(String homeId, String recommendationId) async {
     final response = await client.post<dynamic>(
       '/api/v1/homes/$homeId/recommendations/$recommendationId/approve',
     );
     return Recommendation.fromJson(_extractMap(response.data));
   }
 
-  Future<Recommendation> reject(
-    String homeId,
-    String recommendationId,
-  ) async {
+  Future<Recommendation> reject(String homeId, String recommendationId) async {
     final response = await client.post<dynamic>(
       '/api/v1/homes/$homeId/recommendations/$recommendationId/reject',
     );
     return Recommendation.fromJson(_extractMap(response.data));
   }
 
-  Future<Recommendation> dismiss(
-    String homeId,
-    String recommendationId,
-  ) async {
+  Future<Recommendation> dismiss(String homeId, String recommendationId) async {
     final response = await client.post<dynamic>(
       '/api/v1/homes/$homeId/recommendations/$recommendationId/dismiss',
     );

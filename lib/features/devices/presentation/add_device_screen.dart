@@ -23,10 +23,12 @@ class AddDeviceScreen extends ConsumerStatefulWidget {
 
 class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
   final TextEditingController _qrInputController = TextEditingController();
-  final TextEditingController _ssidController =
-      TextEditingController(text: 'SYNA_Home_5G');
-  final TextEditingController _wifiPasswordController =
-      TextEditingController(text: 'syna@2026');
+  final TextEditingController _ssidController = TextEditingController(
+    text: 'SYNA_Home_5G',
+  );
+  final TextEditingController _wifiPasswordController = TextEditingController(
+    text: 'syna@2026',
+  );
   final TextEditingController _deviceNameController = TextEditingController();
   late final MobileScannerController _scannerController;
 
@@ -96,7 +98,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                         tooltip: 'Quay lại',
                         onTap: () {
                           if (state.step == OnboardingStep.completed) {
-                            ref.read(devicesControllerProvider.notifier).refresh();
+                            ref
+                                .read(devicesControllerProvider.notifier)
+                                .refresh();
                             context.go('/home');
                           } else {
                             context.pop();
@@ -188,7 +192,8 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
-              if (step != OnboardingStep.error && step != OnboardingStep.completed)
+              if (step != OnboardingStep.error &&
+                  step != OnboardingStep.completed)
                 Text(
                   '$currentStep / 5',
                   style: Theme.of(context).textTheme.bodySmall,
@@ -201,8 +206,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
             child: LinearProgressIndicator(
               value: currentStep / 5.0,
               minHeight: 4,
-              backgroundColor:
-                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.1),
               valueColor: AlwaysStoppedAnimation(
                 Theme.of(context).colorScheme.primary,
               ),
@@ -267,7 +273,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 decoration: BoxDecoration(
                   color: Colors.black,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: primary.withValues(alpha: 0.5), width: 1.5),
+                  border: Border.all(
+                    color: primary.withValues(alpha: 0.5),
+                    width: 1.5,
+                  ),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.lg - 1),
@@ -393,9 +402,14 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                                 backgroundColor: Colors.black54,
                                 visualDensity: VisualDensity.compact,
                               ),
-                              icon: const Icon(Icons.flip_camera_ios_rounded, color: Colors.white, size: 18),
+                              icon: const Icon(
+                                Icons.flip_camera_ios_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                               tooltip: 'Đổi camera trước/sau',
-                              onPressed: () => _scannerController.switchCamera(),
+                              onPressed: () =>
+                                  _scannerController.switchCamera(),
                             ),
                             const SizedBox(width: 4),
                             IconButton(
@@ -403,7 +417,11 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                                 backgroundColor: Colors.black54,
                                 visualDensity: VisualDensity.compact,
                               ),
-                              icon: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 18),
+                              icon: const Icon(
+                                Icons.flash_on_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                               tooltip: 'Bật/Tắt đèn Flash',
                               onPressed: () => _scannerController.toggleTorch(),
                             ),
@@ -415,7 +433,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                       Positioned(
                         bottom: 12,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black54,
                             borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -455,7 +476,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
             children: [
               Text(
                 'Hoặc nhập mã Token / Payload QR:',
-                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               TextField(
@@ -472,7 +495,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -490,10 +516,15 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   icon: state.isLoading
                       ? const SizedBox.square(
                           dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.search_rounded),
-                  label: Text(state.isLoading ? 'Đang kiểm tra...' : 'Xác thực mã QR'),
+                  label: Text(
+                    state.isLoading ? 'Đang kiểm tra...' : 'Xác thực mã QR',
+                  ),
                 ),
               ),
             ],
@@ -548,21 +579,28 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 preview.name,
-                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.sm),
 
               // Specs pill
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text(
                   'Loại: ${preview.deviceType} • Model: ${preview.model ?? "N/A"}',
-                  style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
 
@@ -607,7 +645,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                       child: state.isLoading
                           ? const SizedBox.square(
                               dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Text('Tiếp tục'),
                     ),
@@ -624,10 +665,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
   // =========================================================================
   // STEP 3: BLE SCANNING & CONNECT
   // =========================================================================
-  Widget _buildBleStep(
-    OnboardingState state,
-    OnboardingController notifier,
-  ) {
+  Widget _buildBleStep(OnboardingState state, OnboardingController notifier) {
     final theme = Theme.of(context);
     final targetDevice = state.selectedBleDevice;
 
@@ -655,7 +693,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               const SizedBox(height: AppSpacing.md),
               Text(
                 'Đang tìm kiếm thiết bị SYNA...',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
@@ -699,7 +739,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                             Text(
                               'MAC: ${targetDevice.id} • Tín hiệu: Tốt (${targetDevice.rssi} dBm)',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
                               ),
                             ),
                           ],
@@ -718,10 +760,15 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                     icon: state.isLoading
                         ? const SizedBox.square(
                             dimension: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : const Icon(Icons.bluetooth_connected_rounded),
-                    label: Text(state.isLoading ? 'Đang kết nối...' : 'Kết nối BLE'),
+                    label: Text(
+                      state.isLoading ? 'Đang kết nối...' : 'Kết nối BLE',
+                    ),
                   ),
                 ),
               ] else ...[
@@ -737,7 +784,8 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   ),
                 ] else ...[
                   Text(
-                    state.errorMessage ?? 'Không tìm thấy thiết bị ESP32 (SYNA-ESP32S3).',
+                    state.errorMessage ??
+                        'Không tìm thấy thiết bị ESP32 (SYNA-ESP32S3).',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: AppColors.auroraWarning,
@@ -761,10 +809,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
   // =========================================================================
   // STEP 4: WI-FI PROVISIONING & MQTT DISCOVERY
   // =========================================================================
-  Widget _buildWifiStep(
-    OnboardingState state,
-    OnboardingController notifier,
-  ) {
+  Widget _buildWifiStep(OnboardingState state, OnboardingController notifier) {
     final theme = Theme.of(context);
 
     return Column(
@@ -803,7 +848,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                         Text(
                           'ESP32 sẽ kết nối và phản hồi xác nhận qua BLE',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
                           ),
                         ),
                       ],
@@ -856,7 +903,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               const SizedBox(height: AppSpacing.lg),
 
               // Live checklist status
-              if (state.isLoading || state.step == OnboardingStep.mqttConnecting || state.wifiConnected) ...[
+              if (state.isLoading ||
+                  state.step == OnboardingStep.mqttConnecting ||
+                  state.wifiConnected) ...[
                 _buildStatusRow(
                   title: 'Đang truyền thông tin qua BLE tới ESP32',
                   isDone: true,
@@ -871,7 +920,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 _buildStatusRow(
                   title: 'mDNS tìm thấy Broker & Kết nối MQTT',
                   isDone: state.mqttConnected,
-                  isLoading: state.isLoading && state.wifiConnected && !state.mqttConnected,
+                  isLoading:
+                      state.isLoading &&
+                      state.wifiConnected &&
+                      !state.mqttConnected,
                 ),
                 const SizedBox(height: AppSpacing.lg),
               ],
@@ -890,11 +942,16 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   icon: state.isLoading
                       ? const SizedBox.square(
                           dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.send_rounded),
                   label: Text(
-                    state.isLoading ? 'Đang gửi qua BLE...' : 'Truyền thông tin Wi-Fi',
+                    state.isLoading
+                        ? 'Đang gửi qua BLE...'
+                        : 'Truyền thông tin Wi-Fi',
                   ),
                 ),
               ),
@@ -919,7 +976,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
           )
         else
           Icon(
-            isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            isDone
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
             size: 18,
             color: isDone ? AppColors.auroraMint : Colors.grey,
           ),
@@ -928,8 +987,14 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
           title,
           style: TextStyle(
             fontSize: 13,
-            color: isDone ? null : (isLoading ? Theme.of(context).colorScheme.primary : Colors.grey),
-            fontWeight: (isDone || isLoading) ? FontWeight.w600 : FontWeight.normal,
+            color: isDone
+                ? null
+                : (isLoading
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey),
+            fontWeight: (isDone || isLoading)
+                ? FontWeight.w600
+                : FontWeight.normal,
           ),
         ),
       ],
@@ -974,7 +1039,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
             children: [
               Text(
                 'Hoàn tất cấu hình thiết bị',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
@@ -988,12 +1055,15 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               // Device custom name
               Text(
                 'Tên thiết bị:',
-                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               TextField(
                 controller: _deviceNameController,
-                onChanged: (val) => notifier.updateSelectedHomeAndRoom(customName: val),
+                onChanged: (val) =>
+                    notifier.updateSelectedHomeAndRoom(customName: val),
                 decoration: InputDecoration(
                   hintText: 'VD: Đèn phòng khách',
                   prefixIcon: const Icon(Icons.edit_outlined, size: 20),
@@ -1009,7 +1079,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               // Select Home
               Text(
                 'Ngôi nhà:',
-                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               Container(
@@ -1021,7 +1093,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
-                    value: state.selectedHomeId ?? (homes.isNotEmpty ? homes.first.id : null),
+                    value:
+                        state.selectedHomeId ??
+                        (homes.isNotEmpty ? homes.first.id : null),
                     hint: const Text('Chọn nhà'),
                     items: homes.map((h) {
                       return DropdownMenuItem<String>(
@@ -1042,7 +1116,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               // Select Room
               Text(
                 'Phòng:',
-                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               Container(
@@ -1054,7 +1130,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
-                    value: state.selectedRoomId ?? (rooms.isNotEmpty ? rooms.first.id : null),
+                    value:
+                        state.selectedRoomId ??
+                        (rooms.isNotEmpty ? rooms.first.id : null),
                     hint: const Text('Chọn phòng'),
                     items: rooms.map((r) {
                       return DropdownMenuItem<String>(
@@ -1081,10 +1159,17 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   icon: state.isLoading
                       ? const SizedBox.square(
                           dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.check_circle_outline_rounded),
-                  label: Text(state.isLoading ? 'Đang lưu thiết bị...' : 'Hoàn tất ghép nối'),
+                  label: Text(
+                    state.isLoading
+                        ? 'Đang lưu thiết bị...'
+                        : 'Hoàn tất ghép nối',
+                  ),
                 ),
               ),
             ],
@@ -1100,13 +1185,12 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
   Widget _buildCompletedStep(OnboardingState state) {
     final theme = Theme.of(context);
     final rooms = ref.watch(roomsProvider);
-    final roomName = rooms
-        .cast<dynamic>()
-        .firstWhere(
-          (r) => r.id == state.selectedRoomId,
-          orElse: () => null,
-        )
-        ?.name ?? 'Phòng khách';
+    final roomName =
+        rooms
+            .cast<dynamic>()
+            .firstWhere((r) => r.id == state.selectedRoomId, orElse: () => null)
+            ?.name ??
+        'Phòng khách';
 
     return Column(
       children: [
@@ -1121,7 +1205,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.auroraMint.withValues(alpha: 0.15),
-                  boxShadow: GlassTokens.glow(AppColors.auroraMint, intensity: 0.5),
+                  boxShadow: GlassTokens.glow(
+                    AppColors.auroraMint,
+                    intensity: 0.5,
+                  ),
                 ),
                 child: const Icon(
                   Icons.check_rounded,
@@ -1132,7 +1219,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               const SizedBox(height: AppSpacing.lg),
               Text(
                 'Thêm Thiết Bị Thành Công!',
-                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -1170,7 +1259,11 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                         Text('Trạng thái:'),
                         Row(
                           children: [
-                            Icon(Icons.circle, color: AppColors.auroraMint, size: 10),
+                            Icon(
+                              Icons.circle,
+                              color: AppColors.auroraMint,
+                              size: 10,
+                            ),
                             SizedBox(width: 6),
                             Text(
                               'Trực tuyến (Online)',
@@ -1205,10 +1298,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
     );
   }
 
-  Widget _buildErrorCard(
-    OnboardingState state,
-    OnboardingController notifier,
-  ) {
+  Widget _buildErrorCard(OnboardingState state, OnboardingController notifier) {
     final theme = Theme.of(context);
 
     return Column(
@@ -1234,11 +1324,14 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               const SizedBox(height: AppSpacing.md),
               Text(
                 'Lỗi ghép nối',
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                state.errorMessage ?? 'Đã xảy ra lỗi không xác định trong quá trình onboarding.',
+                state.errorMessage ??
+                    'Đã xảy ra lỗi không xác định trong quá trình onboarding.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.7),

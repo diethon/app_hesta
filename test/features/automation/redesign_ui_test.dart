@@ -63,8 +63,9 @@ void main() {
   });
 
   group('Redesigned Screens Widget Rendering', () {
-    testWidgets('ScenesScreen renders quick scene strip and scene items',
-        (tester) async {
+    testWidgets('ScenesScreen renders quick scene strip and scene items', (
+      tester,
+    ) async {
       final sampleScenes = [
         const Scene(
           id: 'sc-1',
@@ -88,7 +89,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            scenesListProvider.overrideWith(() => _MockScenesNotifier(sampleScenes)),
+            scenesListProvider.overrideWith(
+              () => _MockScenesNotifier(sampleScenes),
+            ),
           ],
           child: const MaterialApp(
             home: Scaffold(
@@ -108,8 +111,9 @@ void main() {
       expect(find.text('Chạy ngay'), findsOneWidget);
     });
 
-    testWidgets('AutomationRulesScreen renders visual IF/THEN recipe card',
-        (tester) async {
+    testWidgets('AutomationRulesScreen renders visual IF/THEN recipe card', (
+      tester,
+    ) async {
       const sampleRule = AutomationRule(
         id: 'rule-1',
         homeId: 'home-1',
@@ -137,8 +141,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            automationRulesListProvider
-                .overrideWith(() => _MockRulesNotifier([sampleRule])),
+            automationRulesListProvider.overrideWith(
+              () => _MockRulesNotifier([sampleRule]),
+            ),
           ],
           child: const MaterialApp(
             home: Scaffold(
@@ -158,8 +163,9 @@ void main() {
       expect(find.text('CẢM BIẾN'), findsAtLeastNWidgets(1));
     });
 
-    testWidgets('RecommendationsScreen renders ML model card and scan action',
-        (tester) async {
+    testWidgets('RecommendationsScreen renders ML model card and scan action', (
+      tester,
+    ) async {
       const sampleRec = Recommendation(
         id: 'rec-1',
         homeId: 'home-1',
@@ -189,10 +195,12 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            recommendationsListProvider
-                .overrideWith(() => _MockRecsNotifier([sampleRec])),
-            mlModelStatusProvider
-                .overrideWith(() => _MockMlStatusNotifier(sampleMlStatus)),
+            recommendationsListProvider.overrideWith(
+              () => _MockRecsNotifier([sampleRec]),
+            ),
+            mlModelStatusProvider.overrideWith(
+              () => _MockMlStatusNotifier(sampleMlStatus),
+            ),
           ],
           child: const MaterialApp(
             home: Scaffold(

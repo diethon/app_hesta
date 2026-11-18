@@ -63,9 +63,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
 
     setState(() => _localError = null);
-    ref
-        .read(authControllerProvider.notifier)
-        .register(name, email, password);
+    ref.read(authControllerProvider.notifier).register(name, email, password);
   }
 
   @override
@@ -229,7 +227,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             ],
                           ),
 
-                          if (_localError != null || auth.errorMessage != null) ...[
+                          if (_localError != null ||
+                              auth.errorMessage != null) ...[
                             const SizedBox(height: AppSpacing.md),
                             Text(
                               _localError ?? auth.errorMessage!,

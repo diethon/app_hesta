@@ -51,10 +51,8 @@ abstract final class DeviceVisuals {
           'assets/images/room_devices/bedroom_devices/Air conditioner.png',
       'garage-door':
           'assets/images/room_devices/garage_devices/siding gate.png',
-      'main-lock':
-          'assets/images/room_devices/garage_devices/siding gate.png',
-      'living-fan':
-          'assets/images/room_devices/livingroom_devices/fan.png',
+      'main-lock': 'assets/images/room_devices/garage_devices/siding gate.png',
+      'living-fan': 'assets/images/room_devices/livingroom_devices/fan.png',
     };
 
     final exact = byId[device.id];
@@ -101,13 +99,11 @@ abstract final class DeviceVisuals {
       'assets/images/room_devices/bedroom_devices/led rgb.png',
     DeviceType.thermostat =>
       'assets/images/room_devices/bedroom_devices/Air conditioner.png',
-    DeviceType.fan =>
-      'assets/images/room_devices/livingroom_devices/fan.png',
+    DeviceType.fan => 'assets/images/room_devices/livingroom_devices/fan.png',
     DeviceType.lock =>
       'assets/images/room_devices/garage_devices/siding gate.png',
     _ => null,
   };
-
 
   /// Ảnh lớn làm background full-bleed cho màn device detail.
   static String? detailImage(Device device) {
@@ -125,14 +121,14 @@ abstract final class DeviceVisuals {
     }
 
     return switch (device.type) {
-      DeviceType.light || DeviceType.ledRgb => 'assets/images/devices/light.jpg',
+      DeviceType.light ||
+      DeviceType.ledRgb => 'assets/images/devices/light.jpg',
       DeviceType.thermostat => 'assets/images/devices/Air Conditioner.jpg',
       DeviceType.fan => 'assets/images/devices/fan.jpg',
       DeviceType.lock => 'assets/images/devices/Gate.jpg',
       _ => null,
     };
   }
-
 
   /// Bỏ dấu tiếng Việt và chuẩn hoá về chữ thường không dấu.
   static String _stripDiacritics(String str) {
@@ -259,4 +255,3 @@ abstract final class DeviceVisuals {
     };
   }
 }
-

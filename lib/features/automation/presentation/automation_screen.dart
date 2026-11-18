@@ -66,8 +66,9 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
     if (!mounted) return;
     setState(() => _isGeneratingAI = true);
 
-    final count =
-        await ref.read(recommendationsListProvider.notifier).generate();
+    final count = await ref
+        .read(recommendationsListProvider.notifier)
+        .generate();
 
     if (mounted) {
       setState(() => _isGeneratingAI = false);
@@ -88,7 +89,12 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
     }
   }
 
-  Widget? _buildFAB(BuildContext context, Color accent, Color mint, bool isDark) {
+  Widget? _buildFAB(
+    BuildContext context,
+    Color accent,
+    Color mint,
+    bool isDark,
+  ) {
     if (_selectedTab == 0) {
       // FAB Tạo quy tắc mới
       return Padding(
@@ -226,9 +232,9 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
 
     final rulesCount =
         ref.watch(automationRulesListProvider).valueOrNull?.length ?? 0;
-    final scenesCount =
-        ref.watch(scenesListProvider).valueOrNull?.length ?? 0;
-    final pendingRecsCount = ref
+    final scenesCount = ref.watch(scenesListProvider).valueOrNull?.length ?? 0;
+    final pendingRecsCount =
+        ref
             .watch(recommendationsListProvider)
             .valueOrNull
             ?.where((r) => r.isPending)
@@ -414,7 +420,9 @@ class _TelemetryStat extends StatelessWidget {
                 Text(
                   count,
                   style: TextStyle(
-                    color: isSelected ? color : (isDark ? AppColors.onDark : AppColors.onSurface),
+                    color: isSelected
+                        ? color
+                        : (isDark ? AppColors.onDark : AppColors.onSurface),
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
                   ),
@@ -448,4 +456,3 @@ class _TelemetryStat extends StatelessWidget {
     );
   }
 }
-

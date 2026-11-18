@@ -114,8 +114,9 @@ class RecommendationItemCard extends StatelessWidget {
       confidenceColor = accent;
     }
 
-    final repeatDaysStr =
-        _formatRepeatDays(recommendation.triggerCondition.repeatDays);
+    final repeatDaysStr = _formatRepeatDays(
+      recommendation.triggerCondition.repeatDays,
+    );
     final deviceIcon = _getDeviceIcon(recommendation.deviceName);
 
     return GlassCard(
@@ -148,10 +149,12 @@ class RecommendationItemCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
-                      (isDark ? AppColors.orbViolet : Colors.purple)
-                          .withValues(alpha: 0.28),
-                      (isDark ? AppColors.orbViolet : Colors.purple)
-                          .withValues(alpha: 0.08),
+                      (isDark ? AppColors.orbViolet : Colors.purple).withValues(
+                        alpha: 0.28,
+                      ),
+                      (isDark ? AppColors.orbViolet : Colors.purple).withValues(
+                        alpha: 0.08,
+                      ),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -335,9 +338,7 @@ class RecommendationItemCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: mint.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: mint.withValues(alpha: 0.35),
-                        ),
+                        border: Border.all(color: mint.withValues(alpha: 0.35)),
                       ),
                       child: Text(
                         'THÌ',
@@ -372,7 +373,9 @@ class RecommendationItemCard extends StatelessWidget {
                             ),
                           ),
                           if (recommendation
-                              .proposedAction.parameters.isNotEmpty)
+                              .proposedAction
+                              .parameters
+                              .isNotEmpty)
                             Text(
                               recommendation.proposedAction.parameters.entries
                                   .map((e) => '${e.key}: ${e.value}')
@@ -501,16 +504,16 @@ class RecommendationItemCard extends StatelessWidget {
                   ],
                 ),
                 GlassStatusPill(
-                  label: recommendation.status == 'APPROVED'
+                  label: recommendation.isApproved
                       ? 'ĐÃ DUYỆT'
                       : (recommendation.status == 'REJECTED'
-                          ? 'ĐÃ TỪ CHỐI'
-                          : 'ĐÃ BỎ QUA'),
-                  color: recommendation.status == 'APPROVED'
+                            ? 'ĐÃ TỪ CHỐI'
+                            : 'ĐÃ BỎ QUA'),
+                  color: recommendation.isApproved
                       ? mint
                       : (recommendation.status == 'REJECTED'
-                          ? AppColors.error
-                          : Colors.grey),
+                            ? AppColors.error
+                            : Colors.grey),
                 ),
               ],
             ),

@@ -171,7 +171,9 @@ class ApiAuthRepository implements AuthRepository {
     final body = Map<String, dynamic>.from(raw);
     final code = body['code'];
     if (code != null && code != 1000) {
-      throw ValidationException(body['message'] as String? ?? 'Yêu cầu thất bại.');
+      throw ValidationException(
+        body['message'] as String? ?? 'Yêu cầu thất bại.',
+      );
     }
 
     // backend_hesta đặt dữ liệu ở `result`

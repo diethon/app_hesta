@@ -32,6 +32,7 @@ class AutomationRepository {
     required bool enabled,
     required List<RuleCondition> conditions,
     required List<RuleAction> actions,
+    List<Map<String, dynamic>>? schedules,
   }) async {
     final payload = {
       'name': name,
@@ -40,6 +41,8 @@ class AutomationRepository {
       'enabled': enabled,
       'conditions': conditions.map((c) => c.toJson()).toList(),
       'actions': actions.map((a) => a.toJson()).toList(),
+      // All times of a SCHEDULE rule (replaces the saved ones); at least one must be active.
+      if (schedules != null) 'schedules': schedules,
     };
 
     final response = await client.post<dynamic>(
@@ -58,6 +61,7 @@ class AutomationRepository {
     required bool enabled,
     required List<RuleCondition> conditions,
     required List<RuleAction> actions,
+    List<Map<String, dynamic>>? schedules,
   }) async {
     final payload = {
       'name': name,
@@ -66,6 +70,8 @@ class AutomationRepository {
       'enabled': enabled,
       'conditions': conditions.map((c) => c.toJson()).toList(),
       'actions': actions.map((a) => a.toJson()).toList(),
+      // All times of a SCHEDULE rule (replaces the saved ones); at least one must be active.
+      if (schedules != null) 'schedules': schedules,
     };
 
     final response = await client.put<dynamic>(
@@ -85,6 +91,18 @@ class AutomationRepository {
       queryParameters: {'enabled': enabled},
     );
     return AutomationRule.fromJson(_extractMap(response.data));
+  }
+
+  /// Adds one time to a rule already saved as SCHEDULE, keeping its other times.
+  Future<void> addSchedule(
+    String homeId,
+    String ruleId,
+    Map<String, dynamic> schedule,
+  ) async {
+    await client.post<dynamic>(
+      '/api/v1/homes/$homeId/automation-rules/$ruleId/schedules',
+      data: schedule,
+    );
   }
 
   Future<void> deleteRule(String homeId, String ruleId) async {

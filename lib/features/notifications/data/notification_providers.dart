@@ -13,9 +13,10 @@ import 'notification_repository.dart';
 import '../../home/data/home_providers.dart';
 
 /// Key toàn cục để hiện SnackBar thông báo từ bất kỳ màn hình nào.
-final scaffoldMessengerKeyProvider = Provider<GlobalKey<ScaffoldMessengerState>>(
-  (ref) => GlobalKey<ScaffoldMessengerState>(),
-);
+final scaffoldMessengerKeyProvider =
+    Provider<GlobalKey<ScaffoldMessengerState>>(
+      (ref) => GlobalKey<ScaffoldMessengerState>(),
+    );
 
 /// Giữ alive từ SynaApp để nhận realtime kể cả khi chưa mở màn Notifications.
 final notificationsControllerProvider =
@@ -43,7 +44,9 @@ final notificationsControllerProvider =
           // 1. Nhận thông báo từ topic của home: /topic/homes/{homeId}/events
           if (homeId != null) {
             subs.add(
-              webSocket.subscribeJson('/topic/homes/$homeId/events').listen((event) {
+              webSocket.subscribeJson('/topic/homes/$homeId/events').listen((
+                event,
+              ) {
                 if (event['type'] == 'NOTIFICATION_CREATED') {
                   final data = event['data'];
                   if (data is Map<String, dynamic>) {
@@ -68,7 +71,9 @@ final notificationsControllerProvider =
           });
 
           unawaited(
-            ref.read(notificationServiceProvider).requestPermissionWithContext(),
+            ref
+                .read(notificationServiceProvider)
+                .requestPermissionWithContext(),
           );
         }
       }

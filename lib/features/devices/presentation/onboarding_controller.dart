@@ -5,15 +5,17 @@ import '../data/device_onboarding_repository.dart';
 import '../domain/device_onboarding_models.dart';
 
 final onboardingControllerProvider =
-    StateNotifierProvider.autoDispose<OnboardingController, OnboardingState>((ref) {
-  final repository = ref.watch(deviceOnboardingRepositoryProvider);
-  final bleService = ref.watch(bleProvisioningServiceProvider);
-  return OnboardingController(repository, bleService);
-});
+    StateNotifierProvider.autoDispose<OnboardingController, OnboardingState>((
+      ref,
+    ) {
+      final repository = ref.watch(deviceOnboardingRepositoryProvider);
+      final bleService = ref.watch(bleProvisioningServiceProvider);
+      return OnboardingController(repository, bleService);
+    });
 
 class OnboardingController extends StateNotifier<OnboardingState> {
   OnboardingController(this._repository, this._bleService)
-      : super(const OnboardingState());
+    : super(const OnboardingState());
 
   final DeviceOnboardingRepository _repository;
   final BleProvisioningService _bleService;
@@ -92,7 +94,8 @@ class OnboardingController extends StateNotifier<OnboardingState> {
         state = state.copyWith(
           isLoading: false,
           selectedBleDevice: null,
-          errorMessage: 'Không tìm thấy thiết bị ESP32 (SYNA-ESP32S3). Hãy đảm bảo ESP32 đã cấp nguồn và ở gần điện thoại.',
+          errorMessage:
+              'Không tìm thấy thiết bị ESP32 (SYNA-ESP32S3). Hãy đảm bảo ESP32 đã cấp nguồn và ở gần điện thoại.',
         );
         return;
       }
@@ -102,16 +105,14 @@ class OnboardingController extends StateNotifier<OnboardingState> {
         orElse: () => devices.first,
       );
 
-      state = state.copyWith(
-        isLoading: false,
-        selectedBleDevice: target,
-      );
+      state = state.copyWith(isLoading: false, selectedBleDevice: target);
     } catch (e) {
       if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         step: OnboardingStep.error,
-        errorMessage: 'Lỗi khi quét Bluetooth: ${e.toString().replaceFirst("Exception: ", "")}',
+        errorMessage:
+            'Lỗi khi quét Bluetooth: ${e.toString().replaceFirst("Exception: ", "")}',
       );
     }
   }
@@ -135,7 +136,8 @@ class OnboardingController extends StateNotifier<OnboardingState> {
       state = state.copyWith(
         isLoading: false,
         step: OnboardingStep.error,
-        errorMessage: 'Không thể kết nối Bluetooth tới thiết bị: ${e.toString().replaceFirst("Exception: ", "")}',
+        errorMessage:
+            'Không thể kết nối Bluetooth tới thiết bị: ${e.toString().replaceFirst("Exception: ", "")}',
       );
     }
   }
@@ -168,10 +170,7 @@ class OnboardingController extends StateNotifier<OnboardingState> {
         },
         onMqttConnected: () {
           if (!mounted) return;
-          state = state.copyWith(
-            mqttConnected: true,
-            deviceRegistered: true,
-          );
+          state = state.copyWith(mqttConnected: true, deviceRegistered: true);
         },
       );
 
@@ -195,7 +194,11 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     }
   }
 
-  void updateSelectedHomeAndRoom({String? homeId, String? roomId, String? customName}) {
+  void updateSelectedHomeAndRoom({
+    String? homeId,
+    String? roomId,
+    String? customName,
+  }) {
     state = state.copyWith(
       selectedHomeId: homeId ?? state.selectedHomeId,
       selectedRoomId: roomId ?? state.selectedRoomId,
@@ -210,7 +213,9 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     final roomId = state.selectedRoomId;
 
     if (preview == null || token == null) {
-      state = state.copyWith(errorMessage: 'Thiếu thông tin xác thực thiết bị.');
+      state = state.copyWith(
+        errorMessage: 'Thiếu thông tin xác thực thiết bị.',
+      );
       return;
     }
 
@@ -245,10 +250,7 @@ class OnboardingController extends StateNotifier<OnboardingState> {
       );
 
       if (!mounted) return;
-      state = state.copyWith(
-        isLoading: false,
-        step: OnboardingStep.completed,
-      );
+      state = state.copyWith(isLoading: false, step: OnboardingStep.completed);
     } catch (e) {
       if (!mounted) return;
       state = state.copyWith(

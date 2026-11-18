@@ -1,9 +1,5 @@
 class HomeDto {
-  const HomeDto({
-    required this.id,
-    required this.name,
-    this.role,
-  });
+  const HomeDto({required this.id, required this.name, this.role});
 
   factory HomeDto.fromJson(Map<String, dynamic> json) {
     return HomeDto(

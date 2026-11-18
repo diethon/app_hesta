@@ -38,7 +38,8 @@ final deviceStateStreamProvider = StreamProvider.family<Device, String>((
         .subscribeJson('/topic/homes/$homeId/events')
         .where((event) {
           final type = event['type']?.toString();
-          if (type != 'DEVICE_STATE_CHANGED' && type != 'SENSOR_READING_UPDATED') {
+          if (type != 'DEVICE_STATE_CHANGED' &&
+              type != 'SENSOR_READING_UPDATED') {
             return false;
           }
           final evDevId = event['deviceId']?.toString();
@@ -74,12 +75,9 @@ final devicesControllerProvider =
     });
 
 class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
-  DevicesController(
-    this._repository, {
-    this.homeId,
-    WebSocketService? realtime,
-  }) : _realtime = realtime,
-       super(const AsyncValue.loading());
+  DevicesController(this._repository, {this.homeId, WebSocketService? realtime})
+    : _realtime = realtime,
+      super(const AsyncValue.loading());
 
   final DeviceRepository _repository;
   final String? homeId;
@@ -182,19 +180,17 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
     // 1. Topic chuẩn theo kiến trúc backend_hesta: /topic/homes/{homeId}/events
     if (homeId != null) {
       _realtimeSubs.add(
-        realtime
-            .subscribeJson('/topic/homes/$homeId/events')
-            .listen((event) {
-              final type = event['type']?.toString();
-              final data = event['data'];
-              if (data is! Map<String, dynamic>) return;
+        realtime.subscribeJson('/topic/homes/$homeId/events').listen((event) {
+          final type = event['type']?.toString();
+          final data = event['data'];
+          if (data is! Map<String, dynamic>) return;
 
-              if (type == 'SENSOR_READING_UPDATED') {
-                _applySensorReadingUpdate(data);
-              } else if (type == 'DEVICE_STATE_CHANGED') {
-                _applyRealtimeUpdate(data);
-              }
-            }),
+          if (type == 'SENSOR_READING_UPDATED') {
+            _applySensorReadingUpdate(data);
+          } else if (type == 'DEVICE_STATE_CHANGED') {
+            _applyRealtimeUpdate(data);
+          }
+        }),
       );
     }
 

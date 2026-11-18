@@ -142,17 +142,17 @@ class AutomationRule {
     final rawConds = json['conditions'];
     final condList = (rawConds is List)
         ? rawConds
-            .whereType<Map>()
-            .map((c) => RuleCondition.fromJson(Map<String, dynamic>.from(c)))
-            .toList()
+              .whereType<Map>()
+              .map((c) => RuleCondition.fromJson(Map<String, dynamic>.from(c)))
+              .toList()
         : const <RuleCondition>[];
 
     final rawActs = json['actions'];
     final actList = (rawActs is List)
         ? rawActs
-            .whereType<Map>()
-            .map((a) => RuleAction.fromJson(Map<String, dynamic>.from(a)))
-            .toList()
+              .whereType<Map>()
+              .map((a) => RuleAction.fromJson(Map<String, dynamic>.from(a)))
+              .toList()
         : const <RuleAction>[];
 
     return AutomationRule(
@@ -227,16 +227,35 @@ class AutomationExecution {
   final int? durationMs;
   final String? details;
 
+  /// Backend AutomationExecutionResponse: matchedAt / startedAt / completedAt, test flag,
+  /// resultDetail = [{deviceId|sceneId, action, success, status}]. Duration and the summary are derived.
   factory AutomationExecution.fromJson(Map<String, dynamic> json) {
+    DateTime? at(String key) => json[key] != null
+        ? DateTime.tryParse(json[key].toString())?.toLocal()
+        : null;
+    final started = at('startedAt');
+    final completed = at('completedAt');
+    final steps = json['resultDetail'] is List
+        ? (json['resultDetail'] as List).whereType<Map>().toList()
+        : const <Map>[];
+    final failed = steps.where((d) => d['success'] != true).length;
+    final summary = [
+      if (json['test'] == true) 'Chạy thử',
+      if (steps.isNotEmpty)
+        failed == 0
+            ? '${steps.length} hành động thành công'
+            : '$failed/${steps.length} hành động lỗi',
+    ].join(' · ');
+
     return AutomationExecution(
       id: (json['id'] ?? '').toString(),
       ruleId: (json['ruleId'] ?? '').toString(),
       status: (json['status'] ?? 'SUCCESS').toString(),
-      executedAt: json['executedAt'] != null
-          ? DateTime.tryParse(json['executedAt'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-      durationMs: (json['durationMs'] as num?)?.toInt(),
-      details: json['details']?.toString(),
+      executedAt: at('matchedAt') ?? started ?? DateTime.now(),
+      durationMs: started != null && completed != null
+          ? completed.difference(started).inMilliseconds
+          : null,
+      details: summary.isEmpty ? null : summary,
     );
   }
 }

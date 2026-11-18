@@ -14,7 +14,7 @@ import 'models/device_dto.dart';
 /// Đi qua NetworkClient có sẵn Bearer Token.
 class ApiDeviceRepository implements DeviceRepository {
   ApiDeviceRepository(this._client, {String? Function()? getHomeId})
-      : _getHomeId = getHomeId;
+    : _getHomeId = getHomeId;
 
   final NetworkClient _client;
   final String? Function()? _getHomeId;
@@ -25,8 +25,7 @@ class ApiDeviceRepository implements DeviceRepository {
       String? homeId = _getHomeId?.call();
       if (homeId == null) {
         // Lấy homeId từ my-homes nếu chưa có sẵn
-        final homesRes =
-            await _client.get<dynamic>('/api/v1/homes/my-homes');
+        final homesRes = await _client.get<dynamic>('/api/v1/homes/my-homes');
         final rawHomes = homesRes.data;
         final homesBody = rawHomes is Map
             ? (rawHomes['result'] ?? rawHomes['data'])
@@ -55,7 +54,10 @@ class ApiDeviceRepository implements DeviceRepository {
       }
       return data
           .whereType<Map>()
-          .map((json) => DeviceDto.fromJson(Map<String, dynamic>.from(json)).toDomain())
+          .map(
+            (json) =>
+                DeviceDto.fromJson(Map<String, dynamic>.from(json)).toDomain(),
+          )
           .toList();
     } on DioException catch (error) {
       throw mapDioException(error);
@@ -65,9 +67,7 @@ class ApiDeviceRepository implements DeviceRepository {
   @override
   Future<Device> getDeviceById(String id) async {
     try {
-      final response = await _client.get<dynamic>(
-        '/api/v1/devices/$id',
-      );
+      final response = await _client.get<dynamic>('/api/v1/devices/$id');
       return _deviceFrom(response);
     } on DioException catch (error) {
       throw mapDioException(error);
@@ -85,7 +85,6 @@ class ApiDeviceRepository implements DeviceRepository {
         endpoint,
         data: deviceCommandToRequestBody(command),
       );
-
 
       final body = response.data;
       final code = body?['code'];

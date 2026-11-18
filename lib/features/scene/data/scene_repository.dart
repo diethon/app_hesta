@@ -17,8 +17,9 @@ class SceneRepository {
   }
 
   Future<Scene> getScene(String homeId, String sceneId) async {
-    final response =
-        await client.get<dynamic>('/api/v1/homes/$homeId/scenes/$sceneId');
+    final response = await client.get<dynamic>(
+      '/api/v1/homes/$homeId/scenes/$sceneId',
+    );
     final body = response.data;
     final data = _extractMap(body);
     return Scene.fromJson(data);
@@ -99,7 +100,10 @@ class SceneRepository {
         .toList();
   }
 
-  Future<List<SceneSchedule>> getSchedules(String homeId, String sceneId) async {
+  Future<List<SceneSchedule>> getSchedules(
+    String homeId,
+    String sceneId,
+  ) async {
     final response = await client.get<dynamic>(
       '/api/v1/homes/$homeId/scenes/$sceneId/schedules',
     );
@@ -119,9 +123,9 @@ class SceneRepository {
     required bool enabled,
   }) async {
     final payload = {
-      'time': time,
+      'scheduledTime': time,
       'repeatDays': repeatDays,
-      'enabled': enabled,
+      'active': enabled,
     };
 
     if (scheduleId == null) {

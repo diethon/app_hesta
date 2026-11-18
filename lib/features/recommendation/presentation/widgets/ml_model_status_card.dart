@@ -41,8 +41,8 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
               result.isReady
                   ? 'Huấn luyện lại mô hình thành công! Độ chính xác: ${result.accuracyPercent}%'
                   : result.isUnavailable
-                      ? 'Dịch vụ Machine Learning hiện chưa khả dụng hoặc đang ngoại tuyến.'
-                      : 'Trạng thái mô hình: ${result.status}',
+                  ? 'Dịch vụ Machine Learning hiện chưa khả dụng hoặc đang ngoại tuyến.'
+                  : 'Trạng thái mô hình: ${result.status}',
             ),
             backgroundColor: result.isReady
                 ? (isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight)
@@ -165,10 +165,7 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
-                  GlassStatusPill(
-                    label: statusLabel,
-                    color: badgeColor,
-                  ),
+                  GlassStatusPill(label: statusLabel, color: badgeColor),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),

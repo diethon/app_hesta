@@ -52,7 +52,11 @@ class _VerticalGlassSliderState extends State<VerticalGlassSlider> {
     }
   }
 
-  void _handleVerticalDrag(double localY, double maxHeight, {bool isEnd = false}) {
+  void _handleVerticalDrag(
+    double localY,
+    double maxHeight, {
+    bool isEnd = false,
+  }) {
     // 0 ở đỉnh, maxHeight ở đáy => Kéo lên là tăng:
     final rawRatio = 1.0 - (localY / (maxHeight <= 0 ? 1 : maxHeight));
     final clampedRatio = rawRatio.clamp(0.0, 1.0);
@@ -95,7 +99,11 @@ class _VerticalGlassSliderState extends State<VerticalGlassSlider> {
             );
           },
           onTapDown: (details) {
-            _handleVerticalDrag(details.localPosition.dy, widget.height, isEnd: true);
+            _handleVerticalDrag(
+              details.localPosition.dy,
+              widget.height,
+              isEnd: true,
+            );
           },
           child: AnimatedContainer(
             duration: GlassTokens.durationFast,
@@ -149,7 +157,12 @@ class _VerticalGlassSliderState extends State<VerticalGlassSlider> {
                 ),
                 // Đường cắt vạch chỉ báo
                 Positioned(
-                  bottom: (_currentVal * widget.height).clamp(12.0, widget.height - 12.0) - 2,
+                  bottom:
+                      (_currentVal * widget.height).clamp(
+                        12.0,
+                        widget.height - 12.0,
+                      ) -
+                      2,
                   child: Container(
                     width: widget.width * 0.5,
                     height: 3,
@@ -178,15 +191,15 @@ class _VerticalGlassSliderState extends State<VerticalGlassSlider> {
                       Text(
                         '$percent%',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                  blurRadius: 6,
-                                ),
-                              ],
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              blurRadius: 6,
                             ),
+                          ],
+                        ),
                       ),
                       // Icon bên dưới
                       Icon(
@@ -208,10 +221,10 @@ class _VerticalGlassSliderState extends State<VerticalGlassSlider> {
           Text(
             widget.label!,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11,
-                ),
+              color: Colors.white.withValues(alpha: 0.7),
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
           ),
         ],
       ],

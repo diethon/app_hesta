@@ -21,7 +21,7 @@ void main() {
             'expectedValue': 30,
             'logicalOperator': 'AND',
             'order': 0,
-          }
+          },
         ],
         'actions': [
           {
@@ -31,7 +31,7 @@ void main() {
             'action': 'SET_TEMPERATURE',
             'parameters': {'temperature': 24},
             'order': 0,
-          }
+          },
         ],
       };
 
@@ -74,21 +74,38 @@ void main() {
     });
 
     test('AutomationExecution parsing', () {
+      // Backend AutomationExecutionResponse shape.
       final json = {
         'id': 'exec-1',
         'ruleId': 'rule-1',
-        'status': 'SUCCESS',
-        'executedAt': '2026-10-27T12:00:00Z',
-        'durationMs': 150,
-        'details': 'Thực thi thành công',
+        'status': 'PARTIAL',
+        'test': false,
+        'matchedAt': '2026-10-27T12:00:00Z',
+        'startedAt': '2026-10-27T12:00:00Z',
+        'completedAt': '2026-10-27T12:00:00.150Z',
+        'resultDetail': [
+          {
+            'deviceId': 'd1',
+            'action': 'TURN_ON',
+            'success': true,
+            'status': 'OK',
+          },
+          {
+            'deviceId': 'd2',
+            'action': 'TURN_ON',
+            'success': false,
+            'status': 'OFFLINE',
+          },
+        ],
       };
 
       final exec = AutomationExecution.fromJson(json);
       expect(exec.id, 'exec-1');
       expect(exec.ruleId, 'rule-1');
-      expect(exec.status, 'SUCCESS');
+      expect(exec.status, 'PARTIAL');
+      expect(exec.executedAt.toUtc(), DateTime.utc(2026, 10, 27, 12));
       expect(exec.durationMs, 150);
-      expect(exec.details, 'Thực thi thành công');
+      expect(exec.details, '1/2 hành động lỗi');
     });
   });
 }

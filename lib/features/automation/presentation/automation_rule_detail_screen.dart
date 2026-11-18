@@ -48,34 +48,63 @@ class _AutomationRuleDetailScreenState
 
     try {
       final repo = ref.read(automationRepositoryProvider);
-      final result = await repo.testRule(homeId, _rule.id);
+      // Same simulated event as the web RuleTestSheet: each condition reports its expected value.
+      final eventCond = _rule.conditions
+          .where((c) => c.attribute == 'eventType')
+          .firstOrNull;
+      final result = await repo.testRule(
+        homeId,
+        _rule.id,
+        eventData: {
+          'sourceDeviceId': _rule.conditions
+              .where((c) => c.deviceId != null)
+              .firstOrNull
+              ?.deviceId,
+          'eventType': _rule.triggerType == 'EVENT'
+              ? (eventCond?.expectedValue?.toString() ?? 'EVENT')
+              : 'SENSOR',
+          'data': {
+            for (final c in _rule.conditions)
+              if (c.attribute.isNotEmpty && c.attribute != 'eventType')
+                c.attribute: c.expectedValue,
+          },
+        },
+      );
+      final matched = result['matched'] == true;
+      final proposed = (result['proposedActions'] as List?)?.length ?? 0;
 
       if (!mounted) return;
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-            backgroundColor:
-                isDark ? AppColors.auroraCanvasMid : AppColors.surface,
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: AppColors.success),
-                SizedBox(width: 8),
-                Text('Kết quả chạy thử'),
-              ],
-            ),
-            content: Text(
-              result.containsKey('message')
-                  ? result['message'].toString()
-                  : 'Quy tắc đã được chạy thử thành công!',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Đóng'),
+          backgroundColor: isDark
+              ? AppColors.auroraCanvasMid
+              : AppColors.surface,
+          title: Row(
+            children: [
+              Icon(
+                matched
+                    ? Icons.check_circle_rounded
+                    : Icons.info_outline_rounded,
+                color: matched ? AppColors.success : AppColors.warning,
               ),
+              const SizedBox(width: 8),
+              const Text('Kết quả chạy thử'),
             ],
           ),
-        );
+          content: Text(
+            matched
+                ? 'Điều kiện khớp. Quy tắc sẽ thực hiện $proposed hành động (chạy thử không điều khiển thiết bị thật).'
+                : 'Điều kiện chưa khớp nên quy tắc sẽ không chạy.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -97,8 +126,7 @@ class _AutomationRuleDetailScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor:
-            isDark ? AppColors.auroraCanvasMid : AppColors.surface,
+        backgroundColor: isDark ? AppColors.auroraCanvasMid : AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
@@ -130,8 +158,9 @@ class _AutomationRuleDetailScreenState
     final isDark = theme.brightness == Brightness.dark;
     final accent = theme.colorScheme.primary;
     final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
-    final executionsAsync =
-        ref.watch(automationRuleExecutionsProvider(_rule.id));
+    final executionsAsync = ref.watch(
+      automationRuleExecutionsProvider(_rule.id),
+    );
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -187,8 +216,8 @@ class _AutomationRuleDetailScreenState
                       final trigColor = _rule.triggerType == 'SCHEDULE'
                           ? const Color(0xFFFBBF24)
                           : (_rule.triggerType == 'SENSOR'
-                              ? const Color(0xFF38BDF8)
-                              : const Color(0xFFA855F7));
+                                ? const Color(0xFF38BDF8)
+                                : const Color(0xFFA855F7));
 
                       return GlassCard(
                         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -250,13 +279,16 @@ class _AutomationRuleDetailScreenState
                                 ),
                               ),
                             ],
-                            const SizedBox(height: AppSpacing.lg),
-                            AppButton(
-                              label: 'Chạy thử quy tắc (Test Rule)',
-                              icon: Icons.play_arrow_rounded,
-                              isLoading: _isTesting,
-                              onPressed: _testRule,
-                            ),
+                            // Like the web: a SCHEDULE rule has no event to simulate.
+                            if (_rule.triggerType != 'SCHEDULE') ...[
+                              const SizedBox(height: AppSpacing.lg),
+                              AppButton(
+                                label: 'Chạy thử quy tắc',
+                                icon: Icons.play_arrow_rounded,
+                                isLoading: _isTesting,
+                                onPressed: _testRule,
+                              ),
+                            ],
                           ],
                         ),
                       );
@@ -280,43 +312,48 @@ class _AutomationRuleDetailScreenState
                         ? const Text('Luôn thỏa mãn')
                         : Column(
                             children: _rule.conditions
-                                .map((c) => Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 4,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 2,
+                                .map(
+                                  (c) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: accent.withValues(
+                                              alpha: 0.2,
                                             ),
-                                            decoration: BoxDecoration(
-                                              color: accent.withValues(alpha: 0.2),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              'IF',
-                                              style: TextStyle(
-                                                color: accent,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
                                             ),
                                           ),
-                                          const SizedBox(width: AppSpacing.md),
-                                          Expanded(
-                                            child: Text(
-                                              '${c.deviceName ?? c.attribute} ${c.operatorSymbol} ${c.expectedValue}',
-                                              style: theme.textTheme.bodyMedium
-                                                  ?.copyWith(
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                          child: Text(
+                                            'IF',
+                                            style: TextStyle(
+                                              color: accent,
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ))
+                                        ),
+                                        const SizedBox(width: AppSpacing.md),
+                                        Expanded(
+                                          child: Text(
+                                            '${c.deviceName ?? c.attribute} ${c.operatorSymbol} ${c.expectedValue}',
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                           ),
                   ),
@@ -338,43 +375,46 @@ class _AutomationRuleDetailScreenState
                         ? const Text('Chưa có hành động')
                         : Column(
                             children: _rule.actions
-                                .map((a) => Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 4,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: mint.withValues(alpha: 0.2),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              'THEN',
-                                              style: TextStyle(
-                                                color: mint,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                .map(
+                                  (a) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: mint.withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
                                             ),
                                           ),
-                                          const SizedBox(width: AppSpacing.md),
-                                          Expanded(
-                                            child: Text(
-                                              '${a.deviceName ?? a.sceneName ?? "Hành động"}: ${a.action}',
-                                              style: theme.textTheme.bodyMedium
-                                                  ?.copyWith(
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                          child: Text(
+                                            'THEN',
+                                            style: TextStyle(
+                                              color: mint,
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                        ],
-                                      ),
-                                    ))
+                                        ),
+                                        const SizedBox(width: AppSpacing.md),
+                                        Expanded(
+                                          child: Text(
+                                            '${a.deviceName ?? a.sceneName ?? "Hành động"}: ${a.action}',
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
                                 .toList(),
                           ),
                   ),
@@ -396,8 +436,9 @@ class _AutomationRuleDetailScreenState
                       child: logs.isEmpty
                           ? Center(
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 child: Text(
                                   'Chưa có lịch sử thực thi nào.',
                                   style: TextStyle(
@@ -410,51 +451,57 @@ class _AutomationRuleDetailScreenState
                             )
                           : Column(
                               children: logs
-                                  .map((log) => Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 6,
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  DateFormat(
-                                                    'HH:mm:ss • dd/MM',
-                                                  ).format(log.executedAt),
-                                                  style: theme
-                                                      .textTheme.bodySmall
-                                                      ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                if (log.details != null)
-                                                  Text(
-                                                    log.details!,
-                                                    style: theme
-                                                        .textTheme.bodySmall
-                                                        ?.copyWith(
-                                                      color: isDark
-                                                          ? AppColors.onDarkMuted
-                                                          : Colors.grey.shade600,
-                                                      fontSize: 11,
+                                  .map(
+                                    (log) => Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 6,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                DateFormat(
+                                                  'HH:mm:ss • dd/MM',
+                                                ).format(log.executedAt),
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
-                                                  ),
-                                              ],
-                                            ),
-                                            GlassStatusPill(
-                                              label: log.status,
-                                              color: log.status == 'SUCCESS'
-                                                  ? mint
-                                                  : AppColors.error,
-                                            ),
-                                          ],
-                                        ),
-                                      ))
+                                              ),
+                                              if (log.details != null)
+                                                Text(
+                                                  log.details!,
+                                                  style: theme
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.copyWith(
+                                                        color: isDark
+                                                            ? AppColors
+                                                                  .onDarkMuted
+                                                            : Colors
+                                                                  .grey
+                                                                  .shade600,
+                                                        fontSize: 11,
+                                                      ),
+                                                ),
+                                            ],
+                                          ),
+                                          GlassStatusPill(
+                                            label: log.status,
+                                            color: log.status == 'SUCCESS'
+                                                ? mint
+                                                : AppColors.error,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  )
                                   .toList(),
                             ),
                     ),
@@ -471,8 +518,10 @@ class _AutomationRuleDetailScreenState
                   // Delete Rule
                   Center(
                     child: TextButton.icon(
-                      icon: const Icon(Icons.delete_outline_rounded,
-                          color: AppColors.error),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppColors.error,
+                      ),
                       label: const Text(
                         'Xóa quy tắc này',
                         style: TextStyle(color: AppColors.error),
