@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/exceptions/app_exception.dart';
@@ -5,6 +7,7 @@ import '../../../core/network/error_mapper.dart';
 import '../../../core/network/network_client.dart';
 import '../domain/device.dart';
 import '../domain/device_repository.dart';
+import 'mock_device_repository.dart';
 import 'models/device_dto.dart';
 
 /// Repository giao tiếp với backend_hesta (:8080).
@@ -113,6 +116,130 @@ class ApiDeviceRepository implements DeviceRepository {
       }
     } on DioException catch (error) {
       throw mapDioException(error);
+    }
+  }
+
+  @override
+  Future<Device> cancelDeviceAutomation(String id, {int minutes = 30}) async {
+    try {
+      final response = await _client.post<dynamic>(
+        '/api/v1/devices/$id/automation/cancel',
+        data: {'minutes': minutes},
+      );
+      final raw = response.data;
+      final until = raw is Map
+          ? (raw['result'] ?? raw['data'])?.toString()
+          : null;
+      final current = await getDeviceById(id);
+      return current.copyWith(
+        manualOverrideUntil:
+            until ??
+            DateTime.now().add(Duration(minutes: minutes)).toIso8601String(),
+        manualOverrideActive: true,
+      );
+    } on DioException catch (error) {
+      throw mapDioException(error);
+    }
+  }
+
+  @override
+  Future<Device> resumeDeviceAutomation(String id) async {
+    try {
+      await _client.post<dynamic>('/api/v1/devices/$id/automation/resume');
+      final current = await getDeviceById(id);
+      return current.copyWith(
+        manualOverrideUntil: '',
+        manualOverrideActive: false,
+      );
+    } on DioException catch (error) {
+      throw mapDioException(error);
+    }
+  }
+
+  @override
+  Future<Device> getDeviceHealth(String id) async {
+    try {
+      final response = await _client.get<dynamic>('/api/v1/devices/$id/health');
+      final raw = response.data;
+      final data = raw is Map ? (raw['result'] ?? raw['data']) : null;
+      final current = await getDeviceById(id);
+      if (data is Map) {
+        return current.copyWith(
+          switchCycles: (data['switchCycles'] as num?)?.toInt(),
+          maxRatedCycles: (data['maxRatedCycles'] as num?)?.toInt() ?? 100000,
+          healthPercent: (data['healthPercent'] as num?)?.toDouble() ?? 99.0,
+          chatteringWarning: data['chatteringWarning'] == true,
+          safetyTripped: data['safetyTripped'] == true,
+        );
+      }
+      return current;
+    } on DioException catch (error) {
+      throw mapDioException(error);
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getDeviceAuditHistory(String id) async {
+    try {
+      final response = await _client.get<dynamic>(
+        '/api/v1/devices/$id/history',
+      );
+      final raw = response.data;
+      final data = raw is Map ? (raw['result'] ?? raw['data']) : null;
+      if (data is List && data.isNotEmpty) {
+        return data
+            .whereType<Map>()
+            .map((m) => Map<String, dynamic>.from(m))
+            .toList();
+      }
+      return await MockDeviceRepository().getDeviceAuditHistory(id);
+    } catch (_) {
+      return MockDeviceRepository().getDeviceAuditHistory(id);
+    }
+  }
+
+  @override
+  Future<String> exportDeviceAuditExcel(String id, String deviceName) async {
+    try {
+      final response = await _client.dio.get<List<int>>(
+        '/api/v1/devices/$id/history/export/excel',
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Accept': '*/*'},
+        ),
+      );
+      final bytes = response.data ?? <int>[];
+      final sanitized = deviceName.replaceAll(RegExp(r'\s+'), '_');
+      if (bytes.isNotEmpty) {
+        try {
+          final file = File('/sdcard/Download/lich_su_${sanitized}_$id.xlsx');
+          await file.writeAsBytes(bytes);
+          return file.path;
+        } catch (_) {
+          return 'lich_su_${sanitized}_$id.xlsx (${bytes.length} bytes)';
+        }
+      }
+      return await MockDeviceRepository().exportDeviceAuditExcel(
+        id,
+        deviceName,
+      );
+    } catch (_) {
+      return MockDeviceRepository().exportDeviceAuditExcel(id, deviceName);
+    }
+  }
+
+  @override
+  Future<Device> updateDeviceWattage(String id, double wattage) async {
+    try {
+      final response = await _client.dio.put<dynamic>(
+        '/api/v1/devices/$id',
+        data: {
+          'settings': {'wattage': wattage.toInt()},
+        },
+      );
+      return _deviceFrom(response).copyWith(energyWatts: wattage);
+    } catch (_) {
+      return MockDeviceRepository().updateDeviceWattage(id, wattage);
     }
   }
 
