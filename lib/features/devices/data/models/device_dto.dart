@@ -123,7 +123,8 @@ class DeviceDto {
     final isFavorite = json['isFavorite'] == true;
 
     final manualOverrideUntil = json['manualOverrideUntil']?.toString();
-    final manualOverrideActive = json['manualOverrideActive'] == true ||
+    final manualOverrideActive =
+        json['manualOverrideActive'] == true ||
         (manualOverrideUntil != null && manualOverrideUntil.isNotEmpty);
 
     final switchCycles = (json['switchCycles'] as num?)?.toInt();

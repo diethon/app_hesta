@@ -787,7 +787,10 @@ class DeviceCard extends ConsumerWidget {
               if (device.isOverrideActive) ...[
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.amber.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -799,7 +802,11 @@ class DeviceCard extends ConsumerWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.lock_clock_rounded, size: 11, color: Colors.amber),
+                      const Icon(
+                        Icons.lock_clock_rounded,
+                        size: 11,
+                        color: Colors.amber,
+                      ),
                       const SizedBox(width: 3),
                       Text(
                         device.formattedOverrideTime,

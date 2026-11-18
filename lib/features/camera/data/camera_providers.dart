@@ -50,7 +50,7 @@ class ActiveFallState {
 
 class ActiveFallController extends StateNotifier<ActiveFallState> {
   ActiveFallController(this._repository, this._ref)
-      : super(const ActiveFallState()) {
+    : super(const ActiveFallState()) {
     _initListeners();
     _startAiPolling();
   }
@@ -186,6 +186,6 @@ class ActiveFallController extends StateNotifier<ActiveFallState> {
 
 final activeFallControllerProvider =
     StateNotifierProvider<ActiveFallController, ActiveFallState>((ref) {
-  final repo = ref.watch(cameraRepositoryProvider);
-  return ActiveFallController(repo, ref);
-});
+      final repo = ref.watch(cameraRepositoryProvider);
+      return ActiveFallController(repo, ref);
+    });

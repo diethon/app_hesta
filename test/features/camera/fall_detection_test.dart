@@ -45,9 +45,7 @@ void main() {
         'alert': true,
         'state': 'FALLEN',
         'incident_type': 'ACCIDENTAL_FALL',
-        'metrics': {
-          'spine_angle': 88.0,
-        },
+        'metrics': {'spine_angle': 88.0},
       };
 
       final status = AiStatus.fromJson(json);
@@ -59,26 +57,29 @@ void main() {
       expect(status.metrics.spineAngle, 88.0);
     });
 
-    test('MockCameraRepository triggers demo fall and handles dismissal', () async {
-      final repo = MockCameraRepository();
+    test(
+      'MockCameraRepository triggers demo fall and handles dismissal',
+      () async {
+        final repo = MockCameraRepository();
 
-      // Initial state
-      final initial = await repo.getActiveIncidents(null);
-      expect(initial.isEmpty, isTrue);
+        // Initial state
+        final initial = await repo.getActiveIncidents(null);
+        expect(initial.isEmpty, isTrue);
 
-      // Trigger demo
-      final triggered = await repo.triggerDemoFall();
-      expect(triggered, isTrue);
+        // Trigger demo
+        final triggered = await repo.triggerDemoFall();
+        expect(triggered, isTrue);
 
-      final active = await repo.getActiveIncidents(null);
-      expect(active.length, 1);
-      expect(active.first.isActive, isTrue);
-      expect(active.first.metrics.spineAngle, greaterThan(80.0));
+        final active = await repo.getActiveIncidents(null);
+        expect(active.length, 1);
+        expect(active.first.isActive, isTrue);
+        expect(active.first.metrics.spineAngle, greaterThan(80.0));
 
-      // Dismiss incident
-      await repo.dismissIncident(active.first.id);
-      final afterDismiss = await repo.getActiveIncidents(null);
-      expect(afterDismiss.isEmpty, isTrue);
-    });
+        // Dismiss incident
+        await repo.dismissIncident(active.first.id);
+        final afterDismiss = await repo.getActiveIncidents(null);
+        expect(afterDismiss.isEmpty, isTrue);
+      },
+    );
   });
 }

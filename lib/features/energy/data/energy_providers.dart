@@ -15,7 +15,9 @@ final energyRepositoryProvider = Provider<EnergyRepository>((ref) {
 
 final selectedEnergyPeriodProvider = StateProvider<String>((ref) => '30D');
 
-final energyAnalyticsProvider = FutureProvider<EnergyAnalyticsModel>((ref) async {
+final energyAnalyticsProvider = FutureProvider<EnergyAnalyticsModel>((
+  ref,
+) async {
   final repo = ref.watch(energyRepositoryProvider);
   final period = ref.watch(selectedEnergyPeriodProvider);
   final homeId = ref.watch(currentHomeIdProvider);

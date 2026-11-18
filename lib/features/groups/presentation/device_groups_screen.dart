@@ -40,19 +40,20 @@ class _DeviceGroupsScreenState extends ConsumerState<DeviceGroupsScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () => ref.read(deviceGroupsControllerProvider.notifier).loadGroups(),
+        onRefresh: () =>
+            ref.read(deviceGroupsControllerProvider.notifier).loadGroups(),
         child: groupState.isLoading && groups.isEmpty
             ? const Center(child: CircularProgressIndicator())
             : groups.isEmpty
-                ? _buildEmptyState(context)
-                : ListView.builder(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    itemCount: groups.length,
-                    itemBuilder: (context, index) {
-                      final group = groups[index];
-                      return _DeviceGroupCard(group: group);
-                    },
-                  ),
+            ? _buildEmptyState(context)
+            : ListView.builder(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                itemCount: groups.length,
+                itemBuilder: (context, index) {
+                  final group = groups[index];
+                  return _DeviceGroupCard(group: group);
+                },
+              ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateGroupSheet(context),
@@ -138,7 +139,9 @@ class _DeviceGroupCardState extends ConsumerState<_DeviceGroupCard> {
     final group = widget.group;
     final allDevices = ref.watch(devicesControllerProvider).valueOrNull ?? [];
 
-    final matchedDevices = allDevices.where((d) => group.deviceIds.contains(d.id)).toList();
+    final matchedDevices = allDevices
+        .where((d) => group.deviceIds.contains(d.id))
+        .toList();
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -172,7 +175,9 @@ class _DeviceGroupCardState extends ConsumerState<_DeviceGroupCard> {
                       Text(
                         '${group.deviceCount} thiết bị liên kết',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                       ),
                     ],
@@ -190,7 +195,10 @@ class _DeviceGroupCardState extends ConsumerState<_DeviceGroupCard> {
             if (group.statusMessage != null) ...[
               const SizedBox(height: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -228,7 +236,11 @@ class _DeviceGroupCardState extends ConsumerState<_DeviceGroupCard> {
             // Master Dimmer Section (PHO-041)
             Row(
               children: [
-                Icon(Icons.wb_sunny_rounded, size: 18, color: Colors.amber.shade600),
+                Icon(
+                  Icons.wb_sunny_rounded,
+                  size: 18,
+                  color: Colors.amber.shade600,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   'Master Dimmer',
@@ -274,7 +286,9 @@ class _DeviceGroupCardState extends ConsumerState<_DeviceGroupCard> {
                     label: const Text('Bật tất cả'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.success,
-                      side: BorderSide(color: AppColors.success.withValues(alpha: 0.5)),
+                      side: BorderSide(
+                        color: AppColors.success.withValues(alpha: 0.5),
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
@@ -287,11 +301,16 @@ class _DeviceGroupCardState extends ConsumerState<_DeviceGroupCard> {
                     onPressed: () => ref
                         .read(deviceGroupsControllerProvider.notifier)
                         .toggleGroupPower(group.id, false),
-                    icon: const Icon(Icons.power_settings_new_rounded, size: 18),
+                    icon: const Icon(
+                      Icons.power_settings_new_rounded,
+                      size: 18,
+                    ),
                     label: const Text('Tắt tất cả'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: theme.colorScheme.error,
-                      side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.5)),
+                      side: BorderSide(
+                        color: theme.colorScheme.error.withValues(alpha: 0.5),
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
@@ -310,14 +329,18 @@ class _DeviceGroupCardState extends ConsumerState<_DeviceGroupCard> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      _isExpanded ? 'Ẩn danh sách thiết bị' : 'Xem ${matchedDevices.length} thiết bị trong nhóm',
+                      _isExpanded
+                          ? 'Ẩn danh sách thiết bị'
+                          : 'Xem ${matchedDevices.length} thiết bị trong nhóm',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: accent,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Icon(
-                      _isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                      _isExpanded
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
                       size: 18,
                       color: accent,
                     ),
@@ -331,9 +354,13 @@ class _DeviceGroupCardState extends ConsumerState<_DeviceGroupCard> {
                   runSpacing: 6,
                   children: matchedDevices.map((dev) {
                     return GlassStatusPill(
-                      icon: dev.isOn ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+                      icon: dev.isOn
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_unchecked,
                       label: dev.name,
-                      color: dev.isOn ? accent : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: dev.isOn
+                          ? accent
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     );
                   }).toList(),
                 ),
@@ -360,7 +387,9 @@ class _DeviceGroupCardState extends ConsumerState<_DeviceGroupCard> {
             style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () {
               Navigator.pop(ctx);
-              ref.read(deviceGroupsControllerProvider.notifier).deleteGroup(widget.group.id);
+              ref
+                  .read(deviceGroupsControllerProvider.notifier)
+                  .deleteGroup(widget.group.id);
             },
             child: const Text('Xóa'),
           ),
@@ -403,7 +432,9 @@ class _CreateGroupSheetState extends ConsumerState<_CreateGroupSheet> {
       ),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.lg),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -429,7 +460,9 @@ class _CreateGroupSheetState extends ConsumerState<_CreateGroupSheet> {
             controller: _nameController,
             decoration: InputDecoration(
               labelText: 'Tên nhóm (VD: Đèn Tầng 1, Cụm Phòng Ngủ)',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
               prefixIcon: const Icon(Icons.layers_rounded),
             ),
           ),
@@ -459,7 +492,9 @@ class _CreateGroupSheetState extends ConsumerState<_CreateGroupSheet> {
                         title: Text(dev.name),
                         subtitle: Text(dev.roomId),
                         secondary: Icon(
-                          dev.isOn ? Icons.power_rounded : Icons.power_off_rounded,
+                          dev.isOn
+                              ? Icons.power_rounded
+                              : Icons.power_off_rounded,
                           color: dev.isOn ? accent : theme.disabledColor,
                         ),
                         onChanged: (val) {
@@ -485,7 +520,10 @@ class _CreateGroupSheetState extends ConsumerState<_CreateGroupSheet> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Text('Tạo Nhóm'),
             ),
@@ -498,9 +536,9 @@ class _CreateGroupSheetState extends ConsumerState<_CreateGroupSheet> {
   Future<void> _submit() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập tên nhóm')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Vui lòng nhập tên nhóm')));
       return;
     }
     if (_selectedIds.isEmpty) {
@@ -511,10 +549,9 @@ class _CreateGroupSheetState extends ConsumerState<_CreateGroupSheet> {
     }
 
     setState(() => _isSubmitting = true);
-    final success = await ref.read(deviceGroupsControllerProvider.notifier).createGroup(
-          name: name,
-          deviceIds: _selectedIds.toList(),
-        );
+    final success = await ref
+        .read(deviceGroupsControllerProvider.notifier)
+        .createGroup(name: name, deviceIds: _selectedIds.toList());
 
     if (mounted) {
       setState(() => _isSubmitting = false);

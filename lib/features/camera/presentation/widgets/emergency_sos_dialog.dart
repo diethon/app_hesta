@@ -128,7 +128,9 @@ class EmergencySosDialog extends ConsumerWidget {
                         value: (countdown / 30).clamp(0.0, 1.0),
                         strokeWidth: 6,
                         backgroundColor: Colors.white10,
-                        valueColor: const AlwaysStoppedAnimation(Colors.redAccent),
+                        valueColor: const AlwaysStoppedAnimation(
+                          Colors.redAccent,
+                        ),
                       ),
                     ),
                     Column(
@@ -163,7 +165,10 @@ class EmergencySosDialog extends ConsumerWidget {
                 ),
               ] else if (isEscalated) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.red.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(AppRadius.md),
@@ -171,7 +176,11 @@ class EmergencySosDialog extends ConsumerWidget {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.sos_rounded, color: Colors.redAccent, size: 28),
+                      Icon(
+                        Icons.sos_rounded,
+                        color: Colors.redAccent,
+                        size: 28,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'ĐANG LIÊN LẠC ĐỘI CỨU HỘ VÀ TRUNG TÂM Y TẾ',
@@ -196,7 +205,8 @@ class EmergencySosDialog extends ConsumerWidget {
                   children: [
                     _MetricItem(
                       label: 'Góc nghiêng',
-                      value: '${incident.metrics.spineAngle.toStringAsFixed(1)}°',
+                      value:
+                          '${incident.metrics.spineAngle.toStringAsFixed(1)}°',
                       color: Colors.orangeAccent,
                     ),
                     _MetricItem(
@@ -230,7 +240,9 @@ class EmergencySosDialog extends ConsumerWidget {
                         ),
                       ),
                       onPressed: () {
-                        ref.read(activeFallControllerProvider.notifier).dismiss();
+                        ref
+                            .read(activeFallControllerProvider.notifier)
+                            .dismiss();
                         Navigator.of(context, rootNavigator: true).pop();
                       },
                       icon: const Icon(Icons.check_circle_rounded, size: 22),
@@ -255,12 +267,17 @@ class EmergencySosDialog extends ConsumerWidget {
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Đang kết nối cuộc gọi khẩn cấp 115...'),
+                                content: Text(
+                                  'Đang kết nối cuộc gọi khẩn cấp 115...',
+                                ),
                                 backgroundColor: Colors.red,
                               ),
                             );
                           },
-                          icon: const Icon(Icons.phone_in_talk_rounded, size: 18),
+                          icon: const Icon(
+                            Icons.phone_in_talk_rounded,
+                            size: 18,
+                          ),
                           label: const Text('GỌI 115'),
                         ),
                       ),
@@ -321,10 +338,7 @@ class _MetricItem extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white60,
-            fontSize: 10,
-          ),
+          style: const TextStyle(color: Colors.white60, fontSize: 10),
         ),
       ],
     );

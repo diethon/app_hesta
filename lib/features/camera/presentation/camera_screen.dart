@@ -197,7 +197,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 _AiVisionHud(
                   aiStatus: fallState.aiStatus,
                   onTriggerDemo: () {
-                    ref.read(activeFallControllerProvider.notifier).triggerDemoFall();
+                    ref
+                        .read(activeFallControllerProvider.notifier)
+                        .triggerDemoFall();
                   },
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -656,10 +658,7 @@ class _HistoryEvent {
 }
 
 class _AiVisionHud extends StatelessWidget {
-  const _AiVisionHud({
-    required this.aiStatus,
-    required this.onTriggerDemo,
-  });
+  const _AiVisionHud({required this.aiStatus, required this.onTriggerDemo});
 
   final AiStatus? aiStatus;
   final VoidCallback onTriggerDemo;

@@ -60,7 +60,9 @@ class DeviceGroupDto {
       name: name,
       icon: icon ?? 'layers',
       deviceCount: deviceCount,
-      deviceIds: deviceIds.isNotEmpty ? deviceIds : domainDevices.map((d) => d.id).toList(),
+      deviceIds: deviceIds.isNotEmpty
+          ? deviceIds
+          : domainDevices.map((d) => d.id).toList(),
       devices: domainDevices,
       createdAt: createdAt,
     );
@@ -86,9 +88,15 @@ class GroupCommandResponseDto {
     return GroupCommandResponseDto(
       groupId: (json['groupId'] ?? '').toString(),
       action: (json['action'] ?? '').toString(),
-      totalDevices: json['totalDevices'] is num ? (json['totalDevices'] as num).toInt() : 0,
-      successCount: json['successCount'] is num ? (json['successCount'] as num).toInt() : 0,
-      failureCount: json['failureCount'] is num ? (json['failureCount'] as num).toInt() : 0,
+      totalDevices: json['totalDevices'] is num
+          ? (json['totalDevices'] as num).toInt()
+          : 0,
+      successCount: json['successCount'] is num
+          ? (json['successCount'] as num).toInt()
+          : 0,
+      failureCount: json['failureCount'] is num
+          ? (json['failureCount'] as num).toInt()
+          : 0,
     );
   }
 

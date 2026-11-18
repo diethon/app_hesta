@@ -21,8 +21,9 @@ class _FakeEnergyRepository implements EnergyRepository {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('EnergyScreen renders 3-period tabs and EVN KPI metrics',
-      (tester) async {
+  testWidgets('EnergyScreen renders 3-period tabs and EVN KPI metrics', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

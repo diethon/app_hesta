@@ -42,7 +42,7 @@ class DeviceGroupsState {
 
 class DeviceGroupsController extends StateNotifier<DeviceGroupsState> {
   DeviceGroupsController(this._repository, this._ref)
-      : super(const DeviceGroupsState()) {
+    : super(const DeviceGroupsState()) {
     loadGroups();
   }
 
@@ -50,7 +50,8 @@ class DeviceGroupsController extends StateNotifier<DeviceGroupsState> {
   final Ref _ref;
   final Map<String, Timer> _debounceTimers = {};
 
-  String get _currentHomeId => _ref.read(currentHomeIdProvider) ?? 'home-mock-1';
+  String get _currentHomeId =>
+      _ref.read(currentHomeIdProvider) ?? 'home-mock-1';
 
   Future<void> loadGroups() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
@@ -136,7 +137,9 @@ class DeviceGroupsController extends StateNotifier<DeviceGroupsState> {
     final idx = state.groups.indexWhere((g) => g.id == groupId);
     if (idx != -1) {
       final updatedList = List<DeviceGroup>.from(state.groups);
-      updatedList[idx] = updatedList[idx].copyWith(currentBrightness: brightness);
+      updatedList[idx] = updatedList[idx].copyWith(
+        currentBrightness: brightness,
+      );
       state = state.copyWith(groups: updatedList);
     }
 
@@ -188,7 +191,9 @@ class DeviceGroupsController extends StateNotifier<DeviceGroupsState> {
         final curIdx = state.groups.indexWhere((g) => g.id == groupId);
         if (curIdx != -1 && state.groups[curIdx].statusMessage == message) {
           final clearedList = List<DeviceGroup>.from(state.groups);
-          clearedList[curIdx] = clearedList[curIdx].copyWith(statusMessage: null);
+          clearedList[curIdx] = clearedList[curIdx].copyWith(
+            statusMessage: null,
+          );
           state = state.copyWith(groups: clearedList);
         }
       });
@@ -207,6 +212,6 @@ class DeviceGroupsController extends StateNotifier<DeviceGroupsState> {
 
 final deviceGroupsControllerProvider =
     StateNotifierProvider<DeviceGroupsController, DeviceGroupsState>((ref) {
-  final repo = ref.watch(deviceGroupRepositoryProvider);
-  return DeviceGroupsController(repo, ref);
-});
+      final repo = ref.watch(deviceGroupRepositoryProvider);
+      return DeviceGroupsController(repo, ref);
+    });

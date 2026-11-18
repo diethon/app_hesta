@@ -45,42 +45,45 @@ void main() {
       expect(result.isSuccess, isTrue);
     });
 
-    test('MockDeviceGroupRepository performs CRUD and SET_BRIGHTNESS Master Dimmer', () async {
-      final repo = MockDeviceGroupRepository();
+    test(
+      'MockDeviceGroupRepository performs CRUD and SET_BRIGHTNESS Master Dimmer',
+      () async {
+        final repo = MockDeviceGroupRepository();
 
-      // 1. Get initial groups
-      final initialGroups = await repo.getGroups('home-mock-1');
-      expect(initialGroups.length, 2);
-      expect(initialGroups.first.name, 'Đèn Phòng Khách & Ban Công');
+        // 1. Get initial groups
+        final initialGroups = await repo.getGroups('home-mock-1');
+        expect(initialGroups.length, 2);
+        expect(initialGroups.first.name, 'Đèn Phòng Khách & Ban Công');
 
-      // 2. Create new group
-      final created = await repo.createGroup(
-        homeId: 'home-mock-1',
-        name: 'Nhóm Sân Vườn',
-        deviceIds: ['dev-garden-1', 'dev-garden-2'],
-      );
-      expect(created.name, 'Nhóm Sân Vườn');
-      expect(created.deviceCount, 2);
+        // 2. Create new group
+        final created = await repo.createGroup(
+          homeId: 'home-mock-1',
+          name: 'Nhóm Sân Vườn',
+          deviceIds: ['dev-garden-1', 'dev-garden-2'],
+        );
+        expect(created.name, 'Nhóm Sân Vườn');
+        expect(created.deviceCount, 2);
 
-      // Verify list increased
-      final afterCreate = await repo.getGroups('home-mock-1');
-      expect(afterCreate.length, 3);
+        // Verify list increased
+        final afterCreate = await repo.getGroups('home-mock-1');
+        expect(afterCreate.length, 3);
 
-      // 3. Test Master Dimmer command
-      final cmdRes = await repo.sendGroupCommand(
-        groupId: initialGroups.first.id,
-        action: 'SET_BRIGHTNESS',
-        parameters: {'brightness': 45},
-      );
-      expect(cmdRes.isSuccess, isTrue);
+        // 3. Test Master Dimmer command
+        final cmdRes = await repo.sendGroupCommand(
+          groupId: initialGroups.first.id,
+          action: 'SET_BRIGHTNESS',
+          parameters: {'brightness': 45},
+        );
+        expect(cmdRes.isSuccess, isTrue);
 
-      final updatedGroups = await repo.getGroups('home-mock-1');
-      expect(updatedGroups.first.currentBrightness, 45);
+        final updatedGroups = await repo.getGroups('home-mock-1');
+        expect(updatedGroups.first.currentBrightness, 45);
 
-      // 4. Delete group
-      await repo.deleteGroup(created.id);
-      final afterDelete = await repo.getGroups('home-mock-1');
-      expect(afterDelete.length, 2);
-    });
+        // 4. Delete group
+        await repo.deleteGroup(created.id);
+        final afterDelete = await repo.getGroups('home-mock-1');
+        expect(afterDelete.length, 2);
+      },
+    );
   });
 }

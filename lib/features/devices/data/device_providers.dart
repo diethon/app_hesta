@@ -127,7 +127,10 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
 
   Future<void> cancelAutomation(String id, {int minutes = 30}) async {
     final previous = state.valueOrNull ?? const <Device>[];
-    final updated = await _repository.cancelDeviceAutomation(id, minutes: minutes);
+    final updated = await _repository.cancelDeviceAutomation(
+      id,
+      minutes: minutes,
+    );
     state = AsyncValue.data([
       for (final device in previous) device.id == id ? updated : device,
     ]);

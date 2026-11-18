@@ -88,7 +88,9 @@ class Device {
 
   bool get isOverrideActive {
     if (manualOverrideActive == true) return true;
-    if (manualOverrideUntil == null || manualOverrideUntil!.isEmpty) return false;
+    if (manualOverrideUntil == null || manualOverrideUntil!.isEmpty) {
+      return false;
+    }
     final dt = DateTime.tryParse(manualOverrideUntil!);
     return dt != null && dt.isAfter(DateTime.now());
   }
@@ -96,14 +98,19 @@ class Device {
   double get calculatedHealthPercent {
     if (healthPercent != null) return healthPercent!;
     if (switchCycles != null && maxRatedCycles != null && maxRatedCycles! > 0) {
-      final val = ((1.0 - (switchCycles! / maxRatedCycles!)) * 100).clamp(0.0, 100.0);
+      final val = ((1.0 - (switchCycles! / maxRatedCycles!)) * 100).clamp(
+        0.0,
+        100.0,
+      );
       return double.parse(val.toStringAsFixed(1));
     }
     return 100.0;
   }
 
   Duration get overrideRemaining {
-    if (manualOverrideUntil == null || manualOverrideUntil!.isEmpty) return Duration.zero;
+    if (manualOverrideUntil == null || manualOverrideUntil!.isEmpty) {
+      return Duration.zero;
+    }
     final dt = DateTime.tryParse(manualOverrideUntil!);
     if (dt == null) return Duration.zero;
     final diff = dt.difference(DateTime.now());

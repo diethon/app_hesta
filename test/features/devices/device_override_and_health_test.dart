@@ -3,37 +3,43 @@ import 'package:syna/features/devices/domain/device.dart';
 
 void main() {
   group('Device Manual Override & Health Domain Tests', () {
-    test('isOverrideActive returns true when override until is in the future', () {
-      final futureTime = DateTime.now().add(const Duration(minutes: 25));
-      final device = Device(
-        id: 'dev-1',
-        name: 'Living Room Light',
-        roomId: 'room-1',
-        type: DeviceType.light,
-        status: DeviceStatus.online,
-        isOn: true,
-        manualOverrideUntil: futureTime.toIso8601String(),
-        manualOverrideActive: false,
-      );
+    test(
+      'isOverrideActive returns true when override until is in the future',
+      () {
+        final futureTime = DateTime.now().add(const Duration(minutes: 25));
+        final device = Device(
+          id: 'dev-1',
+          name: 'Living Room Light',
+          roomId: 'room-1',
+          type: DeviceType.light,
+          status: DeviceStatus.online,
+          isOn: true,
+          manualOverrideUntil: futureTime.toIso8601String(),
+          manualOverrideActive: false,
+        );
 
-      expect(device.isOverrideActive, isTrue);
-      expect(device.formattedOverrideTime, isNotNull);
-      expect(device.formattedOverrideTime.contains(':'), isTrue);
-    });
+        expect(device.isOverrideActive, isTrue);
+        expect(device.formattedOverrideTime, isNotNull);
+        expect(device.formattedOverrideTime.contains(':'), isTrue);
+      },
+    );
 
-    test('isOverrideActive returns true when manualOverrideActive is explicitly true', () {
-      const device = Device(
-        id: 'dev-2',
-        name: 'AC Unit',
-        roomId: 'room-2',
-        type: DeviceType.thermostat,
-        status: DeviceStatus.online,
-        isOn: true,
-        manualOverrideActive: true,
-      );
+    test(
+      'isOverrideActive returns true when manualOverrideActive is explicitly true',
+      () {
+        const device = Device(
+          id: 'dev-2',
+          name: 'AC Unit',
+          roomId: 'room-2',
+          type: DeviceType.thermostat,
+          status: DeviceStatus.online,
+          isOn: true,
+          manualOverrideActive: true,
+        );
 
-      expect(device.isOverrideActive, isTrue);
-    });
+        expect(device.isOverrideActive, isTrue);
+      },
+    );
 
     test('isOverrideActive returns false when no override set or expired', () {
       final pastTime = DateTime.now().subtract(const Duration(minutes: 5));

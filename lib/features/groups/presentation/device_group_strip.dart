@@ -115,7 +115,11 @@ class _CompactGroupCard extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.wb_sunny_rounded, size: 14, color: Colors.amber.shade600),
+                    Icon(
+                      Icons.wb_sunny_rounded,
+                      size: 14,
+                      color: Colors.amber.shade600,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Master Dimmer',

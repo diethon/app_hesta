@@ -27,8 +27,10 @@ class EnergySummaryModel {
       estimatedCostVnd: (json['estimatedCostVnd'] as num?)?.toDouble() ?? 0.0,
       currentTier: (json['currentTier'] as num?)?.toInt() ?? 1,
       projectedMonthKwh: (json['projectedMonthKwh'] as num?)?.toDouble() ?? 0.0,
-      projectedMonthCostVnd: (json['projectedMonthCostVnd'] as num?)?.toDouble() ?? 0.0,
-      comparisonLastPeriodPercent: (json['comparisonLastPeriodPercent'] as num?)?.toDouble() ?? 0.0,
+      projectedMonthCostVnd:
+          (json['projectedMonthCostVnd'] as num?)?.toDouble() ?? 0.0,
+      comparisonLastPeriodPercent:
+          (json['comparisonLastPeriodPercent'] as num?)?.toDouble() ?? 0.0,
       period: json['period'] as String? ?? '30D',
       activeDeviceCount: (json['activeDeviceCount'] as num?)?.toInt() ?? 0,
       totalDeviceCount: (json['totalDeviceCount'] as num?)?.toInt() ?? 0,
@@ -141,12 +143,22 @@ class EnergyAnalyticsModel {
 
   factory EnergyAnalyticsModel.fromJson(Map<String, dynamic> json) {
     final summaryData = json['summary'] as Map<String, dynamic>? ?? {};
-    final timeSeriesList = (json['timeSeries'] as List<dynamic>?)
-            ?.map((e) => EnergyTimeSeriesPointModel.fromJson(e as Map<String, dynamic>))
+    final timeSeriesList =
+        (json['timeSeries'] as List<dynamic>?)
+            ?.map(
+              (e) => EnergyTimeSeriesPointModel.fromJson(
+                e as Map<String, dynamic>,
+              ),
+            )
             .toList() ??
         [];
-    final breakdownList = (json['breakdown'] as List<dynamic>?)
-            ?.map((e) => DeviceEnergyBreakdownModel.fromJson(e as Map<String, dynamic>))
+    final breakdownList =
+        (json['breakdown'] as List<dynamic>?)
+            ?.map(
+              (e) => DeviceEnergyBreakdownModel.fromJson(
+                e as Map<String, dynamic>,
+              ),
+            )
             .toList() ??
         [];
 

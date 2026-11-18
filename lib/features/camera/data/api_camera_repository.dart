@@ -7,7 +7,7 @@ import '../domain/fall_incident.dart';
 
 class ApiCameraRepository implements CameraRepository {
   ApiCameraRepository(this._client, {String? aiEdgeBaseUrl})
-      : _aiEdgeUrl = aiEdgeBaseUrl ?? 'http://10.0.2.2:5000';
+    : _aiEdgeUrl = aiEdgeBaseUrl ?? 'http://10.0.2.2:5000';
 
   final NetworkClient _client;
   final String _aiEdgeUrl;
@@ -73,7 +73,10 @@ class ApiCameraRepository implements CameraRepository {
   }
 
   @override
-  Future<void> resolveIncident(String id, {String note = 'Đã cấp cứu an toàn'}) async {
+  Future<void> resolveIncident(
+    String id, {
+    String note = 'Đã cấp cứu an toàn',
+  }) async {
     try {
       await _client.post<dynamic>(
         '/api/v1/emergency/fall/$id/resolve',
@@ -100,7 +103,9 @@ class ApiCameraRepository implements CameraRepository {
   @override
   Future<bool> triggerDemoFall() async {
     try {
-      final res = await _edgeDio.post<dynamic>('$_aiEdgeUrl/api/trigger_demo_fall');
+      final res = await _edgeDio.post<dynamic>(
+        '$_aiEdgeUrl/api/trigger_demo_fall',
+      );
       if (res.data is Map) {
         return res.data['success'] == true || res.data['status'] == 'ok';
       }

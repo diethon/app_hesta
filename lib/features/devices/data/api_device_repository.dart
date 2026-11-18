@@ -127,10 +127,14 @@ class ApiDeviceRepository implements DeviceRepository {
         data: {'minutes': minutes},
       );
       final raw = response.data;
-      final until = raw is Map ? (raw['result'] ?? raw['data'])?.toString() : null;
+      final until = raw is Map
+          ? (raw['result'] ?? raw['data'])?.toString()
+          : null;
       final current = await getDeviceById(id);
       return current.copyWith(
-        manualOverrideUntil: until ?? DateTime.now().add(Duration(minutes: minutes)).toIso8601String(),
+        manualOverrideUntil:
+            until ??
+            DateTime.now().add(Duration(minutes: minutes)).toIso8601String(),
         manualOverrideActive: true,
       );
     } on DioException catch (error) {
@@ -177,11 +181,16 @@ class ApiDeviceRepository implements DeviceRepository {
   @override
   Future<List<Map<String, dynamic>>> getDeviceAuditHistory(String id) async {
     try {
-      final response = await _client.get<dynamic>('/api/v1/devices/$id/history');
+      final response = await _client.get<dynamic>(
+        '/api/v1/devices/$id/history',
+      );
       final raw = response.data;
       final data = raw is Map ? (raw['result'] ?? raw['data']) : null;
       if (data is List && data.isNotEmpty) {
-        return data.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+        return data
+            .whereType<Map>()
+            .map((m) => Map<String, dynamic>.from(m))
+            .toList();
       }
       return MockDeviceRepository().getDeviceAuditHistory(id);
     } catch (_) {

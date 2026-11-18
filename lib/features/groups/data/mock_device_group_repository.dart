@@ -94,7 +94,9 @@ class MockDeviceGroupRepository implements DeviceGroupRepository {
     );
 
     int count = group.deviceCount > 0 ? group.deviceCount : 1;
-    if (action == 'SET_BRIGHTNESS' && parameters != null && parameters.containsKey('brightness')) {
+    if (action == 'SET_BRIGHTNESS' &&
+        parameters != null &&
+        parameters.containsKey('brightness')) {
       final b = (parameters['brightness'] as num).toInt();
       final idx = _groups.indexWhere((g) => g.id == groupId);
       if (idx != -1) {

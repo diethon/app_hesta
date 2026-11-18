@@ -13,7 +13,7 @@ abstract class EnergyRepository {
 
 class ApiEnergyRepository implements EnergyRepository {
   ApiEnergyRepository(this._client, {String? Function()? getHomeId})
-      : _getHomeId = getHomeId;
+    : _getHomeId = getHomeId;
 
   final NetworkClient _client;
   final String? Function()? _getHomeId;
@@ -46,9 +46,7 @@ class ApiEnergyRepository implements EnergyRepository {
         );
 
         final raw = response.data;
-        final data = raw is Map
-            ? (raw['result'] ?? raw['data'] ?? raw)
-            : null;
+        final data = raw is Map ? (raw['result'] ?? raw['data'] ?? raw) : null;
 
         if (data is Map<String, dynamic>) {
           return EnergyAnalyticsModel.fromJson(data);
@@ -71,35 +69,125 @@ class ApiEnergyRepository implements EnergyRepository {
       case '24H':
         totalKwh = 18.6;
         timeSeries = [
-          const EnergyTimeSeriesPointModel(timestamp: '00:00', label: '00h', kwh: 0.8, costVnd: 1800),
-          const EnergyTimeSeriesPointModel(timestamp: '04:00', label: '04h', kwh: 0.5, costVnd: 1100),
-          const EnergyTimeSeriesPointModel(timestamp: '08:00', label: '08h', kwh: 2.4, costVnd: 5400),
-          const EnergyTimeSeriesPointModel(timestamp: '12:00', label: '12h', kwh: 4.6, costVnd: 10500),
-          const EnergyTimeSeriesPointModel(timestamp: '16:00', label: '16h', kwh: 3.1, costVnd: 7100),
-          const EnergyTimeSeriesPointModel(timestamp: '20:00', label: '20h', kwh: 5.2, costVnd: 11900),
-          const EnergyTimeSeriesPointModel(timestamp: '23:00', label: '23h', kwh: 2.0, costVnd: 4600),
+          const EnergyTimeSeriesPointModel(
+            timestamp: '00:00',
+            label: '00h',
+            kwh: 0.8,
+            costVnd: 1800,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: '04:00',
+            label: '04h',
+            kwh: 0.5,
+            costVnd: 1100,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: '08:00',
+            label: '08h',
+            kwh: 2.4,
+            costVnd: 5400,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: '12:00',
+            label: '12h',
+            kwh: 4.6,
+            costVnd: 10500,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: '16:00',
+            label: '16h',
+            kwh: 3.1,
+            costVnd: 7100,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: '20:00',
+            label: '20h',
+            kwh: 5.2,
+            costVnd: 11900,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: '23:00',
+            label: '23h',
+            kwh: 2.0,
+            costVnd: 4600,
+          ),
         ];
         break;
       case '7D':
         totalKwh = 84.5;
         timeSeries = [
-          const EnergyTimeSeriesPointModel(timestamp: 'T2', label: 'Thứ 2', kwh: 12.4, costVnd: 28000),
-          const EnergyTimeSeriesPointModel(timestamp: 'T3', label: 'Thứ 3', kwh: 11.2, costVnd: 25300),
-          const EnergyTimeSeriesPointModel(timestamp: 'T4', label: 'Thứ 4', kwh: 13.8, costVnd: 31200),
-          const EnergyTimeSeriesPointModel(timestamp: 'T5', label: 'Thứ 5', kwh: 10.5, costVnd: 23800),
-          const EnergyTimeSeriesPointModel(timestamp: 'T6', label: 'Thứ 6', kwh: 14.1, costVnd: 32000),
-          const EnergyTimeSeriesPointModel(timestamp: 'T7', label: 'Thứ 7', kwh: 11.5, costVnd: 26100),
-          const EnergyTimeSeriesPointModel(timestamp: 'CN', label: 'CN', kwh: 11.0, costVnd: 25000),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'T2',
+            label: 'Thứ 2',
+            kwh: 12.4,
+            costVnd: 28000,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'T3',
+            label: 'Thứ 3',
+            kwh: 11.2,
+            costVnd: 25300,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'T4',
+            label: 'Thứ 4',
+            kwh: 13.8,
+            costVnd: 31200,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'T5',
+            label: 'Thứ 5',
+            kwh: 10.5,
+            costVnd: 23800,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'T6',
+            label: 'Thứ 6',
+            kwh: 14.1,
+            costVnd: 32000,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'T7',
+            label: 'Thứ 7',
+            kwh: 11.5,
+            costVnd: 26100,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'CN',
+            label: 'CN',
+            kwh: 11.0,
+            costVnd: 25000,
+          ),
         ];
         break;
       case '30D':
       default:
         totalKwh = 248.5;
         timeSeries = [
-          const EnergyTimeSeriesPointModel(timestamp: 'W1', label: 'Tuần 1', kwh: 58.2, costVnd: 132000),
-          const EnergyTimeSeriesPointModel(timestamp: 'W2', label: 'Tuần 2', kwh: 64.1, costVnd: 148000),
-          const EnergyTimeSeriesPointModel(timestamp: 'W3', label: 'Tuần 3', kwh: 61.8, costVnd: 143000),
-          const EnergyTimeSeriesPointModel(timestamp: 'W4', label: 'Tuần 4', kwh: 64.4, costVnd: 152000),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'W1',
+            label: 'Tuần 1',
+            kwh: 58.2,
+            costVnd: 132000,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'W2',
+            label: 'Tuần 2',
+            kwh: 64.1,
+            costVnd: 148000,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'W3',
+            label: 'Tuần 3',
+            kwh: 61.8,
+            costVnd: 143000,
+          ),
+          const EnergyTimeSeriesPointModel(
+            timestamp: 'W4',
+            label: 'Tuần 4',
+            kwh: 64.4,
+            costVnd: 152000,
+          ),
         ];
         break;
     }

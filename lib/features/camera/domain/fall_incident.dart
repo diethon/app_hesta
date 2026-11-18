@@ -104,8 +104,7 @@ class FallIncident {
       roomName: (json['roomName'] ?? 'Camera Phòng Khách').toString(),
       incidentType: (json['incidentType'] ?? 'ACCIDENTAL_FALL').toString(),
       state: (json['state'] ?? 'DETECTED').toString(),
-      confidenceScore:
-          (json['confidenceScore'] as num?)?.toDouble() ?? 0.95,
+      confidenceScore: (json['confidenceScore'] as num?)?.toDouble() ?? 0.95,
       countdownRemainingSec:
           (json['countdownRemainingSec'] as num?)?.toInt() ?? 30,
       detectedAt: json['detectedAt']?.toString(),

@@ -47,11 +47,7 @@ class ApiDeviceGroupRepository implements DeviceGroupRepository {
     try {
       final response = await _client.post<dynamic>(
         '/api/v1/homes/$homeId/device-groups',
-        data: {
-          'name': name,
-          'icon': icon ?? 'layers',
-          'deviceIds': deviceIds,
-        },
+        data: {'name': name, 'icon': icon ?? 'layers', 'deviceIds': deviceIds},
       );
       final rawData = response.data;
       final body = rawData is Map
@@ -80,11 +76,7 @@ class ApiDeviceGroupRepository implements DeviceGroupRepository {
     try {
       final response = await _client.put<dynamic>(
         '/api/v1/device-groups/$groupId',
-        data: {
-          'name': name,
-          'icon': icon ?? 'layers',
-          'deviceIds': deviceIds,
-        },
+        data: {'name': name, 'icon': icon ?? 'layers', 'deviceIds': deviceIds},
       );
       final rawData = response.data;
       final body = rawData is Map

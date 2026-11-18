@@ -193,9 +193,12 @@ class MockDeviceRepository implements DeviceRepository {
     await Future<void>.delayed(const Duration(milliseconds: 150));
     final now = DateTime.now();
     return _devices.map((d) {
-      if (d.manualOverrideActive == true && (d.manualOverrideUntil == null || d.manualOverrideUntil!.isEmpty)) {
+      if (d.manualOverrideActive == true &&
+          (d.manualOverrideUntil == null || d.manualOverrideUntil!.isEmpty)) {
         return d.copyWith(
-          manualOverrideUntil: now.add(const Duration(minutes: 28, seconds: 30)).toIso8601String(),
+          manualOverrideUntil: now
+              .add(const Duration(minutes: 28, seconds: 30))
+              .toIso8601String(),
         );
       }
       return d;
@@ -206,9 +209,13 @@ class MockDeviceRepository implements DeviceRepository {
   Future<Device> getDeviceById(String id) async {
     await Future<void>.delayed(const Duration(milliseconds: 150));
     final device = _devices.firstWhere((device) => device.id == id);
-    if (device.manualOverrideActive == true && (device.manualOverrideUntil == null || device.manualOverrideUntil!.isEmpty)) {
+    if (device.manualOverrideActive == true &&
+        (device.manualOverrideUntil == null ||
+            device.manualOverrideUntil!.isEmpty)) {
       return device.copyWith(
-        manualOverrideUntil: DateTime.now().add(const Duration(minutes: 28, seconds: 30)).toIso8601String(),
+        manualOverrideUntil: DateTime.now()
+            .add(const Duration(minutes: 28, seconds: 30))
+            .toIso8601String(),
       );
     }
     return device;
@@ -254,7 +261,9 @@ class MockDeviceRepository implements DeviceRepository {
   Future<Device> cancelDeviceAutomation(String id, {int minutes = 30}) async {
     final index = _devices.indexWhere((d) => d.id == id);
     if (index == -1) throw StateError('Device not found: $id');
-    final until = DateTime.now().add(Duration(minutes: minutes)).toIso8601String();
+    final until = DateTime.now()
+        .add(Duration(minutes: minutes))
+        .toIso8601String();
     final updated = _devices[index].copyWith(
       manualOverrideUntil: until,
       manualOverrideActive: true,
@@ -306,7 +315,9 @@ class MockDeviceRepository implements DeviceRepository {
       {
         'id': 'hist-2',
         'source': 'MANUAL_OVERRIDE',
-        'changedAt': now.subtract(const Duration(minutes: 32)).toIso8601String(),
+        'changedAt': now
+            .subtract(const Duration(minutes: 32))
+            .toIso8601String(),
         'previousState': {'manualOverride': false},
         'newState': {'manualOverride': true, 'durationMinutes': 30},
       },

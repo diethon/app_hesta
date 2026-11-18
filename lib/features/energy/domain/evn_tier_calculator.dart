@@ -123,7 +123,10 @@ class EvnCostSplitResult {
   final double? nextTierPrice;
 }
 
-EvnCostSplitResult computeEvnCostSplit(double totalKwh, [int? currentTierOverride]) {
+EvnCostSplitResult computeEvnCostSplit(
+  double totalKwh, [
+  int? currentTierOverride,
+]) {
   double remaining = totalKwh.clamp(0, double.infinity);
   double subtotal = 0;
   final tierCosts = <TierCostItem>[];
@@ -150,7 +153,8 @@ EvnCostSplitResult computeEvnCostSplit(double totalKwh, [int? currentTierOverrid
     final cost = kwhInTier * tierDef.pricePerKwh;
     subtotal += cost;
 
-    final isFilled = kwhInTier >= tierDef.capacityKwh && tierDef.capacityKwh.isFinite;
+    final isFilled =
+        kwhInTier >= tierDef.capacityKwh && tierDef.capacityKwh.isFinite;
     final isActive = kwhInTier > 0 || tierDef.tier == 1;
 
     if (kwhInTier > 0) {
@@ -184,8 +188,13 @@ EvnCostSplitResult computeEvnCostSplit(double totalKwh, [int? currentTierOverrid
   double? nextPrice;
 
   if (activeDef.capacityKwh.isFinite) {
-    final kwhInThisTier = (totalKwh - activeDef.minKwh).clamp(0, activeDef.capacityKwh).toDouble();
-    progressInTier = ((kwhInThisTier / activeDef.capacityKwh) * 100).clamp(0, 100);
+    final kwhInThisTier = (totalKwh - activeDef.minKwh)
+        .clamp(0, activeDef.capacityKwh)
+        .toDouble();
+    progressInTier = ((kwhInThisTier / activeDef.capacityKwh) * 100).clamp(
+      0,
+      100,
+    );
     kwhLeft = (activeDef.capacityKwh - kwhInThisTier).clamp(0, double.infinity);
     if (finalTier < 6) {
       nextPrice = evnTiers[finalTier].pricePerKwh;

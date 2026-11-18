@@ -31,7 +31,10 @@ class MockCameraRepository implements CameraRepository {
   }
 
   @override
-  Future<void> resolveIncident(String id, {String note = 'Đã cấp cứu an toàn'}) async {
+  Future<void> resolveIncident(
+    String id, {
+    String note = 'Đã cấp cứu an toàn',
+  }) async {
     final idx = _incidents.indexWhere((i) => i.id == id);
     if (idx != -1) {
       _incidents[idx] = _incidents[idx].copyWith(state: 'RESOLVED');

@@ -167,9 +167,8 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
                   ],
                   selectedIndex: _periodToIndex(selectedPeriod),
                   onChanged: (index) {
-                    ref
-                        .read(selectedEnergyPeriodProvider.notifier)
-                        .state = _indexToPeriod(index);
+                    ref.read(selectedEnergyPeriodProvider.notifier).state =
+                        _indexToPeriod(index);
                     _barAnimCtrl
                       ..reset()
                       ..forward();
@@ -256,17 +255,11 @@ class _EnergyDataSection extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // ── EVN TIER LADDER CARD ──────────────────────────────────────
-        _EvnTierLadderCard(
-          totalKwh: summary.totalKwh,
-          split: split,
-        ),
+        _EvnTierLadderCard(totalKwh: summary.totalKwh, split: split),
         const SizedBox(height: AppSpacing.md),
 
         // ── 24H/7D/30D TREND CHART CARD ──────────────────────────────
-        _EnergyChartCard(
-          timeSeries: data.timeSeries,
-          period: summary.period,
-        ),
+        _EnergyChartCard(timeSeries: data.timeSeries, period: summary.period),
         const SizedBox(height: AppSpacing.md),
 
         // ── TOP CONSUMING DEVICES BREAKDOWN ──────────────────────────
@@ -277,10 +270,7 @@ class _EnergyDataSection extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
 
         // ── EFFICIENCY TIP & PEAK SHAVING ────────────────────────────
-        _EnergySavingsTipCard(
-          currentTier: split.computedTier,
-          mint: mint,
-        ),
+        _EnergySavingsTipCard(currentTier: split.computedTier, mint: mint),
       ],
     );
   }
@@ -400,10 +390,7 @@ class _KpiCard extends StatelessWidget {
 // EVN Tier Ladder Card (Bậc 1 - Bậc 6)
 // ─────────────────────────────────────────────────────────────────────
 class _EvnTierLadderCard extends StatefulWidget {
-  const _EvnTierLadderCard({
-    required this.totalKwh,
-    required this.split,
-  });
+  const _EvnTierLadderCard({required this.totalKwh, required this.split});
 
   final double totalKwh;
   final EvnCostSplitResult split;
@@ -470,7 +457,10 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: tierColor.withValues(alpha: 0.15),
                   border: Border.all(color: tierColor.withValues(alpha: 0.5)),
@@ -568,7 +558,9 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _expanded ? 'Thu gọn bảng giá' : 'Xem chi tiết 6 bậc tính giá',
+                    _expanded
+                        ? 'Thu gọn bảng giá'
+                        : 'Xem chi tiết 6 bậc tính giá',
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
@@ -610,7 +602,9 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
                         tier.label,
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w500,
+                          fontWeight: isCurrent
+                              ? FontWeight.w800
+                              : FontWeight.w500,
                           color: isCurrent ? tierColor : null,
                         ),
                       ),
@@ -641,7 +635,9 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w500,
+                          fontWeight: isCurrent
+                              ? FontWeight.w800
+                              : FontWeight.w500,
                           color: isCurrent ? tierColor : null,
                         ),
                       ),
@@ -678,10 +674,7 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
 // Interactive Energy Chart Card
 // ─────────────────────────────────────────────────────────────────────
 class _EnergyChartCard extends StatelessWidget {
-  const _EnergyChartCard({
-    required this.timeSeries,
-    required this.period,
-  });
+  const _EnergyChartCard({required this.timeSeries, required this.period});
 
   final List<EnergyTimeSeriesPointModel> timeSeries;
   final String period;
@@ -713,7 +706,10 @@ class _EnergyChartCard extends StatelessWidget {
               ),
               if (peak != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.auroraWarning.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -755,7 +751,9 @@ class _EnergyChartCard extends StatelessWidget {
                     pt.label,
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 10,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
                     ),
                   ),
                 )
@@ -793,11 +791,7 @@ class _TimeSeriesChartPainter extends CustomPainter {
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
     for (final yRatio in [0.25, 0.5, 0.75]) {
-      canvas.drawLine(
-        Offset(0, h * yRatio),
-        Offset(w, h * yRatio),
-        gridPaint,
-      );
+      canvas.drawLine(Offset(0, h * yRatio), Offset(w, h * yRatio), gridPaint);
     }
 
     final maxVal = points
@@ -861,11 +855,7 @@ class _TimeSeriesChartPainter extends CustomPainter {
     }
     final peakPoint = pixelPoints[peakIndex];
     canvas.drawCircle(peakPoint, 5, Paint()..color = peakColor);
-    canvas.drawCircle(
-      peakPoint,
-      2,
-      Paint()..color = Colors.white,
-    );
+    canvas.drawCircle(peakPoint, 2, Paint()..color = Colors.white);
   }
 
   @override
@@ -1041,10 +1031,7 @@ class _TopConsumersBreakdownCard extends StatelessWidget {
 // Energy Savings Tip
 // ─────────────────────────────────────────────────────────────────────
 class _EnergySavingsTipCard extends StatelessWidget {
-  const _EnergySavingsTipCard({
-    required this.currentTier,
-    required this.mint,
-  });
+  const _EnergySavingsTipCard({required this.currentTier, required this.mint});
 
   final int currentTier;
   final Color mint;
@@ -1111,18 +1098,13 @@ class _LoadingEnergySection extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 48),
-      child: Center(
-        child: CircularProgressIndicator(),
-      ),
+      child: Center(child: CircularProgressIndicator()),
     );
   }
 }
 
 class _ErrorEnergySection extends StatelessWidget {
-  const _ErrorEnergySection({
-    required this.error,
-    required this.onRetry,
-  });
+  const _ErrorEnergySection({required this.error, required this.onRetry});
 
   final String error;
   final VoidCallback onRetry;

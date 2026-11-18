@@ -33,7 +33,9 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(devicesControllerProvider.notifier).fetchDeviceHealth(widget.deviceId);
+      ref
+          .read(devicesControllerProvider.notifier)
+          .fetchDeviceHealth(widget.deviceId);
     });
   }
 
@@ -149,7 +151,8 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                     actions: [
                       GlassIconButton(
                         icon: Icons.more_horiz_rounded,
-                        onTap: () => _showDeviceMoreOptions(context, ref, device),
+                        onTap: () =>
+                            _showDeviceMoreOptions(context, ref, device),
                       ),
                     ],
                   ),
@@ -171,7 +174,8 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                           _StatusBlock(
                             device: device,
                             accent: accent,
-                            onEditWattage: () => _showEditWattageDialog(context, ref, device),
+                            onEditWattage: () =>
+                                _showEditWattageDialog(context, ref, device),
                           ),
                           const SizedBox(height: AppSpacing.md),
                           _MainControls(device: device, accent: accent),
@@ -216,7 +220,11 @@ class _DeviceDetailScaffold extends ConsumerWidget {
   }
 }
 
-void _showDeviceMoreOptions(BuildContext context, WidgetRef ref, Device device) {
+void _showDeviceMoreOptions(
+  BuildContext context,
+  WidgetRef ref,
+  Device device,
+) {
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
@@ -241,8 +249,17 @@ void _showDeviceMoreOptions(BuildContext context, WidgetRef ref, Device device) 
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.bolt_rounded, color: AppColors.auroraAccent),
-              title: const Text('Đổi công suất định mức', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              leading: const Icon(
+                Icons.bolt_rounded,
+                color: AppColors.auroraAccent,
+              ),
+              title: const Text(
+                'Đổi công suất định mức',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               subtitle: Text(
                 'Hiện tại: ${device.energyWatts?.toStringAsFixed(1) ?? 40}W',
                 style: const TextStyle(color: Colors.white60, fontSize: 12),
@@ -255,12 +272,21 @@ void _showDeviceMoreOptions(BuildContext context, WidgetRef ref, Device device) 
             Divider(color: Colors.white.withValues(alpha: 0.08)),
             ListTile(
               leading: Icon(
-                isOverride ? Icons.play_arrow_rounded : Icons.lock_clock_rounded,
-                color: isOverride ? AppColors.auroraMint : AppColors.auroraWarning,
+                isOverride
+                    ? Icons.play_arrow_rounded
+                    : Icons.lock_clock_rounded,
+                color: isOverride
+                    ? AppColors.auroraMint
+                    : AppColors.auroraWarning,
               ),
               title: Text(
-                isOverride ? 'Khôi phục tự động hóa AI' : 'Khóa ưu tiên thủ công (30 phút)',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                isOverride
+                    ? 'Khôi phục tự động hóa AI'
+                    : 'Khóa ưu tiên thủ công (30 phút)',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               subtitle: Text(
                 isOverride
@@ -271,9 +297,13 @@ void _showDeviceMoreOptions(BuildContext context, WidgetRef ref, Device device) 
               onTap: () {
                 Navigator.of(ctx).pop();
                 if (isOverride) {
-                  ref.read(devicesControllerProvider.notifier).resumeAutomation(device.id);
+                  ref
+                      .read(devicesControllerProvider.notifier)
+                      .resumeAutomation(device.id);
                 } else {
-                  ref.read(devicesControllerProvider.notifier).cancelAutomation(device.id, minutes: 30);
+                  ref
+                      .read(devicesControllerProvider.notifier)
+                      .cancelAutomation(device.id, minutes: 30);
                 }
               },
             ),
@@ -284,7 +314,11 @@ void _showDeviceMoreOptions(BuildContext context, WidgetRef ref, Device device) 
   );
 }
 
-void _showEditWattageDialog(BuildContext context, WidgetRef ref, Device device) {
+void _showEditWattageDialog(
+  BuildContext context,
+  WidgetRef ref,
+  Device device,
+) {
   final controller = TextEditingController(
     text: device.energyWatts != null && device.energyWatts! > 0
         ? device.energyWatts!.toStringAsFixed(0)
@@ -342,10 +376,11 @@ void _showEditWattageDialog(BuildContext context, WidgetRef ref, Device device) 
                       children: [
                         Text(
                           'Cấu Hình Công Suất Định Mức',
-                          style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                          style: Theme.of(sheetContext).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                         ),
                         Text(
                           device.name,
@@ -411,7 +446,9 @@ void _showEditWattageDialog(BuildContext context, WidgetRef ref, Device device) 
                 children: [15, 40, 60, 100, 680, 1500, 2200].map((w) {
                   return ActionChip(
                     backgroundColor: Colors.white.withValues(alpha: 0.08),
-                    side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
                     label: Text(
                       '${w}W',
                       style: const TextStyle(fontSize: 11, color: Colors.white),
@@ -427,7 +464,9 @@ void _showEditWattageDialog(BuildContext context, WidgetRef ref, Device device) 
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white70,
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -453,7 +492,9 @@ void _showEditWattageDialog(BuildContext context, WidgetRef ref, Device device) 
                         if (val == null || val <= 0 || val > 25000) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Vui lòng nhập công suất hợp lệ (1W - 25000W)'),
+                              content: Text(
+                                'Vui lòng nhập công suất hợp lệ (1W - 25000W)',
+                              ),
                             ),
                           );
                           return;
@@ -469,7 +510,11 @@ void _showEditWattageDialog(BuildContext context, WidgetRef ref, Device device) 
                               backgroundColor: AppColors.success,
                               content: Row(
                                 children: [
-                                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                  const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
@@ -1183,7 +1228,8 @@ class _ManualOverrideCard extends ConsumerStatefulWidget {
   final Device device;
 
   @override
-  ConsumerState<_ManualOverrideCard> createState() => _ManualOverrideCardState();
+  ConsumerState<_ManualOverrideCard> createState() =>
+      _ManualOverrideCardState();
 }
 
 class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
@@ -1226,22 +1272,35 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: (isOverride ? AppColors.auroraWarning : AppColors.auroraMint)
-                      .withValues(alpha: 0.15),
+                  color:
+                      (isOverride
+                              ? AppColors.auroraWarning
+                              : AppColors.auroraMint)
+                          .withValues(alpha: 0.15),
                   border: Border.all(
-                    color: (isOverride ? AppColors.auroraWarning : AppColors.auroraMint)
-                        .withValues(alpha: 0.5),
+                    color:
+                        (isOverride
+                                ? AppColors.auroraWarning
+                                : AppColors.auroraMint)
+                            .withValues(alpha: 0.5),
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text(
-                  isOverride ? '🔒 ${device.formattedOverrideTime}' : '🟢 Tự động AI',
+                  isOverride
+                      ? '🔒 ${device.formattedOverrideTime}'
+                      : '🟢 Tự động AI',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: isOverride ? AppColors.auroraWarning : AppColors.auroraMint,
+                    color: isOverride
+                        ? AppColors.auroraWarning
+                        : AppColors.auroraMint,
                   ),
                 ),
               ),
@@ -1348,7 +1407,9 @@ class _DeviceHealthCard extends StatelessWidget {
 
     final healthColor = isChattering || isTripped
         ? AppColors.auroraError
-        : (healthPercent >= 80 ? AppColors.auroraMint : AppColors.auroraWarning);
+        : (healthPercent >= 80
+              ? AppColors.auroraMint
+              : AppColors.auroraWarning);
 
     return GlassContainer(
       radius: AppRadius.card,
@@ -1383,7 +1444,10 @@ class _DeviceHealthCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: healthColor.withValues(alpha: 0.15),
                   border: Border.all(color: healthColor.withValues(alpha: 0.5)),
@@ -1504,7 +1568,8 @@ class _AuditHistorySection extends ConsumerStatefulWidget {
   final Device device;
 
   @override
-  ConsumerState<_AuditHistorySection> createState() => _AuditHistorySectionState();
+  ConsumerState<_AuditHistorySection> createState() =>
+      _AuditHistorySectionState();
 }
 
 class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
@@ -1551,7 +1616,11 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
           backgroundColor: AppColors.success,
           content: Row(
             children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
@@ -1622,7 +1691,10 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                 onTap: _isExporting ? null : _handleExportExcel,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: _emerald.withValues(alpha: 0.15),
                     border: Border.all(color: _emerald.withValues(alpha: 0.5)),
@@ -1677,7 +1749,9 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
               child: Center(
                 child: Text(
                   'Chưa có lịch sử hoạt động',
-                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.white54),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white54,
+                  ),
                 ),
               ),
             )
@@ -1686,21 +1760,40 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _history.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.md),
               itemBuilder: (context, index) {
                 final item = _history[index];
                 final source = item['source']?.toString() ?? 'APP';
                 final changedAtStr = item['changedAt']?.toString();
-                final dt = changedAtStr != null ? DateTime.tryParse(changedAtStr) : null;
+                final dt = changedAtStr != null
+                    ? DateTime.tryParse(changedAtStr)
+                    : null;
                 final timeLabel = dt != null
                     ? '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} ${dt.day}/${dt.month}'
                     : 'Gần đây';
 
                 final (sourceLabel, sourceColor, sourceIcon) = switch (source) {
-                  'APP' => ('Bấm App', Colors.blueAccent, Icons.touch_app_rounded),
-                  'MANUAL_OVERRIDE' => ('Khóa tay 30p', Colors.amberAccent, Icons.lock_clock_rounded),
-                  'AUTOMATION' => ('Tự động hóa AI', Colors.purpleAccent, Icons.smart_toy_rounded),
-                  'VOICE' => ('Giọng nói', Colors.orangeAccent, Icons.mic_rounded),
+                  'APP' => (
+                    'Bấm App',
+                    Colors.blueAccent,
+                    Icons.touch_app_rounded,
+                  ),
+                  'MANUAL_OVERRIDE' => (
+                    'Khóa tay 30p',
+                    Colors.amberAccent,
+                    Icons.lock_clock_rounded,
+                  ),
+                  'AUTOMATION' => (
+                    'Tự động hóa AI',
+                    Colors.purpleAccent,
+                    Icons.smart_toy_rounded,
+                  ),
+                  'VOICE' => (
+                    'Giọng nói',
+                    Colors.orangeAccent,
+                    Icons.mic_rounded,
+                  ),
                   _ => ('Vật lý', Colors.blueGrey, Icons.power_rounded),
                 };
 
@@ -1745,7 +1838,10 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: sourceColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(4),
@@ -1753,7 +1849,11 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(sourceIcon, size: 10, color: sourceColor),
+                                    Icon(
+                                      sourceIcon,
+                                      size: 10,
+                                      color: sourceColor,
+                                    ),
                                     const SizedBox(width: 3),
                                     Text(
                                       sourceLabel,
@@ -1772,25 +1872,44 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white10,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
                                   prevStr,
-                                  style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white70,
+                                  ),
                                 ),
                               ),
                               const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 4),
-                                child: Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white38),
+                                child: Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 12,
+                                  color: Colors.white38,
+                                ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.2),
-                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                  ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
