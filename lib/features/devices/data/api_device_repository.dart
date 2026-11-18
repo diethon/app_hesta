@@ -192,7 +192,7 @@ class ApiDeviceRepository implements DeviceRepository {
             .map((m) => Map<String, dynamic>.from(m))
             .toList();
       }
-      return MockDeviceRepository().getDeviceAuditHistory(id);
+      return await MockDeviceRepository().getDeviceAuditHistory(id);
     } catch (_) {
       return MockDeviceRepository().getDeviceAuditHistory(id);
     }
@@ -219,7 +219,10 @@ class ApiDeviceRepository implements DeviceRepository {
           return 'lich_su_${sanitized}_$id.xlsx (${bytes.length} bytes)';
         }
       }
-      return MockDeviceRepository().exportDeviceAuditExcel(id, deviceName);
+      return await MockDeviceRepository().exportDeviceAuditExcel(
+        id,
+        deviceName,
+      );
     } catch (_) {
       return MockDeviceRepository().exportDeviceAuditExcel(id, deviceName);
     }
