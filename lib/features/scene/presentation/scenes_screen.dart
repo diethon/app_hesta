@@ -622,13 +622,14 @@ class _SceneListItem extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 3),
-                    Row(
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
                       children: [
                         GlassStatusPill(
                           label: '${scene.actions.length} hành động',
                           color: atmosphere.accentColor,
                         ),
-                        const SizedBox(width: AppSpacing.xs),
                         GlassStatusPill(
                           label: scene.enabled ? 'Đang bật' : 'Đã tắt',
                           color: scene.enabled ? mint : Colors.grey,
