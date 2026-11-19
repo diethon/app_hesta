@@ -53,41 +53,43 @@ void main() {
       expect(DeviceVisuals.canonicalRoomType('Bathroom'), 'bathroom');
     });
 
-    test('roomCardImage và roomBackground trả về asset ảnh cho phòng tiếng Việt', () {
-      expect(
-        DeviceVisuals.roomCardImage('Phòng khách'),
-        'assets/images/rooms/horizontal_room/livingroom.jpg',
-      );
-      expect(
-        DeviceVisuals.roomCardImage('Phòng ngủ'),
-        'assets/images/rooms/horizontal_room/bedroom.jpg',
-      );
-      expect(
-        DeviceVisuals.roomCardImage('Phòng bếp'),
-        'assets/images/rooms/horizontal_room/kitchen.jpg',
-      );
-      expect(
-        DeviceVisuals.roomCardImage('Garage'),
-        'assets/images/rooms/horizontal_room/garage.jpg',
-      );
-      expect(
-        DeviceVisuals.roomCardImage('Garden'),
-        'assets/images/rooms/horizontal_room/garden.jpg',
-      );
+    test(
+      'roomCardImage và roomBackground trả về asset ảnh cho phòng tiếng Việt',
+      () {
+        expect(
+          DeviceVisuals.roomCardImage('Phòng khách'),
+          'assets/images/rooms/horizontal_room/livingroom.jpg',
+        );
+        expect(
+          DeviceVisuals.roomCardImage('Phòng ngủ'),
+          'assets/images/rooms/horizontal_room/bedroom.jpg',
+        );
+        expect(
+          DeviceVisuals.roomCardImage('Phòng bếp'),
+          'assets/images/rooms/horizontal_room/kitchen.jpg',
+        );
+        expect(
+          DeviceVisuals.roomCardImage('Garage'),
+          'assets/images/rooms/horizontal_room/garage.jpg',
+        );
+        expect(
+          DeviceVisuals.roomCardImage('Garden'),
+          'assets/images/rooms/horizontal_room/garden.jpg',
+        );
 
-      expect(
-        DeviceVisuals.roomBackground('Phòng khách'),
-        'assets/images/rooms/vertical_room/livingroom.png',
-      );
-      expect(
-        DeviceVisuals.roomBackground('Phòng ngủ'),
-        'assets/images/rooms/vertical_room/bedroom.jpg',
-      );
-      expect(
-        DeviceVisuals.roomBackground('Phòng bếp'),
-        'assets/images/rooms/vertical_room/kitchen.jpg',
-      );
-    });
+        expect(
+          DeviceVisuals.roomBackground('Phòng khách'),
+          'assets/images/rooms/vertical_room/livingroom.png',
+        );
+        expect(
+          DeviceVisuals.roomBackground('Phòng ngủ'),
+          'assets/images/rooms/vertical_room/bedroom.jpg',
+        );
+        expect(
+          DeviceVisuals.roomBackground('Phòng bếp'),
+          'assets/images/rooms/vertical_room/kitchen.jpg',
+        );
+      },
+    );
   });
 }
-

@@ -1,6 +1,5 @@
 import '../../domain/device.dart';
 
-
 /// DTO thích ứng trực tiếp từ DeviceResponse & TwinDeviceSnapshotResponse của backend_hesta.
 class DeviceDto {
   const DeviceDto({
@@ -26,6 +25,14 @@ class DeviceDto {
     this.timerHour,
     this.timerHalfHour,
     this.gateState,
+    this.manualOverrideUntil,
+    this.manualOverrideActive,
+    this.switchCycles,
+    this.maxRatedCycles,
+    this.healthPercent,
+    this.uptimePercent,
+    this.chatteringWarning,
+    this.safetyTripped,
   });
 
   factory DeviceDto.fromJson(Map<String, dynamic> json) {
@@ -90,33 +97,55 @@ class DeviceDto {
       humidity = (json['humidity'] as num?)?.round();
     }
 
-    int? r = (currentState['r'] as num?)?.toInt() ?? (json['r'] as num?)?.toInt();
-    int? g = (currentState['g'] as num?)?.toInt() ?? (json['g'] as num?)?.toInt();
-    int? b = (currentState['b'] as num?)?.toInt() ?? (json['b'] as num?)?.toInt();
+    int? r =
+        (currentState['r'] as num?)?.toInt() ?? (json['r'] as num?)?.toInt();
+    int? g =
+        (currentState['g'] as num?)?.toInt() ?? (json['g'] as num?)?.toInt();
+    int? b =
+        (currentState['b'] as num?)?.toInt() ?? (json['b'] as num?)?.toInt();
 
-    String? acMode = currentState['mode']?.toString() ?? json['mode']?.toString();
+    String? acMode =
+        currentState['mode']?.toString() ?? json['mode']?.toString();
     String? acFan = currentState['fan']?.toString() ?? json['fan']?.toString();
-    bool? acSwing = currentState['swing'] == true ||
+    bool? acSwing =
+        currentState['swing'] == true ||
         currentState['swing'] == 'true' ||
         currentState['swing'] == 'ON' ||
         json['swing'] == true;
 
-    bool? timerEnabled = currentState['timerEnabled'] == true || json['timerEnabled'] == true;
-    int? timerHour = (currentState['timerHour'] as num?)?.toInt() ??
+    bool? timerEnabled =
+        currentState['timerEnabled'] == true || json['timerEnabled'] == true;
+    int? timerHour =
+        (currentState['timerHour'] as num?)?.toInt() ??
         (json['timerHour'] as num?)?.toInt() ??
         (currentState['hour'] as num?)?.toInt();
-    bool? timerHalfHour = currentState['timerHalfHour'] == true ||
+    bool? timerHalfHour =
+        currentState['timerHalfHour'] == true ||
         json['timerHalfHour'] == true ||
         currentState['halfHour'] == true;
 
-    final energyWatts = (currentState['energyWatts'] as num?)?.toDouble() ??
+    final energyWatts =
+        (currentState['energyWatts'] as num?)?.toDouble() ??
         (json['energyWatts'] as num?)?.toDouble();
 
-    final subtitle = json['roomName'] as String? ??
+    final subtitle =
+        json['roomName'] as String? ??
         json['nodeName'] as String? ??
         json['subtitle'] as String?;
 
     final isFavorite = json['isFavorite'] == true;
+
+    final manualOverrideUntil = json['manualOverrideUntil']?.toString();
+    final manualOverrideActive =
+        json['manualOverrideActive'] == true ||
+        (manualOverrideUntil != null && manualOverrideUntil.isNotEmpty);
+
+    final switchCycles = (json['switchCycles'] as num?)?.toInt();
+    final maxRatedCycles = (json['maxRatedCycles'] as num?)?.toInt() ?? 100000;
+    final healthPercent = (json['healthPercent'] as num?)?.toDouble();
+    final uptimePercent = (json['uptimePercent'] as num?)?.toDouble();
+    final chatteringWarning = json['chatteringWarning'] == true;
+    final safetyTripped = json['safetyTripped'] == true;
 
     return DeviceDto(
       id: id,
@@ -141,6 +170,14 @@ class DeviceDto {
       timerHour: timerHour,
       timerHalfHour: timerHalfHour,
       gateState: gateState,
+      manualOverrideUntil: manualOverrideUntil,
+      manualOverrideActive: manualOverrideActive,
+      switchCycles: switchCycles,
+      maxRatedCycles: maxRatedCycles,
+      healthPercent: healthPercent,
+      uptimePercent: uptimePercent,
+      chatteringWarning: chatteringWarning,
+      safetyTripped: safetyTripped,
     );
   }
 
@@ -167,6 +204,14 @@ class DeviceDto {
   final int? timerHour;
   final bool? timerHalfHour;
   final String? gateState;
+  final String? manualOverrideUntil;
+  final bool? manualOverrideActive;
+  final int? switchCycles;
+  final int? maxRatedCycles;
+  final double? healthPercent;
+  final double? uptimePercent;
+  final bool? chatteringWarning;
+  final bool? safetyTripped;
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -191,6 +236,14 @@ class DeviceDto {
     'timerHour': timerHour,
     'timerHalfHour': timerHalfHour,
     'gateState': gateState,
+    'manualOverrideUntil': manualOverrideUntil,
+    'manualOverrideActive': manualOverrideActive,
+    'switchCycles': switchCycles,
+    'maxRatedCycles': maxRatedCycles,
+    'healthPercent': healthPercent,
+    'uptimePercent': uptimePercent,
+    'chatteringWarning': chatteringWarning,
+    'safetyTripped': safetyTripped,
   };
 
   Device toDomain() {
@@ -218,6 +271,14 @@ class DeviceDto {
       timerHalfHour: timerHalfHour,
       rawType: type,
       gateState: gateState,
+      manualOverrideUntil: manualOverrideUntil,
+      manualOverrideActive: manualOverrideActive,
+      switchCycles: switchCycles,
+      maxRatedCycles: maxRatedCycles,
+      healthPercent: healthPercent,
+      uptimePercent: uptimePercent,
+      chatteringWarning: chatteringWarning,
+      safetyTripped: safetyTripped,
     );
   }
 
@@ -239,10 +300,15 @@ class DeviceDto {
       'LOCK' || 'DOOR' => DeviceType.lock,
       'FAN' => DeviceType.fan,
       'WATER_PUMP' || 'PUMP' || 'MOTOR' || 'WATERPUMP' => DeviceType.waterPump,
-      'SENSOR' || 'TEMP_SENSOR' || 'MOTION_SENSOR' || 'TEMP_HUMID_SENSOR' || 'SMOKE_SENSOR' => DeviceType.sensor,
+      'SENSOR' ||
+      'TEMP_SENSOR' ||
+      'MOTION_SENSOR' ||
+      'TEMP_HUMID_SENSOR' ||
+      'SMOKE_SENSOR' => DeviceType.sensor,
       'CAMERA' || 'CAMERA_AI' => DeviceType.camera,
       'SPEAKER' || 'SOCKET' || 'SMART_PLUG' => DeviceType.speaker,
-      _ => DeviceType.values.asNameMap()[raw.toLowerCase()] ?? DeviceType.sensor,
+      _ =>
+        DeviceType.values.asNameMap()[raw.toLowerCase()] ?? DeviceType.sensor,
     };
   }
 
@@ -283,7 +349,9 @@ Map<String, dynamic> deviceCommandToRequestBody(DeviceCommand command) {
     if (command.acAction != null) {
       final body = <String, dynamic>{'action': command.acAction};
       if (command.isOn != null) body['power'] = command.isOn;
-      if (command.temperature != null) body['temperature'] = command.temperature;
+      if (command.temperature != null) {
+        body['temperature'] = command.temperature;
+      }
       if (command.mode != null) body['mode'] = command.mode;
       if (command.fan != null) body['fan'] = command.fan;
       if (command.swing != null) body['swing'] = command.swing;
@@ -383,4 +451,3 @@ Map<String, dynamic> deviceCommandToRequestBody(DeviceCommand command) {
     },
   };
 }
-

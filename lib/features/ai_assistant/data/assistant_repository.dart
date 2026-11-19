@@ -31,7 +31,10 @@ class ApiAssistantRepository implements AssistantRepository {
           'message': message,
           'history': [
             for (final item in history)
-              {'role': item.isUser ? 'user' : 'assistant', 'content': item.text},
+              {
+                'role': item.isUser ? 'user' : 'assistant',
+                'content': item.text,
+              },
           ],
         },
         options: Options(receiveTimeout: const Duration(seconds: 90)),
@@ -44,7 +47,8 @@ class ApiAssistantRepository implements AssistantRepository {
       return AssistantReply(
         reply: (data['reply'] as String?) ?? '',
         actionsPerformed: [
-          for (final action in (data['actionsPerformed'] as List<dynamic>? ?? []))
+          for (final action
+              in (data['actionsPerformed'] as List<dynamic>? ?? []))
             action.toString(),
         ],
       );

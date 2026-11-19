@@ -91,6 +91,8 @@ class ApiAuthRepository implements AuthRepository {
     final data = await _post('/api/v1/auth/login', {
       'email': email,
       'password': password,
+      'deviceId': 'FLUTTER_MOBILE',
+      'deviceType': 'APP',
     });
     return _saveSession(AuthResponseDto.fromJson(data));
   }
@@ -169,7 +171,9 @@ class ApiAuthRepository implements AuthRepository {
     final body = Map<String, dynamic>.from(raw);
     final code = body['code'];
     if (code != null && code != 1000) {
-      throw ValidationException(body['message'] as String? ?? 'Yêu cầu thất bại.');
+      throw ValidationException(
+        body['message'] as String? ?? 'Yêu cầu thất bại.',
+      );
     }
 
     // backend_hesta đặt dữ liệu ở `result`

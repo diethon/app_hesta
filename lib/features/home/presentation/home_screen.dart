@@ -16,6 +16,10 @@ import '../../authentication/presentation/auth_controller.dart';
 import '../../devices/data/device_providers.dart';
 import '../../devices/domain/device.dart';
 import '../../devices/presentation/device_visuals.dart';
+import '../../scene/data/scene_providers.dart';
+import '../../scene/domain/scene.dart';
+import '../../scene/presentation/scene_icons.dart';
+import '../../groups/presentation/device_group_strip.dart';
 import 'widgets/hero_house_model.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -92,7 +96,8 @@ class HomeScreen extends ConsumerWidget {
                       builder: (context) {
                         final items = devices.valueOrNull ?? const <Device>[];
                         final sensor = items.cast<Device?>().firstWhere(
-                          (d) => d?.rawType?.toUpperCase() == 'TEMP_HUMID_SENSOR',
+                          (d) =>
+                              d?.rawType?.toUpperCase() == 'TEMP_HUMID_SENSOR',
                           orElse: () => items.cast<Device?>().firstWhere(
                             (d) =>
                                 d?.type == DeviceType.sensor &&
@@ -229,19 +234,17 @@ class _DashboardContent extends ConsumerWidget {
     final theme = Theme.of(context);
     final favorites = devices.where((d) => d.isFavorite).toList();
 
-    if (devices.isEmpty) {
-      return EmptyView(message: l10n.emptyTitle);
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _HomeHeroCard(devices: devices),
-        const SizedBox(height: AppSpacing.md),
-        _StatusPillsRow(devices: devices),
-        const SizedBox(height: AppSpacing.lg),
+        if (devices.isNotEmpty) ...[
+          _HomeHeroCard(devices: devices),
+          const SizedBox(height: AppSpacing.md),
+          _StatusPillsRow(devices: devices),
+          const SizedBox(height: AppSpacing.lg),
+        ],
 
-        // Lối vào Automation & Camera.
+        // Lối vào Automation, Recommendation, Scenes, Camera.
         _SectionLabel(label: l10n.quickAccess),
         const SizedBox(height: AppSpacing.md),
         LayoutBuilder(
@@ -258,6 +261,26 @@ class _DashboardContent extends ConsumerWidget {
                     label: l10n.automations,
                     subtitle: l10n.automationsSubtitle,
                     onTap: () => context.push('/automation'),
+                  ),
+                ),
+                SizedBox(
+                  width: tileWidth,
+                  child: GlassIconTile(
+                    icon: Icons.psychology_rounded,
+                    label: 'Gợi ý AI',
+                    subtitle: 'Phân tích thói quen',
+                    color: AppColors.orbViolet,
+                    onTap: () => context.push('/recommendations'),
+                  ),
+                ),
+                SizedBox(
+                  width: tileWidth,
+                  child: GlassIconTile(
+                    icon: Icons.layers_rounded,
+                    label: 'Ngữ cảnh',
+                    subtitle: 'Kịch bản thiết bị',
+                    color: theme.colorScheme.primary,
+                    onTap: () => context.push('/scenes'),
                   ),
                 ),
                 SizedBox(
@@ -281,6 +304,8 @@ class _DashboardContent extends ConsumerWidget {
         const _QuickScenes(),
         const SizedBox(height: AppSpacing.lg),
 
+        const DeviceGroupStrip(),
+
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -298,24 +323,30 @@ class _DashboardContent extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final cols = constraints.maxWidth > 560 ? 3 : 2;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: favorites.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                crossAxisSpacing: AppSpacing.md,
-                mainAxisSpacing: AppSpacing.md,
-                childAspectRatio: 0.92,
-              ),
-              itemBuilder: (context, index) =>
-                  DeviceCard(device: favorites[index]),
-            );
-          },
-        ),
+        if (favorites.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: EmptyView(message: l10n.emptyTitle),
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cols = constraints.maxWidth > 560 ? 3 : 2;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: favorites.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  crossAxisSpacing: AppSpacing.md,
+                  mainAxisSpacing: AppSpacing.md,
+                  childAspectRatio: 0.92,
+                ),
+                itemBuilder: (context, index) =>
+                    DeviceCard(device: favorites[index]),
+              );
+            },
+          ),
         const SizedBox(height: AppSpacing.lg),
 
         _SectionLabel(label: l10n.recentActivity),
@@ -493,35 +524,87 @@ class _StatusPillsRow extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────
 // Quick Scenes
 // ─────────────────────────────────────────────────────────────────────
-class _QuickScenes extends StatelessWidget {
+class _QuickScenes extends ConsumerStatefulWidget {
   const _QuickScenes();
+
+  @override
+  ConsumerState<_QuickScenes> createState() => _QuickScenesState();
+}
+
+class _QuickScenesState extends ConsumerState<_QuickScenes> {
+  String? _executingSceneId;
+
+  Future<void> _executeScene(Scene scene) async {
+    setState(() => _executingSceneId = scene.id);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final error = await ref
+        .read(scenesListProvider.notifier)
+        .executeScene(scene.id);
+
+    if (mounted) {
+      setState(() => _executingSceneId = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Đã kích hoạt kịch bản: ${scene.name}'),
+          backgroundColor: error == null
+              ? (isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight)
+              : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final scenes = [
-      (Icons.power_settings_new_rounded, l10n.sceneAllOff, false),
-      (Icons.home_rounded, l10n.sceneArriveHome, true),
-      (Icons.movie_rounded, l10n.sceneMovieNight, false),
-      (Icons.bedtime_rounded, l10n.sceneGoodNight, false),
-      (Icons.add_rounded, l10n.sceneAdd, false),
-    ];
+    final scenesAsync = ref.watch(scenesListProvider);
 
-    return SizedBox(
-      height: 100,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        itemCount: scenes.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
-        itemBuilder: (context, index) {
-          final scene = scenes[index];
-          return _SceneButton(
-            icon: scene.$1,
-            label: scene.$2,
-            isActive: scene.$3,
-          );
-        },
+    return scenesAsync.when(
+      data: (scenes) {
+        final enabledScenes = scenes.where((s) => s.enabled).toList();
+
+        return SizedBox(
+          height: 104,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            itemCount: enabledScenes.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+            itemBuilder: (context, index) {
+              if (index == enabledScenes.length) {
+                return _AddSceneButton(
+                  onTap: () => context.push('/scenes'),
+                  label: l10n.sceneAdd,
+                );
+              }
+              final scene = enabledScenes[index];
+              return _SceneButton(
+                icon: SceneIcons.getIcon(scene.icon),
+                label: scene.name,
+                isExecuting: _executingSceneId == scene.id,
+                onTap: () => _executeScene(scene),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        height: 104,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, __) => SizedBox(
+        height: 104,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            _AddSceneButton(
+              onTap: () => context.push('/scenes'),
+              label: 'Mở Ngữ cảnh',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -531,12 +614,14 @@ class _SceneButton extends StatelessWidget {
   const _SceneButton({
     required this.icon,
     required this.label,
-    required this.isActive,
+    required this.isExecuting,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
-  final bool isActive;
+  final bool isExecuting;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -546,30 +631,85 @@ class _SceneButton extends StatelessWidget {
     return Column(
       children: [
         GlassCard(
-          onTap: () {},
-          active: isActive,
+          onTap: isExecuting ? null : onTap,
           radius: AppRadius.lg + 2,
           padding: EdgeInsets.zero,
-          fill: isActive ? accent : null,
-          shadows: isActive ? GlassTokens.glow(accent, intensity: 0.6) : null,
+          semanticLabel: label,
+          child: SizedBox.square(
+            dimension: 64,
+            child: isExecuting
+                ? Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: accent,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    icon,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                    size: 26,
+                  ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: 72,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AddSceneButton extends StatelessWidget {
+  const _AddSceneButton({required this.onTap, required this.label});
+
+  final VoidCallback onTap;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        GlassCard(
+          onTap: onTap,
+          radius: AppRadius.lg + 2,
+          padding: EdgeInsets.zero,
           semanticLabel: label,
           child: SizedBox.square(
             dimension: 64,
             child: Icon(
-              icon,
-              color: isActive
-                  ? Colors.white
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              size: 26,
+              Icons.add_rounded,
+              color: theme.colorScheme.primary,
+              size: 28,
             ),
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text(
-          label,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(
-              alpha: isActive ? 1 : 0.6,
+        SizedBox(
+          width: 72,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -652,6 +792,42 @@ class DeviceCard extends ConsumerWidget {
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                 ),
               ),
+              if (device.isOverrideActive) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    border: Border.all(
+                      color: Colors.amber.withValues(alpha: 0.35),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.lock_clock_rounded,
+                        size: 11,
+                        color: Colors.amber,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        device.formattedOverrideTime,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.md),
               _DeviceCardFooter(device: device, accent: accent),
             ],

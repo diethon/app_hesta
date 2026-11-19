@@ -60,7 +60,8 @@ class ApiDeviceOnboardingRepository implements DeviceOnboardingRepository {
         'homeId': homeId,
         'roomId': roomId,
         if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
-        if (nodeCode != null && nodeCode.trim().isNotEmpty) 'nodeCode': nodeCode.trim(),
+        if (nodeCode != null && nodeCode.trim().isNotEmpty)
+          'nodeCode': nodeCode.trim(),
       };
 
       final response = await _client.post<Map<String, dynamic>>(
@@ -116,7 +117,9 @@ class ApiDeviceOnboardingRepository implements DeviceOnboardingRepository {
   }
 }
 
-final deviceOnboardingRepositoryProvider = Provider<DeviceOnboardingRepository>((ref) {
-  final client = ref.watch(cloudApiClientProvider);
-  return ApiDeviceOnboardingRepository(client);
-});
+final deviceOnboardingRepositoryProvider = Provider<DeviceOnboardingRepository>(
+  (ref) {
+    final client = ref.watch(cloudApiClientProvider);
+    return ApiDeviceOnboardingRepository(client);
+  },
+);

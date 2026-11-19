@@ -8,9 +8,13 @@ import '../../features/authentication/presentation/auth_state.dart';
 import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/register_screen.dart';
 import '../../features/automation/presentation/automation_screen.dart';
+import '../../features/automation/presentation/automation_rules_screen.dart';
+import '../../features/recommendation/presentation/recommendations_screen.dart';
+import '../../features/scene/presentation/scenes_screen.dart';
 import '../../features/camera/presentation/camera_screen.dart';
 import '../../features/devices/presentation/add_device_screen.dart';
 import '../../features/devices/presentation/device_detail_screen.dart';
+import '../../features/groups/presentation/device_groups_screen.dart';
 import '../../features/energy/presentation/energy_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -57,6 +61,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'add-device',
         path: '/add-device',
         builder: (context, state) => const AddDeviceScreen(),
+      ),
+      GoRoute(
+        name: 'scenes',
+        path: '/scenes',
+        builder: (context, state) => const ScenesScreen(),
+      ),
+      GoRoute(
+        name: 'automation-rules',
+        path: '/automation-rules',
+        builder: (context, state) => const AutomationRulesScreen(),
+      ),
+      GoRoute(
+        name: 'device-groups',
+        path: '/groups',
+        builder: (context, state) => const DeviceGroupsScreen(),
+      ),
+      GoRoute(
+        name: 'recommendations',
+        path: '/recommendations',
+        builder: (context, state) => const RecommendationsScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -121,7 +145,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 name: 'automation',
                 path: '/automation',
-                builder: (context, state) => const AutomationScreen(),
+                builder: (context, state) {
+                  final tabStr = state.uri.queryParameters['tab'];
+                  int initialTab = 0;
+                  if (tabStr == 'scenes' || tabStr == '1') initialTab = 1;
+                  if (tabStr == 'recommendations' || tabStr == '2') {
+                    initialTab = 2;
+                  }
+                  return AutomationScreen(initialTab: initialTab);
+                },
               ),
             ],
           ),

@@ -33,8 +33,8 @@ class WebSocketService {
     required this.url,
     TokenStore? tokenStorage,
     required Logger logger,
-  })  : _tokenStorage = tokenStorage,
-        _logger = logger;
+  }) : _tokenStorage = tokenStorage,
+       _logger = logger;
 
   final String url;
   final TokenStore? _tokenStorage;

@@ -14,7 +14,9 @@ class BleConstants {
 }
 
 abstract interface class BleProvisioningService {
-  Future<List<BleDiscoveredDevice>> scanForDevices({Duration timeout = const Duration(seconds: 4)});
+  Future<List<BleDiscoveredDevice>> scanForDevices({
+    Duration timeout = const Duration(seconds: 4),
+  });
 
   Future<void> connect(BleDiscoveredDevice device);
 
@@ -61,7 +63,9 @@ class FlutterBleProvisioningService implements BleProvisioningService {
     }
 
     if (adapterState != BluetoothAdapterState.on) {
-      throw Exception('Vui lòng bật Bluetooth trên điện thoại để tìm kiếm thiết bị.');
+      throw Exception(
+        'Vui lòng bật Bluetooth trên điện thoại để tìm kiếm thiết bị.',
+      );
     }
 
     // 2. Bắt đầu quét BLE thực tế
@@ -75,14 +79,17 @@ class FlutterBleProvisioningService implements BleProvisioningService {
         final devName = r.device.advName;
         final name = advName.isNotEmpty ? advName : devName;
 
-        final hasService = r.advertisementData.serviceUuids.contains(targetGuid);
-        final isSynaOrEsp = name.contains('SYNA') ||
-            name.contains('ESP32') ||
-            hasService;
+        final hasService = r.advertisementData.serviceUuids.contains(
+          targetGuid,
+        );
+        final isSynaOrEsp =
+            name.contains('SYNA') || name.contains('ESP32') || hasService;
 
         if (isSynaOrEsp) {
           _scanCache[r.device.remoteId.str] = r.device;
-          final existingIdx = discovered.indexWhere((d) => d.id == r.device.remoteId.str);
+          final existingIdx = discovered.indexWhere(
+            (d) => d.id == r.device.remoteId.str,
+          );
           final item = BleDiscoveredDevice(
             name: name.isNotEmpty ? name : BleConstants.deviceName,
             id: r.device.remoteId.str,
@@ -117,19 +124,22 @@ class FlutterBleProvisioningService implements BleProvisioningService {
         final advName = r.advertisementData.advName;
         final devName = r.device.advName;
         final name = advName.isNotEmpty ? advName : devName;
-        final hasService = r.advertisementData.serviceUuids.contains(targetGuid);
-        final isSynaOrEsp = name.contains('SYNA') ||
-            name.contains('ESP32') ||
-            hasService;
+        final hasService = r.advertisementData.serviceUuids.contains(
+          targetGuid,
+        );
+        final isSynaOrEsp =
+            name.contains('SYNA') || name.contains('ESP32') || hasService;
 
         if (isSynaOrEsp) {
           _scanCache[r.device.remoteId.str] = r.device;
           if (!discovered.any((d) => d.id == r.device.remoteId.str)) {
-            discovered.add(BleDiscoveredDevice(
-              name: name.isNotEmpty ? name : BleConstants.deviceName,
-              id: r.device.remoteId.str,
-              rssi: r.rssi,
-            ));
+            discovered.add(
+              BleDiscoveredDevice(
+                name: name.isNotEmpty ? name : BleConstants.deviceName,
+                id: r.device.remoteId.str,
+                rssi: r.rssi,
+              ),
+            );
           }
         }
       }
@@ -144,7 +154,9 @@ class FlutterBleProvisioningService implements BleProvisioningService {
 
     final bluetoothDevice = _scanCache[device.id];
     if (bluetoothDevice == null) {
-      throw Exception('Không tìm thấy thiết bị ${device.name} (${device.id}) trong danh sách quét. Vui lòng thử quét lại.');
+      throw Exception(
+        'Không tìm thấy thiết bị ${device.name} (${device.id}) trong danh sách quét. Vui lòng thử quét lại.',
+      );
     }
 
     debugPrint('[BLE] Đang kết nối tới ${device.name} (${device.id})...');
@@ -183,12 +195,16 @@ class FlutterBleProvisioningService implements BleProvisioningService {
       }
 
       if (foundChar == null) {
-        throw Exception('Không tìm thấy Characteristic cấu hình ($targetCharGuid) trên ESP32.');
+        throw Exception(
+          'Không tìm thấy Characteristic cấu hình ($targetCharGuid) trên ESP32.',
+        );
       }
 
       _commCharacteristic = foundChar;
       await foundChar.setNotifyValue(true);
-      debugPrint('[BLE] Đã đăng ký Notify thành công trên Characteristic: ${foundChar.uuid}');
+      debugPrint(
+        '[BLE] Đã đăng ký Notify thành công trên Characteristic: ${foundChar.uuid}',
+      );
     } catch (e) {
       disconnect();
       debugPrint('[BLE Connect Error] $e');
@@ -205,7 +221,9 @@ class FlutterBleProvisioningService implements BleProvisioningService {
   }) async {
     final char = _commCharacteristic;
     if (char == null) {
-      throw Exception('Chưa kết nối Bluetooth tới ESP32. Vui lòng quét và kết nối lại.');
+      throw Exception(
+        'Chưa kết nối Bluetooth tới ESP32. Vui lòng quét và kết nối lại.',
+      );
     }
 
     final payload = jsonEncode({
@@ -224,14 +242,17 @@ class FlutterBleProvisioningService implements BleProvisioningService {
       try {
         final text = utf8.decode(bytes).trim();
         debugPrint('[BLE NOTIFY FROM ESP32] $text');
-        final Map<String, dynamic> data = jsonDecode(text) as Map<String, dynamic>;
+        final Map<String, dynamic> data =
+            jsonDecode(text) as Map<String, dynamic>;
         final status = data['status']?.toString();
 
         if (status == 'connecting_wifi') {
           debugPrint('[BLE] ESP32 đang kết nối Wi-Fi...');
         } else if (status == 'wifi_connected') {
           receivedWifiOk = true;
-          debugPrint('[BLE] ESP32 đã kết nối Wi-Fi thành công! IP: ${data['ip']}');
+          debugPrint(
+            '[BLE] ESP32 đã kết nối Wi-Fi thành công! IP: ${data['ip']}',
+          );
           onWifiConnected?.call();
         } else if (status == 'mqtt_connected' || status == 'ready') {
           receivedMqttOk = true;
@@ -241,15 +262,19 @@ class FlutterBleProvisioningService implements BleProvisioningService {
             completer.complete();
           }
         } else if (status == 'wifi_failed') {
-          final errorReason = data['error']?.toString() ?? 'Sai mật khẩu hoặc sóng yếu';
+          final errorReason =
+              data['error']?.toString() ?? 'Sai mật khẩu hoặc sóng yếu';
           debugPrint('[BLE] ESP32 báo lỗi Wi-Fi: $errorReason');
           if (!completer.isCompleted) {
             completer.completeError(
-              Exception('ESP32 kết nối Wi-Fi thất bại ($errorReason). Vui lòng kiểm tra lại tên Wi-Fi và mật khẩu.'),
+              Exception(
+                'ESP32 kết nối Wi-Fi thất bại ($errorReason). Vui lòng kiểm tra lại tên Wi-Fi và mật khẩu.',
+              ),
             );
           }
         } else if (status == 'mqtt_failed') {
-          final errorReason = data['error']?.toString() ?? 'Không tìm thấy broker MQTT';
+          final errorReason =
+              data['error']?.toString() ?? 'Không tìm thấy broker MQTT';
           debugPrint('[BLE] ESP32 báo lỗi MQTT: $errorReason');
           if (!completer.isCompleted) {
             completer.completeError(
@@ -272,7 +297,9 @@ class FlutterBleProvisioningService implements BleProvisioningService {
       onTimeout: () {
         _notifySubscription?.cancel();
         if (receivedWifiOk && receivedMqttOk) return;
-        throw TimeoutException('Quá thời gian chờ ESP32 phản hồi (35s). ESP32 không phản hồi kết quả kết nối Wi-Fi.');
+        throw TimeoutException(
+          'Quá thời gian chờ ESP32 phản hồi (35s). ESP32 không phản hồi kết quả kết nối Wi-Fi.',
+        );
       },
     );
   }

@@ -34,7 +34,6 @@ extension _DeviceFilterX on _DeviceFilter {
   };
 }
 
-
 class RoomDeviceScreen extends ConsumerStatefulWidget {
   const RoomDeviceScreen({required this.roomId, super.key});
 
@@ -105,8 +104,8 @@ class _RoomDeviceScreenState extends ConsumerState<RoomDeviceScreen> {
       matchedRooms.isEmpty
           ? widget.roomId
           : (matchedRooms.first.name.isNotEmpty
-              ? matchedRooms.first.name
-              : matchedRooms.first.slug),
+                ? matchedRooms.first.name
+                : matchedRooms.first.slug),
     );
 
     final allDevices = devicesAsync.valueOrNull ?? const <Device>[];
@@ -375,7 +374,9 @@ class _RoomDeviceCard extends ConsumerWidget {
                             : _greyscale,
                         child: AnimatedOpacity(
                           duration: GlassTokens.durationMed,
-                          opacity: (isOn || device.type == DeviceType.lock) ? 1.0 : 0.55,
+                          opacity: (isOn || device.type == DeviceType.lock)
+                              ? 1.0
+                              : 0.55,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(AppRadius.md),
                             child: Image.asset(

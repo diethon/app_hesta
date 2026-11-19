@@ -135,18 +135,21 @@ void main() {
       expect(devices.first.name, 'SYNA-ESP32S3');
     });
 
-    test('provisionWifi executes with wifi and mqtt callbacks successfully', () async {
-      bool wifiCalled = false;
-      bool mqttCalled = false;
-      await bleService.provisionWifi(
-        ssid: 'Home_WiFi',
-        password: 'SecretPassword',
-        onWifiConnected: () => wifiCalled = true,
-        onMqttConnected: () => mqttCalled = true,
-      );
-      expect(wifiCalled, isTrue);
-      expect(mqttCalled, isTrue);
-    });
+    test(
+      'provisionWifi executes with wifi and mqtt callbacks successfully',
+      () async {
+        bool wifiCalled = false;
+        bool mqttCalled = false;
+        await bleService.provisionWifi(
+          ssid: 'Home_WiFi',
+          password: 'SecretPassword',
+          onWifiConnected: () => wifiCalled = true,
+          onMqttConnected: () => mqttCalled = true,
+        );
+        expect(wifiCalled, isTrue);
+        expect(mqttCalled, isTrue);
+      },
+    );
   });
 
   group('OnboardingController State Machine Tests', () {
@@ -160,14 +163,22 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final subscription = container.listen(onboardingControllerProvider, (_, __) {});
+      final subscription = container.listen(
+        onboardingControllerProvider,
+        (_, __) {},
+      );
       final notifier = container.read(onboardingControllerProvider.notifier);
 
       // 1. Initial State
-      expect(container.read(onboardingControllerProvider).step, OnboardingStep.scanQr);
+      expect(
+        container.read(onboardingControllerProvider).step,
+        OnboardingStep.scanQr,
+      );
 
       // 2. Scan QR
-      await notifier.onQrScanned('syna://device/register?token=valid-test-token');
+      await notifier.onQrScanned(
+        'syna://device/register?token=valid-test-token',
+      );
       var state = container.read(onboardingControllerProvider);
       expect(state.step, OnboardingStep.verifyDevice);
       expect(state.preview?.deviceId, 'dev-123');
@@ -206,7 +217,10 @@ void main() {
 
       // 8. Reset
       notifier.reset();
-      expect(container.read(onboardingControllerProvider).step, OnboardingStep.scanQr);
+      expect(
+        container.read(onboardingControllerProvider).step,
+        OnboardingStep.scanQr,
+      );
       subscription.close();
     });
 
@@ -220,7 +234,10 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final subscription = container.listen(onboardingControllerProvider, (_, __) {});
+      final subscription = container.listen(
+        onboardingControllerProvider,
+        (_, __) {},
+      );
       final notifier = container.read(onboardingControllerProvider.notifier);
       await notifier.onQrScanned('syna://device/register?token=invalid-token');
 
