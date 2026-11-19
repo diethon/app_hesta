@@ -41,6 +41,7 @@ const _actionsByType = <String, List<String>>{
   'AIR_CONDITIONER': ['TURN_ON', 'TURN_OFF', 'TOGGLE', 'SET_TEMPERATURE', 'SET_MODE', 'SET_SPEED'],
   'SOCKET': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
   'SMART_PLUG': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
+  'WATER_PUMP': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
   'GATE': ['OPEN', 'CLOSE', 'STOP'],
   'ROLLING_DOOR': ['OPEN', 'CLOSE', 'STOP'],
   'CURTAIN': ['OPEN', 'CLOSE', 'STOP', 'TURN_ON', 'TURN_OFF', 'TOGGLE'],
@@ -63,6 +64,7 @@ String deviceTypeCode(Device d) {
     DeviceType.lock => 'GATE',
     DeviceType.sensor => 'SENSOR',
     DeviceType.camera => 'CAMERA',
+    DeviceType.waterPump => 'WATER_PUMP',
   };
 }
 
