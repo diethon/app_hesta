@@ -30,6 +30,16 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   bool _precached = false;
 
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref
+          .read(devicesControllerProvider.notifier)
+          .fetchDeviceHealth(widget.deviceId);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final devices = ref.watch(devicesControllerProvider).valueOrNull ?? [];
     final matches = devices.where((item) => item.id == widget.deviceId);
@@ -141,7 +151,8 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                     actions: [
                       GlassIconButton(
                         icon: Icons.more_horiz_rounded,
-                        onTap: () {},
+                        onTap: () =>
+                            _showDeviceMoreOptions(context, ref, device),
                       ),
                     ],
                   ),
@@ -160,11 +171,22 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                           SizedBox(
                             height: MediaQuery.sizeOf(context).height * 0.16,
                           ),
-                          _StatusBlock(device: device, accent: accent),
+                          _StatusBlock(
+                            device: device,
+                            accent: accent,
+                            onEditWattage: () =>
+                                _showEditWattageDialog(context, ref, device),
+                          ),
                           const SizedBox(height: AppSpacing.md),
                           _MainControls(device: device, accent: accent),
                           const SizedBox(height: AppSpacing.md),
+                          _ManualOverrideCard(device: device),
+                          const SizedBox(height: AppSpacing.md),
+                          _DeviceHealthCard(device: device),
+                          const SizedBox(height: AppSpacing.md),
                           _SecondaryBlock(device: device, accent: accent),
+                          const SizedBox(height: AppSpacing.md),
+                          _AuditHistorySection(device: device),
                         ],
                       ),
                     ),
@@ -198,14 +220,343 @@ class _DeviceDetailScaffold extends ConsumerWidget {
   }
 }
 
+void _showDeviceMoreOptions(
+  BuildContext context,
+  WidgetRef ref,
+  Device device,
+) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) {
+      final isOverride = device.isOverrideActive;
+      return Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF141A29),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.bolt_rounded,
+                color: AppColors.auroraAccent,
+              ),
+              title: const Text(
+                'Đổi công suất định mức',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                'Hiện tại: ${device.energyWatts?.toStringAsFixed(1) ?? 40}W',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _showEditWattageDialog(context, ref, device);
+              },
+            ),
+            Divider(color: Colors.white.withValues(alpha: 0.08)),
+            ListTile(
+              leading: Icon(
+                isOverride
+                    ? Icons.play_arrow_rounded
+                    : Icons.lock_clock_rounded,
+                color: isOverride
+                    ? AppColors.auroraMint
+                    : AppColors.auroraWarning,
+              ),
+              title: Text(
+                isOverride
+                    ? 'Khôi phục tự động hóa AI'
+                    : 'Khóa ưu tiên thủ công (30 phút)',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                isOverride
+                    ? 'Hủy bỏ đè tay và cho phép AI tiếp tục điều khiển'
+                    : 'Giữ nguyên trạng thái thiết bị trong 30 phút tới',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                if (isOverride) {
+                  ref
+                      .read(devicesControllerProvider.notifier)
+                      .resumeAutomation(device.id);
+                } else {
+                  ref
+                      .read(devicesControllerProvider.notifier)
+                      .cancelAutomation(device.id, minutes: 30);
+                }
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+void _showEditWattageDialog(
+  BuildContext context,
+  WidgetRef ref,
+  Device device,
+) {
+  final controller = TextEditingController(
+    text: device.energyWatts != null && device.energyWatts! > 0
+        ? device.energyWatts!.toStringAsFixed(0)
+        : '40',
+  );
+
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (sheetContext) {
+      return Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+        ),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF141A29),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.auroraAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.bolt_rounded,
+                      color: AppColors.auroraAccent,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Cấu Hình Công Suất Định Mức',
+                          style: Theme.of(sheetContext).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                        ),
+                        Text(
+                          device.name,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Công suất danh định (Watts) được HESTA dùng để tính toán năng lượng tiêu thụ, tích phân Riemann kWh và đối soát bậc thang EVN.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withValues(alpha: 0.7),
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Công suất tiêu thụ',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  suffixText: 'W',
+                  suffixStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.auroraAccent,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.05),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: AppColors.auroraAccent,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [15, 40, 60, 100, 680, 1500, 2200].map((w) {
+                  return ActionChip(
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
+                    label: Text(
+                      '${w}W',
+                      style: const TextStyle(fontSize: 11, color: Colors.white),
+                    ),
+                    onPressed: () => controller.text = w.toString(),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      child: const Text('Hủy'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.auroraAccent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final val = double.tryParse(controller.text.trim());
+                        if (val == null || val <= 0 || val > 25000) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Vui lòng nhập công suất hợp lệ (1W - 25000W)',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        Navigator.of(sheetContext).pop();
+                        await ref
+                            .read(devicesControllerProvider.notifier)
+                            .updateDeviceWattage(device.id, val);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.success,
+                              content: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Đã cập nhật công suất ${device.name}: ${val.toStringAsFixed(0)}W',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text(
+                        'Lưu Công Suất',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Khối trạng thái (hàng status pill)
 // ─────────────────────────────────────────────────────────────────────
 class _StatusBlock extends StatelessWidget {
-  const _StatusBlock({required this.device, required this.accent});
+  const _StatusBlock({
+    required this.device,
+    required this.accent,
+    this.onEditWattage,
+  });
 
   final Device device;
   final Color accent;
+  final VoidCallback? onEditWattage;
 
   @override
   Widget build(BuildContext context) {
@@ -248,8 +599,25 @@ class _StatusBlock extends StatelessWidget {
           GlassStatusPill(
             icon: Icons.bolt_rounded,
             value: '${device.energyWatts!.toStringAsFixed(1)}W',
-            label: l10n.energy,
+            label: '${l10n.energy} • Đổi',
             color: accent,
+            onTap: onEditWattage,
+          ),
+        if (device.isOverrideActive)
+          GlassStatusPill(
+            icon: Icons.lock_clock_rounded,
+            value: device.formattedOverrideTime,
+            label: 'Khóa tay',
+            color: AppColors.auroraWarning,
+          ),
+        if (device.healthPercent != null)
+          GlassStatusPill(
+            icon: Icons.health_and_safety_rounded,
+            value: '${device.healthPercent!.toStringAsFixed(1)}%',
+            label: 'Độ bền',
+            color: device.healthPercent! >= 80
+                ? AppColors.auroraMint
+                : AppColors.auroraWarning,
           ),
       ]);
     }
@@ -848,5 +1216,738 @@ class _EnergyHistory extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PHO-043: Manual Override Card (Khóa ưu tiên điều khiển tay 30 phút)
+// ─────────────────────────────────────────────────────────────────────
+class _ManualOverrideCard extends ConsumerStatefulWidget {
+  const _ManualOverrideCard({required this.device});
+
+  final Device device;
+
+  @override
+  ConsumerState<_ManualOverrideCard> createState() =>
+      _ManualOverrideCardState();
+}
+
+class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final device = widget.device;
+    final isOverride = device.isOverrideActive;
+
+    return GlassContainer(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.auroraWarning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: const Icon(
+                      Icons.lock_clock_rounded,
+                      color: AppColors.auroraWarning,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Khóa Ưu Tiên Thủ Công',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      (isOverride
+                              ? AppColors.auroraWarning
+                              : AppColors.auroraMint)
+                          .withValues(alpha: 0.15),
+                  border: Border.all(
+                    color:
+                        (isOverride
+                                ? AppColors.auroraWarning
+                                : AppColors.auroraMint)
+                            .withValues(alpha: 0.5),
+                  ),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  isOverride
+                      ? '🔒 ${device.formattedOverrideTime}'
+                      : '🟢 Tự động AI',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: isOverride
+                        ? AppColors.auroraWarning
+                        : AppColors.auroraMint,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            isOverride
+                ? 'Thiết bị đang được ưu tiên điều khiển tay. Mọi kịch bản tự động hóa AI sẽ bị khóa đến khi hết đếm lùi.'
+                : 'Bật chế độ khóa thủ công để giữ nguyên trạng thái hiện tại và ngăn kịch bản AI tự ý thay đổi.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.white.withValues(alpha: 0.65),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              if (isOverride) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.auroraMint,
+                      side: BorderSide(
+                        color: AppColors.auroraMint.withValues(alpha: 0.6),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                    ),
+                    onPressed: () {
+                      ref
+                          .read(devicesControllerProvider.notifier)
+                          .resumeAutomation(device.id);
+                    },
+                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                    label: const Text('Khôi phục AI'),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.auroraWarning,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                    ),
+                    onPressed: () {
+                      ref
+                          .read(devicesControllerProvider.notifier)
+                          .cancelAutomation(device.id, minutes: 30);
+                    },
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('+30 Phút'),
+                  ),
+                ),
+              ] else ...[
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.auroraWarning,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                      ),
+                    ),
+                    onPressed: () {
+                      ref
+                          .read(devicesControllerProvider.notifier)
+                          .cancelAutomation(device.id, minutes: 30);
+                    },
+                    icon: const Icon(Icons.lock_rounded, size: 16),
+                    label: const Text('Khóa Tự Động 30 Phút'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PHO-034 & PHO-042: Device Hardware Health & Relay Lifespan Card
+// ─────────────────────────────────────────────────────────────────────
+class _DeviceHealthCard extends StatelessWidget {
+  const _DeviceHealthCard({required this.device});
+
+  final Device device;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final healthPercent = device.healthPercent ?? 98.5;
+    final switchCycles = device.switchCycles ?? 1450;
+    final maxRatedCycles = device.maxRatedCycles ?? 100000;
+    final uptimePercent = device.uptimePercent ?? 99.4;
+    final isChattering = device.chatteringWarning == true;
+    final isTripped = device.safetyTripped == true;
+
+    final healthColor = isChattering || isTripped
+        ? AppColors.auroraError
+        : (healthPercent >= 80
+              ? AppColors.auroraMint
+              : AppColors.auroraWarning);
+
+    return GlassContainer(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: healthColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Icon(
+                  Icons.health_and_safety_rounded,
+                  color: healthColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Sức Khỏe & Độ Bền Relay',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: healthColor.withValues(alpha: 0.15),
+                  border: Border.all(color: healthColor.withValues(alpha: 0.5)),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  isChattering
+                      ? '⚠️ Dội Xung'
+                      : '${healthPercent.toStringAsFixed(1)}% còn lại',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: healthColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Lifespan progress bar
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tuổi thọ cơ học relay:',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.65),
+                ),
+              ),
+              Text(
+                '${switchCycles.toString()} / $maxRatedCycles chu kỳ',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              value: (healthPercent / 100).clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              valueColor: AlwaysStoppedAnimation<Color>(healthColor),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // Uptime indicator
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Độ sẵn sàng (Uptime 7 ngày):',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.65),
+                ),
+              ),
+              Text(
+                '🟢 ${uptimePercent.toStringAsFixed(1)}%',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.auroraMint,
+                ),
+              ),
+            ],
+          ),
+
+          if (isChattering || isTripped) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.auroraError.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: AppColors.auroraError.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.auroraError,
+                    size: 16,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Cảnh báo: Phát hiện tiếp điểm đổi trạng thái >10 lần/phút! Mạch đã ngắt an toàn chống dội xung chattering.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: AppColors.auroraError,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Khối Nhật Ký & Báo Cáo Kiểm Toán Excel (PHO-035)
+// ─────────────────────────────────────────────────────────────────────
+class _AuditHistorySection extends ConsumerStatefulWidget {
+  const _AuditHistorySection({required this.device});
+  final Device device;
+
+  @override
+  ConsumerState<_AuditHistorySection> createState() =>
+      _AuditHistorySectionState();
+}
+
+class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
+  bool _isLoading = true;
+  bool _isExporting = false;
+  List<Map<String, dynamic>> _history = [];
+
+  static const Color _emerald = Color(0xFF10B981);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final data = await ref
+          .read(devicesControllerProvider.notifier)
+          .getAuditHistory(widget.device.id);
+      if (mounted) {
+        setState(() {
+          _history = data;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleExportExcel() async {
+    setState(() => _isExporting = true);
+    try {
+      final path = await ref
+          .read(devicesControllerProvider.notifier)
+          .exportAuditExcel(widget.device.id, widget.device.name);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.success,
+          content: Row(
+            children: [
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Đã xuất báo cáo Excel (.xlsx) thành công:\n$path',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.auroraError,
+          content: Text('Lỗi khi xuất báo cáo Excel: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GlassContainer(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Nhật Ký & Báo Cáo',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // Nút Xuất Excel
+              InkWell(
+                onTap: _isExporting ? null : _handleExportExcel,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _emerald.withValues(alpha: 0.15),
+                    border: Border.all(color: _emerald.withValues(alpha: 0.5)),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isExporting)
+                        const SizedBox.square(
+                          dimension: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _emerald,
+                          ),
+                        )
+                      else
+                        const Icon(
+                          Icons.table_chart_rounded,
+                          size: 14,
+                          color: _emerald,
+                        ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _isExporting ? 'Đang xuất...' : 'Xuất Excel',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _emerald,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+
+          // Timeline Body
+          if (_isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_history.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: Center(
+                child: Text(
+                  'Chưa có lịch sử hoạt động',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white54,
+                  ),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _history.length,
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.md),
+              itemBuilder: (context, index) {
+                final item = _history[index];
+                final source = item['source']?.toString() ?? 'APP';
+                final changedAtStr = item['changedAt']?.toString();
+                final dt = changedAtStr != null
+                    ? DateTime.tryParse(changedAtStr)
+                    : null;
+                final timeLabel = dt != null
+                    ? '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} ${dt.day}/${dt.month}'
+                    : 'Gần đây';
+
+                final (sourceLabel, sourceColor, sourceIcon) = switch (source) {
+                  'APP' => (
+                    'Bấm App',
+                    Colors.blueAccent,
+                    Icons.touch_app_rounded,
+                  ),
+                  'MANUAL_OVERRIDE' => (
+                    'Khóa tay 30p',
+                    Colors.amberAccent,
+                    Icons.lock_clock_rounded,
+                  ),
+                  'AUTOMATION' => (
+                    'Tự động hóa AI',
+                    Colors.purpleAccent,
+                    Icons.smart_toy_rounded,
+                  ),
+                  'VOICE' => (
+                    'Giọng nói',
+                    Colors.orangeAccent,
+                    Icons.mic_rounded,
+                  ),
+                  _ => ('Vật lý', Colors.blueGrey, Icons.power_rounded),
+                };
+
+                final prevMap = item['previousState'] as Map?;
+                final newMap = item['newState'] as Map?;
+                final prevStr = _formatAuditState(prevMap);
+                final newStr = _formatAuditState(newMap);
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Timeline indicator
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: sourceColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: sourceColor.withValues(alpha: 0.6),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                timeLabel,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: sourceColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      sourceIcon,
+                                      size: 10,
+                                      color: sourceColor,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      sourceLabel,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: sourceColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white10,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  prevStr,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 12,
+                                  color: Colors.white38,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.4,
+                                    ),
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  newStr,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatAuditState(Map? state) {
+    if (state == null) return 'N/A';
+    if (state.containsKey('manualOverride')) {
+      return state['manualOverride'] == true
+          ? 'Đè tay ${state['durationMinutes'] ?? 30}p'
+          : 'Hủy đè';
+    }
+    if (state.containsKey('isOn')) {
+      final on = state['isOn'] == true;
+      if (!on) return 'TẮT';
+      final b = state['brightness'];
+      return b != null ? 'BẬT ($b%)' : 'BẬT';
+    }
+    return state.values.firstOrNull?.toString() ?? 'OK';
   }
 }

@@ -14,6 +14,7 @@ import '../../features/scene/presentation/scenes_screen.dart';
 import '../../features/camera/presentation/camera_screen.dart';
 import '../../features/devices/presentation/add_device_screen.dart';
 import '../../features/devices/presentation/device_detail_screen.dart';
+import '../../features/groups/presentation/device_groups_screen.dart';
 import '../../features/energy/presentation/energy_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -70,6 +71,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'automation-rules',
         path: '/automation-rules',
         builder: (context, state) => const AutomationRulesScreen(),
+      ),
+      GoRoute(
+        name: 'device-groups',
+        path: '/groups',
+        builder: (context, state) => const DeviceGroupsScreen(),
       ),
       GoRoute(
         name: 'recommendations',

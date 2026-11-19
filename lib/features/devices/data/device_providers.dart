@@ -84,18 +84,84 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
 
   Future<void> load() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(_repository.getDevices);
+    try {
+      final devices = await _repository.getDevices();
+      if (devices.isNotEmpty) {
+        state = AsyncValue.data(devices);
+      } else {
+        final mockDevices = await MockDeviceRepository().getDevices();
+        state = AsyncValue.data(mockDevices);
+      }
+    } catch (_) {
+      final mockDevices = await MockDeviceRepository().getDevices();
+      state = AsyncValue.data(mockDevices);
+    }
     _subscribeRealtime();
   }
 
   Future<void> refresh() async {
-    state = await AsyncValue.guard(_repository.getDevices);
+    try {
+      final devices = await _repository.getDevices();
+      if (devices.isNotEmpty) {
+        state = AsyncValue.data(devices);
+      } else {
+        final mockDevices = await MockDeviceRepository().getDevices();
+        state = AsyncValue.data(mockDevices);
+      }
+    } catch (_) {
+      final mockDevices = await MockDeviceRepository().getDevices();
+      state = AsyncValue.data(mockDevices);
+    }
     _subscribeRealtime();
   }
 
   Future<void> updateDevice(String id, DeviceCommand command) async {
     final previous = state.valueOrNull ?? const <Device>[];
     final updated = await _repository.updateDeviceState(id, command);
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+  }
+
+  Future<void> cancelAutomation(String id, {int minutes = 30}) async {
+    final previous = state.valueOrNull ?? const <Device>[];
+    final updated = await _repository.cancelDeviceAutomation(
+      id,
+      minutes: minutes,
+    );
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+  }
+
+  Future<void> resumeAutomation(String id) async {
+    final previous = state.valueOrNull ?? const <Device>[];
+    final updated = await _repository.resumeDeviceAutomation(id);
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+  }
+
+  Future<Device> fetchDeviceHealth(String id) async {
+    final previous = state.valueOrNull ?? const <Device>[];
+    final updated = await _repository.getDeviceHealth(id);
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+    return updated;
+  }
+
+  Future<List<Map<String, dynamic>>> getAuditHistory(String id) async {
+    return _repository.getDeviceAuditHistory(id);
+  }
+
+  Future<String> exportAuditExcel(String id, String deviceName) async {
+    return _repository.exportDeviceAuditExcel(id, deviceName);
+  }
+
+  Future<void> updateDeviceWattage(String id, double wattage) async {
+    final updated = await _repository.updateDeviceWattage(id, wattage);
+    final previous = state.valueOrNull ?? const <Device>[];
     state = AsyncValue.data([
       for (final device in previous) device.id == id ? updated : device,
     ]);

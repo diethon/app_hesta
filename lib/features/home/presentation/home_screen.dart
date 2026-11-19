@@ -19,6 +19,7 @@ import '../../devices/presentation/device_visuals.dart';
 import '../../scene/data/scene_providers.dart';
 import '../../scene/domain/scene.dart';
 import '../../scene/presentation/scene_icons.dart';
+import '../../groups/presentation/device_group_strip.dart';
 import 'widgets/hero_house_model.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -233,17 +234,15 @@ class _DashboardContent extends ConsumerWidget {
     final theme = Theme.of(context);
     final favorites = devices.where((d) => d.isFavorite).toList();
 
-    if (devices.isEmpty) {
-      return EmptyView(message: l10n.emptyTitle);
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _HomeHeroCard(devices: devices),
-        const SizedBox(height: AppSpacing.md),
-        _StatusPillsRow(devices: devices),
-        const SizedBox(height: AppSpacing.lg),
+        if (devices.isNotEmpty) ...[
+          _HomeHeroCard(devices: devices),
+          const SizedBox(height: AppSpacing.md),
+          _StatusPillsRow(devices: devices),
+          const SizedBox(height: AppSpacing.lg),
+        ],
 
         // Lối vào Automation, Recommendation, Scenes, Camera.
         _SectionLabel(label: l10n.quickAccess),
@@ -305,6 +304,8 @@ class _DashboardContent extends ConsumerWidget {
         const _QuickScenes(),
         const SizedBox(height: AppSpacing.lg),
 
+        const DeviceGroupStrip(),
+
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -322,24 +323,30 @@ class _DashboardContent extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final cols = constraints.maxWidth > 560 ? 3 : 2;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: favorites.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                crossAxisSpacing: AppSpacing.md,
-                mainAxisSpacing: AppSpacing.md,
-                childAspectRatio: 0.92,
-              ),
-              itemBuilder: (context, index) =>
-                  DeviceCard(device: favorites[index]),
-            );
-          },
-        ),
+        if (favorites.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: EmptyView(message: l10n.emptyTitle),
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cols = constraints.maxWidth > 560 ? 3 : 2;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: favorites.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  crossAxisSpacing: AppSpacing.md,
+                  mainAxisSpacing: AppSpacing.md,
+                  childAspectRatio: 0.92,
+                ),
+                itemBuilder: (context, index) =>
+                    DeviceCard(device: favorites[index]),
+              );
+            },
+          ),
         const SizedBox(height: AppSpacing.lg),
 
         _SectionLabel(label: l10n.recentActivity),
@@ -777,6 +784,42 @@ class DeviceCard extends ConsumerWidget {
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                 ),
               ),
+              if (device.isOverrideActive) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    border: Border.all(
+                      color: Colors.amber.withValues(alpha: 0.35),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.lock_clock_rounded,
+                        size: 11,
+                        color: Colors.amber,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        device.formattedOverrideTime,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSpacing.md),
               _DeviceCardFooter(device: device, accent: accent),
             ],
