@@ -57,13 +57,6 @@ final notificationsControllerProvider =
             );
           }
 
-          // 2. Kênh fallback theo userId
-          subs.add(
-            webSocket
-                .subscribeJson('/topic/users/$userId/notifications')
-                .listen(controller.onRealtime),
-          );
-
           ref.onDispose(() {
             for (final sub in subs) {
               sub.cancel();

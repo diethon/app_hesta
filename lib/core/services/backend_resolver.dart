@@ -46,6 +46,9 @@ class BackendResolver {
         options: Options(sendTimeout: Duration(seconds: seconds)),
       );
       return true;
+    } on DioException catch (e) {
+      // Any HTTP reply (backend has no actuator → 401/404) still means the server is reachable.
+      return e.response != null;
     } catch (_) {
       return false;
     }

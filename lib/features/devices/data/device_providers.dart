@@ -33,34 +33,32 @@ final deviceStateStreamProvider = StreamProvider.family<Device, String>((
   final homeId = ref.watch(currentHomeIdProvider);
   final webSocketService = ref.watch(webSocketServiceProvider);
 
-  if (homeId != null) {
-    return webSocketService
-        .subscribeJson('/topic/homes/$homeId/events')
-        .where((event) {
-          final type = event['type']?.toString();
-          if (type != 'DEVICE_STATE_CHANGED' &&
-              type != 'SENSOR_READING_UPDATED') {
-            return false;
-          }
-          final evDevId = event['deviceId']?.toString();
-          final data = event['data'];
-          final dataDevId = data is Map<String, dynamic>
-              ? (data['id'] ?? data['deviceId'])?.toString()
-              : null;
-          return evDevId == deviceId || dataDevId == deviceId;
-        })
-        .map((event) {
-          final data = event['data'];
-          if (data is Map<String, dynamic>) {
-            return DeviceDto.fromJson(data).toDomain();
-          }
-          return DeviceDto.fromJson(event).toDomain();
-        });
+  // Backend chỉ phát qua topic của home; subscribe topic lạ bị từ chối và làm rớt cả kết nối STOMP.
+  if (homeId == null) {
+    return const Stream<Device>.empty();
   }
-
   return webSocketService
-      .subscribeJson('/topic/devices/$deviceId/state')
-      .map((json) => DeviceDto.fromJson(json).toDomain());
+      .subscribeJson('/topic/homes/$homeId/events')
+      .where((event) {
+        final type = event['type']?.toString();
+        if (type != 'DEVICE_STATE_CHANGED' &&
+            type != 'SENSOR_READING_UPDATED') {
+          return false;
+        }
+        final evDevId = event['deviceId']?.toString();
+        final data = event['data'];
+        final dataDevId = data is Map<String, dynamic>
+            ? (data['id'] ?? data['deviceId'])?.toString()
+            : null;
+        return evDevId == deviceId || dataDevId == deviceId;
+      })
+      .map((event) {
+        final data = event['data'];
+        if (data is Map<String, dynamic>) {
+          return DeviceDto.fromJson(data).toDomain();
+        }
+        return DeviceDto.fromJson(event).toDomain();
+      });
 });
 
 final devicesControllerProvider =
@@ -105,8 +103,7 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
 
   void _subscribeRealtime() {
     final realtime = _realtime;
-    final devices = state.valueOrNull;
-    if (realtime == null || devices == null) {
+    if (realtime == null || state.valueOrNull == null) {
       return;
     }
     for (final subscription in _realtimeSubs) {
@@ -128,15 +125,6 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
             _applyRealtimeUpdate(data);
           }
         }),
-      );
-    }
-
-    // 2. Kênh fallback
-    for (final device in devices) {
-      _realtimeSubs.add(
-        realtime
-            .subscribeJson('/topic/devices/${device.id}/state')
-            .listen(_applyRealtimeUpdate),
       );
     }
   }
