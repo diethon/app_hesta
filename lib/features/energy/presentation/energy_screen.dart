@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 
 import '../../../app/localization/l10n_extensions.dart';
 import '../../../app/theme/app_colors.dart';
@@ -8,7 +9,10 @@ import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/glass/glass.dart';
-import '../../devices/data/device_providers.dart';
+import '../data/energy_providers.dart';
+
+/// Vietnam grid emission factor 2022 (MONRE): 0.6766 kgCO2 per kWh.
+const _kgCo2PerKwh = 0.6766;
 
 class EnergyScreen extends ConsumerStatefulWidget {
   const EnergyScreen({super.key});
@@ -46,11 +50,20 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
-    // Giữ liên kết provider để số liệu tổng dùng dữ liệu thật khi có.
-    ref.watch(devicesControllerProvider);
-    const totalKwh = 24.5;
-    const estimatedCost = 18.42;
-    const carbonKg = 12.8;
+    final reportAsync = ref.watch(
+      energyReportProvider(const ['24H', '7D', '30D'][_selectedTab]),
+    );
+    final report = reportAsync.valueOrNull;
+    String fmt(num v) => NumberFormat.decimalPattern('vi').format(v);
+    final totalKwh = report == null
+        ? '—'
+        : fmt(double.parse(report.totalKwh.toStringAsFixed(1)));
+    final estimatedCost = report == null ? '—' : fmt(report.costVnd);
+    final carbonKg = report == null
+        ? '—'
+        : fmt(
+            double.parse((report.totalKwh * _kgCo2PerKwh).toStringAsFixed(1)),
+          );
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -113,10 +126,29 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
-                const _EnergyChartCard(),
+                if (reportAsync.isLoading) ...[
+                  const LinearProgressIndicator(minHeight: 2),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+                if (reportAsync.hasError) ...[
+                  Text(
+                    'Không tải được dữ liệu điện năng',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.auroraError,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+                _EnergyChartCard(
+                  key: ValueKey(_selectedTab),
+                  points: report?.points ?? const [],
+                ),
                 const SizedBox(height: AppSpacing.md),
 
-                _DeviceDistributionCard(animation: _barAnim),
+                _DeviceDistributionCard(
+                  animation: _barAnim,
+                  breakdown: report?.breakdown ?? const [],
+                ),
                 const SizedBox(height: AppSpacing.md),
 
                 Row(
@@ -126,7 +158,7 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
                         icon: Icons.bolt_rounded,
                         iconColor: theme.colorScheme.primary,
                         label: l10n.totalUsage,
-                        value: '$totalKwh',
+                        value: totalKwh,
                         unit: 'kWh',
                       ),
                     ),
@@ -136,8 +168,8 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
                         icon: Icons.payments_outlined,
                         iconColor: AppColors.auroraWarning,
                         label: l10n.estimatedCost,
-                        value: '\$$estimatedCost',
-                        unit: 'USD',
+                        value: estimatedCost,
+                        unit: 'VND',
                       ),
                     ),
                   ],
@@ -147,7 +179,7 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
                   icon: Icons.forest_outlined,
                   iconColor: mint,
                   label: l10n.carbonFootprint,
-                  value: '$carbonKg',
+                  value: carbonKg,
                   unit: 'kgCO₂',
                 ),
               ]),
@@ -163,7 +195,9 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
 // Chart Card
 // ─────────────────────────────────────────────────────────────────────
 class _EnergyChartCard extends StatefulWidget {
-  const _EnergyChartCard();
+  const _EnergyChartCard({super.key, required this.points});
+
+  final List<({String label, double kwh})> points;
 
   @override
   State<_EnergyChartCard> createState() => _EnergyChartCardState();
@@ -225,6 +259,7 @@ class _EnergyChartCardState extends State<_EnergyChartCard>
               builder: (context, _) => CustomPaint(
                 size: const Size(double.infinity, 180),
                 painter: _EnergyChartPainter(
+                  values: [for (final p in widget.points) p.kwh],
                   progress: _anim.value,
                   lineColor: theme.colorScheme.primary,
                   gridColor: theme.colorScheme.onSurface.withValues(
@@ -238,7 +273,7 @@ class _EnergyChartCardState extends State<_EnergyChartCard>
           const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00']
+            children: _axisLabels(widget.points)
                 .map(
                   (t) => Text(
                     t,
@@ -254,6 +289,13 @@ class _EnergyChartCardState extends State<_EnergyChartCard>
       ),
     );
   }
+}
+
+/// Up to 6 evenly spaced x-axis labels.
+List<String> _axisLabels(List<({String label, double kwh})> points) {
+  if (points.length <= 6) return [for (final p in points) p.label];
+  final step = (points.length - 1) / 5;
+  return [for (var i = 0; i < 6; i++) points[(i * step).round()].label];
 }
 
 class _Legend extends StatelessWidget {
@@ -287,12 +329,14 @@ class _Legend extends StatelessWidget {
 
 class _EnergyChartPainter extends CustomPainter {
   _EnergyChartPainter({
+    required this.values,
     required this.progress,
     required this.lineColor,
     required this.gridColor,
     required this.peakColor,
   });
 
+  final List<double> values;
   final double progress;
   final Color lineColor;
   final Color gridColor;
@@ -303,17 +347,16 @@ class _EnergyChartPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    final points = const [
-      Offset(0, 0.15),
-      Offset(0.14, 0.13),
-      Offset(0.25, 0.18),
-      Offset(0.38, 0.75),
-      Offset(0.5, 0.60),
-      Offset(0.62, 0.10),
-      Offset(0.75, 0.20),
-      Offset(0.88, 0.35),
-      Offset(1.0, 0.45),
-    ].map((p) => Offset(p.dx * w, (1 - p.dy) * h)).toList();
+    if (values.length < 2) return;
+    final maxKwh = values.reduce((a, b) => a > b ? a : b);
+    // 85% of the height so the peak label stays inside the card.
+    final points = [
+      for (var i = 0; i < values.length; i++)
+        Offset(
+          i / (values.length - 1) * w,
+          h - (maxKwh > 0 ? values[i] / maxKwh * 0.85 : 0) * h,
+        ),
+    ];
 
     canvas.save();
     canvas.clipRect(Rect.fromLTWH(0, 0, w * progress, h));
@@ -369,12 +412,16 @@ class _EnergyChartPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(buildLine(), linePaint);
 
-    final peakPoint = points[3];
+    if (maxKwh <= 0) {
+      canvas.restore();
+      return;
+    }
+    final peakPoint = points[values.indexOf(maxKwh)];
     canvas.drawCircle(peakPoint, 6, Paint()..color = peakColor);
 
     final textPainter = TextPainter(
       text: TextSpan(
-        text: 'Peak: 4.2 kW',
+        text: 'Peak: ${maxKwh.toStringAsFixed(2)} kWh',
         style: TextStyle(
           fontFamily: 'Inter',
           fontSize: 11,
@@ -384,22 +431,32 @@ class _EnergyChartPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    textPainter.paint(canvas, peakPoint + const Offset(10, -8));
+    // Keep the label inside the card when the peak is near the right edge.
+    final labelX = peakPoint.dx + 10 + textPainter.width > w
+        ? peakPoint.dx - 10 - textPainter.width
+        : peakPoint.dx + 10;
+    textPainter.paint(canvas, Offset(labelX, peakPoint.dy - 8));
 
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(_EnergyChartPainter old) =>
-      old.progress != progress || old.lineColor != lineColor;
+      old.progress != progress ||
+      old.lineColor != lineColor ||
+      old.values != values;
 }
 
 // ─────────────────────────────────────────────────────────────────────
 // Device Distribution Card
 // ─────────────────────────────────────────────────────────────────────
 class _DeviceDistributionCard extends StatelessWidget {
-  const _DeviceDistributionCard({required this.animation});
+  const _DeviceDistributionCard({
+    required this.animation,
+    required this.breakdown,
+  });
   final Animation<double> animation;
+  final List<({String name, double kwh, double percentage})> breakdown;
 
   @override
   Widget build(BuildContext context) {
@@ -407,11 +464,10 @@ class _DeviceDistributionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    // Backend sorts by kWh; show the top 4 devices.
     final items = [
-      (l10n.categoryClimate, 12.4, 0.65),
-      (l10n.categoryRefrigeration, 4.2, 0.25),
-      (l10n.categoryLighting, 2.8, 0.15),
-      (l10n.categoryOthers, 1.5, 0.08),
+      for (final d in breakdown.take(4))
+        (d.name, d.kwh, (d.percentage / 100).clamp(0.0, 1.0)),
     ];
 
     return GlassContainer(
@@ -587,29 +643,32 @@ class _StatCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Flexible(
-                      child: Text(
+                // Half-width cards are narrow: shrink the number instead of ellipsizing it away.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
                         value,
-                        overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      unit,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.6,
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        unit,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
