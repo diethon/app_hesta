@@ -9,6 +9,7 @@ enum DeviceType {
   camera,
   fan,
   sensor,
+  waterPump,
 }
 
 enum DeviceStatus { online, offline }
@@ -37,6 +38,7 @@ class Device {
     this.timerHour,
     this.timerHalfHour,
     this.rawType,
+    this.gateState,
     this.manualOverrideUntil,
     this.manualOverrideActive,
     this.switchCycles,
@@ -73,6 +75,17 @@ class Device {
   final int? timerHour;
   final bool? timerHalfHour;
   final String? rawType;
+
+  // Thuộc tính Cổng / Cửa cuốn (Gate / Rolling Door)
+  final String? gateState;
+
+  bool get isGate {
+    final raw = (rawType ?? '').toUpperCase();
+    if (raw.contains('GATE') || raw.contains('ROLLING_DOOR')) return true;
+    final n = name.toLowerCase();
+    final i = id.toLowerCase();
+    return n.contains('cổng') || n.contains('gate') || i.contains('gate');
+  }
 
   // PHO-043: Manual Override (Khóa tự động hóa 30 phút)
   final String? manualOverrideUntil;
@@ -153,6 +166,7 @@ class Device {
     int? timerHour,
     bool? timerHalfHour,
     String? rawType,
+    String? gateState,
     String? manualOverrideUntil,
     bool? manualOverrideActive,
     int? switchCycles,
@@ -185,6 +199,7 @@ class Device {
       timerHour: timerHour ?? this.timerHour,
       timerHalfHour: timerHalfHour ?? this.timerHalfHour,
       rawType: rawType ?? this.rawType,
+      gateState: gateState ?? this.gateState,
       manualOverrideUntil: manualOverrideUntil ?? this.manualOverrideUntil,
       manualOverrideActive: manualOverrideActive ?? this.manualOverrideActive,
       switchCycles: switchCycles ?? this.switchCycles,
@@ -215,6 +230,7 @@ class DeviceCommand {
     this.cancelTimer,
     this.customAction,
     this.customParams,
+    this.gateAction,
   });
 
   final bool? isOn;
@@ -237,4 +253,7 @@ class DeviceCommand {
   final bool? cancelTimer;
   final String? customAction;
   final Map<String, dynamic>? customParams;
+
+  // Gate / Door (Cổng / Cửa cuốn)
+  final String? gateAction;
 }

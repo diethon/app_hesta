@@ -16,6 +16,7 @@ abstract final class DeviceVisuals {
     DeviceType.camera => Icons.videocam_rounded,
     DeviceType.fan => Icons.air_rounded,
     DeviceType.sensor => Icons.sensors_rounded,
+    DeviceType.waterPump => Icons.water_drop_rounded,
   };
 
   /// Màu accent/glow theo loại thiết bị (dark-first).
@@ -31,6 +32,7 @@ abstract final class DeviceVisuals {
       DeviceType.speaker => AppColors.orbViolet,
       DeviceType.camera => isDark ? AppColors.auroraAccent : AppColors.primary,
       DeviceType.fan => AppColors.orbTeal,
+      DeviceType.waterPump => AppColors.orbTeal,
       DeviceType.sensor =>
         isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight,
     };

@@ -41,14 +41,20 @@ class BackendResolver {
 
   Future<bool> _isHealthy(NetworkClient client, {required int seconds}) async {
     try {
-      await client.dio.get<dynamic>(
+      final response = await client.dio.get<dynamic>(
         '/actuator/health',
-        options: Options(sendTimeout: Duration(seconds: seconds)),
+        options: Options(
+          sendTimeout: Duration(seconds: seconds),
+          receiveTimeout: Duration(seconds: seconds),
+          validateStatus: (status) => status != null,
+        ),
       );
-      return true;
+      return response.statusCode != null && response.statusCode! < 500;
     } on DioException catch (e) {
-      // Any HTTP reply (backend has no actuator → 401/404) still means the server is reachable.
-      return e.response != null;
+      if (e.response != null) {
+        return true;
+      }
+      return false;
     } catch (_) {
       return false;
     }

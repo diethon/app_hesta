@@ -10,6 +10,7 @@ import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/glass/glass.dart';
 import '../../home/data/home_providers.dart';
 import '../../rooms/data/room_providers.dart';
+import '../../rooms/domain/room.dart';
 import '../data/device_providers.dart';
 import '../domain/device_onboarding_models.dart';
 import 'onboarding_controller.dart';
@@ -1010,24 +1011,39 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
   ) {
     final theme = Theme.of(context);
     final homesAsync = ref.watch(myHomesProvider);
-    final rooms = ref.watch(roomsProvider);
-
     final homes = homesAsync.valueOrNull ?? [];
-    if (state.selectedHomeId == null && homes.isNotEmpty) {
+
+    final selectedHomeId = homes.any((h) => h.id == state.selectedHomeId)
+        ? state.selectedHomeId
+        : (homes.isNotEmpty ? homes.first.id : null);
+
+    if (state.selectedHomeId != selectedHomeId && selectedHomeId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        notifier.updateSelectedHomeAndRoom(homeId: homes.first.id);
+        notifier.updateSelectedHomeAndRoom(homeId: selectedHomeId);
       });
     }
 
-    if (state.selectedRoomId == null && rooms.isNotEmpty) {
+    final roomsAsync = selectedHomeId != null
+        ? ref.watch(roomsForHomeProvider(selectedHomeId))
+        : null;
+    final rooms = roomsAsync?.valueOrNull ?? const <Room>[];
+
+    final selectedRoomId = rooms.any((r) => r.id == state.selectedRoomId)
+        ? state.selectedRoomId
+        : (rooms.isNotEmpty ? rooms.first.id : null);
+
+    if (state.selectedRoomId != selectedRoomId && selectedRoomId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        notifier.updateSelectedHomeAndRoom(roomId: rooms.first.id);
+        notifier.updateSelectedHomeAndRoom(roomId: selectedRoomId);
       });
     }
 
     if (_deviceNameController.text.isEmpty && state.customDeviceName != null) {
       _deviceNameController.text = state.customDeviceName!;
     }
+
+    final isHomesLoading = homesAsync.isLoading;
+    final isRoomsLoading = roomsAsync?.isLoading ?? false;
 
     return Column(
       children: [
@@ -1077,11 +1093,36 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               const SizedBox(height: AppSpacing.md),
 
               // Select Home
-              Text(
-                'Ngôi nhà:',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ngôi nhà:',
+                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  InkWell(
+                    onTap: () => _showCreateHomeDialog(notifier),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_rounded, size: 16, color: theme.colorScheme.primary),
+                          const SizedBox(width: 2),
+                          Text(
+                            'Tạo nhà mới',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
               Container(
@@ -1093,10 +1134,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
-                    value:
-                        state.selectedHomeId ??
-                        (homes.isNotEmpty ? homes.first.id : null),
-                    hint: const Text('Chọn nhà'),
+                    value: selectedHomeId,
+                    hint: Text(isHomesLoading
+                        ? 'Đang tải danh sách nhà...'
+                        : (homes.isEmpty ? 'Chưa có nhà (hãy tạo nhà mới)' : 'Chọn nhà')),
                     items: homes.map((h) {
                       return DropdownMenuItem<String>(
                         value: h.id,
@@ -1105,7 +1146,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) {
-                        notifier.updateSelectedHomeAndRoom(homeId: val);
+                        notifier.updateSelectedHomeAndRoom(homeId: val, clearRoom: true);
                       }
                     },
                   ),
@@ -1114,11 +1155,37 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               const SizedBox(height: AppSpacing.md),
 
               // Select Room
-              Text(
-                'Phòng:',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Phòng:',
+                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  if (selectedHomeId != null)
+                    InkWell(
+                      onTap: () => _showCreateRoomDialog(notifier, selectedHomeId),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add_rounded, size: 16, color: theme.colorScheme.primary),
+                            const SizedBox(width: 2),
+                            Text(
+                              'Thêm phòng mới',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 6),
               Container(
@@ -1130,10 +1197,12 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
-                    value:
-                        state.selectedRoomId ??
-                        (rooms.isNotEmpty ? rooms.first.id : null),
-                    hint: const Text('Chọn phòng'),
+                    value: selectedRoomId,
+                    hint: Text(isRoomsLoading
+                        ? 'Đang tải danh sách phòng...'
+                        : (selectedHomeId == null
+                            ? 'Vui lòng chọn nhà trước'
+                            : (rooms.isEmpty ? 'Chưa có phòng (hãy thêm phòng)' : 'Chọn phòng'))),
                     items: rooms.map((r) {
                       return DropdownMenuItem<String>(
                         value: r.id,
@@ -1179,18 +1248,105 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
     );
   }
 
+  Future<void> _showCreateHomeDialog(OnboardingController notifier) async {
+    final controller = TextEditingController();
+    final created = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tạo ngôi nhà mới'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Tên nhà',
+            hintText: 'VD: Nhà riêng, Chung cư...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                Navigator.of(ctx).pop(name);
+              }
+            },
+            child: const Text('Tạo nhà'),
+          ),
+        ],
+      ),
+    );
+
+    if (created != null && created.isNotEmpty) {
+      final newHomeId = await notifier.createHome(created);
+      ref.invalidate(myHomesProvider);
+      if (newHomeId != null) {
+        ref.invalidate(roomsForHomeProvider(newHomeId));
+      }
+    }
+  }
+
+  Future<void> _showCreateRoomDialog(
+    OnboardingController notifier,
+    String homeId,
+  ) async {
+    final controller = TextEditingController();
+    final created = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Thêm phòng mới'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Tên phòng',
+            hintText: 'VD: Phòng khách, Phòng làm việc...',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                Navigator.of(ctx).pop(name);
+              }
+            },
+            child: const Text('Thêm phòng'),
+          ),
+        ],
+      ),
+    );
+
+    if (created != null && created.isNotEmpty) {
+      await notifier.createRoom(homeId, created);
+      ref.invalidate(roomsForHomeProvider(homeId));
+      ref.invalidate(roomsProvider);
+    }
+  }
+
   // =========================================================================
   // STEP 6: COMPLETED SUCCESS SCREEN
   // =========================================================================
   Widget _buildCompletedStep(OnboardingState state) {
     final theme = Theme.of(context);
-    final rooms = ref.watch(roomsProvider);
-    final roomName =
-        rooms
-            .cast<dynamic>()
-            .firstWhere((r) => r.id == state.selectedRoomId, orElse: () => null)
-            ?.name ??
-        'Phòng khách';
+    final homeId = state.selectedHomeId ?? '';
+    final rooms = homeId.isNotEmpty
+        ? (ref.watch(roomsForHomeProvider(homeId)).valueOrNull ?? const <Room>[])
+        : const <Room>[];
+    final roomName = rooms
+        .cast<dynamic>()
+        .firstWhere(
+          (r) => r.id == state.selectedRoomId,
+          orElse: () => null,
+        )
+        ?.name ?? 'Phòng khách';
 
     return Column(
       children: [

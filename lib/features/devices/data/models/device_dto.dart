@@ -24,6 +24,7 @@ class DeviceDto {
     this.timerEnabled,
     this.timerHour,
     this.timerHalfHour,
+    this.gateState,
     this.manualOverrideUntil,
     this.manualOverrideActive,
     this.switchCycles,
@@ -45,14 +46,26 @@ class DeviceDto {
         ? json['currentState'] as Map<String, dynamic>
         : <String, dynamic>{};
 
+    String? gateState;
+    if (currentState.containsKey('state')) {
+      gateState = currentState['state']?.toString().toUpperCase();
+    } else if (json.containsKey('state')) {
+      gateState = json['state']?.toString().toUpperCase();
+    }
+
     bool isOn = false;
     if (currentState.containsKey('power')) {
       final p = currentState['power'];
       isOn = p == true || p == 'ON' || p == 1 || p == 'true';
     } else if (currentState.containsKey('state')) {
       final st = currentState['state']?.toString().toUpperCase();
-      // Với Lock trong app SYNA: isOn = true là "khoá", isOn = false là "mở khoá"
-      isOn = st != 'OPEN' && st != 'OPENING' && st != 'UNLOCKED';
+      final upperType = rawType.toUpperCase();
+      if (upperType.contains('GATE') || upperType.contains('LOCK') || upperType.contains('DOOR')) {
+        // Với Lock/Gate trong app SYNA: isOn = true là "khoá/đóng", isOn = false là "mở khoá/mở"
+        isOn = st != 'OPEN' && st != 'OPENING' && st != 'UNLOCKED';
+      } else {
+        isOn = st == 'ON' || st == 'RUNNING' || st == 'ACTIVE' || st == 'TRUE';
+      }
     } else if (json.containsKey('isOn')) {
       isOn = json['isOn'] == true;
     }
@@ -156,6 +169,7 @@ class DeviceDto {
       timerEnabled: timerEnabled,
       timerHour: timerHour,
       timerHalfHour: timerHalfHour,
+      gateState: gateState,
       manualOverrideUntil: manualOverrideUntil,
       manualOverrideActive: manualOverrideActive,
       switchCycles: switchCycles,
@@ -189,6 +203,7 @@ class DeviceDto {
   final bool? timerEnabled;
   final int? timerHour;
   final bool? timerHalfHour;
+  final String? gateState;
   final String? manualOverrideUntil;
   final bool? manualOverrideActive;
   final int? switchCycles;
@@ -220,6 +235,7 @@ class DeviceDto {
     'timerEnabled': timerEnabled,
     'timerHour': timerHour,
     'timerHalfHour': timerHalfHour,
+    'gateState': gateState,
     'manualOverrideUntil': manualOverrideUntil,
     'manualOverrideActive': manualOverrideActive,
     'switchCycles': switchCycles,
@@ -254,6 +270,7 @@ class DeviceDto {
       timerHour: timerHour,
       timerHalfHour: timerHalfHour,
       rawType: type,
+      gateState: gateState,
       manualOverrideUntil: manualOverrideUntil,
       manualOverrideActive: manualOverrideActive,
       switchCycles: switchCycles,
@@ -270,12 +287,19 @@ class DeviceDto {
     if (upper.contains('GATE') || upper.contains('ROLLING_DOOR')) {
       return DeviceType.lock;
     }
+    if (upper.contains('WATER_PUMP') ||
+        upper.contains('WATERPUMP') ||
+        upper.contains('PUMP') ||
+        upper.contains('MOTOR')) {
+      return DeviceType.waterPump;
+    }
     return switch (upper) {
       'LED_RGB' || 'RGB_LED' || 'RGB' || 'LED_STRIP' => DeviceType.ledRgb,
       'LIGHT' || 'LED' => DeviceType.light,
       'AC' || 'THERMOSTAT' || 'AIR_CONDITIONER' => DeviceType.thermostat,
       'LOCK' || 'DOOR' => DeviceType.lock,
       'FAN' => DeviceType.fan,
+      'WATER_PUMP' || 'PUMP' || 'MOTOR' || 'WATERPUMP' => DeviceType.waterPump,
       'SENSOR' ||
       'TEMP_SENSOR' ||
       'MOTION_SENSOR' ||
@@ -298,11 +322,25 @@ class DeviceDto {
 }
 
 /// Chuyển DeviceCommand sang cấu trúc command request của backend_hesta:
+/// - Gate / Cổng: `POST /api/v1/devices/{deviceId}/gate/command` hoặc `POST /api/v1/devices/{deviceId}/command`
+///   `{ action: 'OPEN'|'CLOSE'|'STOP' }`
 /// - LED RGB: `POST /api/v1/devices/{deviceId}/command`
 ///   `{ action: 'POWER_ON'|'POWER_OFF'|'SET_RGB'|'SET_BRIGHTNESS', ... }`
 /// - Điều hòa (AC): `POST /api/v1/devices/{deviceId}/air-conditioner/command`
 ///   `{ action: 'SET_POWER'|'SET_TEMPERATURE'|'TEMPERATURE_PLUS'|'TEMPERATURE_MINUS'|'SET_FAN'|'SET_MODE'|'SET_SWING'|'SET_TIMER'|'CANCEL_TIMER'|'GET_STATE', ... }`
 Map<String, dynamic> deviceCommandToRequestBody(DeviceCommand command) {
+  // 1. Lệnh điều khiển Cổng (Gate: OPEN, CLOSE, STOP)
+  if (command.gateAction != null) {
+    final act = command.gateAction!.trim().toUpperCase();
+    return {
+      'action': act,
+      'parameters': <String, dynamic>{
+        'state': act,
+        if (command.customParams != null) ...command.customParams!,
+      },
+    };
+  }
+
   // 1. Điều khiển Điều hòa (AC theo iot-ac.http)
   if (command.isAc) {
     if (command.cancelTimer == true) {
