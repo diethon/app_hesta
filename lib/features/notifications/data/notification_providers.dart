@@ -41,7 +41,7 @@ final notificationsControllerProvider =
           final webSocket = ref.watch(notificationWebSocketServiceProvider);
           final subs = <StreamSubscription<dynamic>>[];
 
-          // 1. Nhận thông báo từ topic của home: /topic/homes/{homeId}/events
+          // Nhận thông báo từ topic của home: /topic/homes/{homeId}/events
           if (homeId != null) {
             subs.add(
               webSocket.subscribeJson('/topic/homes/$homeId/events').listen((
@@ -57,12 +57,12 @@ final notificationsControllerProvider =
             );
           }
 
-          // 2. Kênh fallback theo userId
-          subs.add(
-            webSocket
-                .subscribeJson('/topic/users/$userId/notifications')
-                .listen(controller.onRealtime),
-          );
+          // // 2. Kênh fallback theo userId
+          // subs.add(
+          //   webSocket
+          //       .subscribeJson('/topic/users/$userId/notifications')
+          //       .listen(controller.onRealtime),
+          // );
 
           ref.onDispose(() {
             for (final sub in subs) {

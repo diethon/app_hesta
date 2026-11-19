@@ -108,11 +108,16 @@ class OnboardingController extends StateNotifier<OnboardingState> {
       state = state.copyWith(isLoading: false, selectedBleDevice: target);
     } catch (e) {
       if (!mounted) return;
+      final errorStr = e.toString();
+      String userFriendlyMessage = 'Lỗi khi quét Bluetooth: ${errorStr.replaceFirst("Exception: ", "")}';
+      if (errorStr.toLowerCase().contains('location services are required') ||
+          errorStr.toLowerCase().contains('location')) {
+        userFriendlyMessage = 'Vui lòng BẬT Dịch vụ Định vị (GPS / Vị trí) trên điện thoại và cấp quyền Vị trí cho ứng dụng để quét Bluetooth.';
+      }
       state = state.copyWith(
         isLoading: false,
         step: OnboardingStep.error,
-        errorMessage:
-            'Lỗi khi quét Bluetooth: ${e.toString().replaceFirst("Exception: ", "")}',
+        errorMessage: userFriendlyMessage,
       );
     }
   }
@@ -198,12 +203,41 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     String? homeId,
     String? roomId,
     String? customName,
+    bool clearRoom = false,
   }) {
     state = state.copyWith(
       selectedHomeId: homeId ?? state.selectedHomeId,
-      selectedRoomId: roomId ?? state.selectedRoomId,
+      selectedRoomId: clearRoom ? null : (roomId ?? state.selectedRoomId),
       customDeviceName: customName ?? state.customDeviceName,
     );
+  }
+
+  Future<String?> createHome(String name) async {
+    try {
+      final newHomeId = await _repository.createHome(name);
+      state = state.copyWith(selectedHomeId: newHomeId, selectedRoomId: null);
+      return newHomeId;
+    } catch (e) {
+      state = state.copyWith(
+        errorMessage: 'Không thể tạo nhà: ${e.toString().replaceFirst("Exception: ", "")}',
+      );
+      return null;
+    }
+  }
+
+  Future<String?> createRoom(String homeId, String name) async {
+    try {
+      final newRoomId = await _repository.createRoom(homeId: homeId, name: name);
+      if (newRoomId.isNotEmpty) {
+        state = state.copyWith(selectedRoomId: newRoomId);
+      }
+      return newRoomId;
+    } catch (e) {
+      state = state.copyWith(
+        errorMessage: 'Không thể tạo phòng: ${e.toString().replaceFirst("Exception: ", "")}',
+      );
+      return null;
+    }
   }
 
   Future<void> claimDevice() async {

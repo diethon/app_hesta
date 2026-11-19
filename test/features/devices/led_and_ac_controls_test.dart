@@ -172,4 +172,61 @@ void main() {
       },
     );
   });
+
+  group('Water Pump Device and Commands (water-pump.http)', () {
+    test('DeviceDto parse WATER_PUMP device from backend json', () {
+      final jsonOn = {
+        'id': 'pump-001',
+        'name': 'Garden Water Pump',
+        'roomId': 'garden',
+        'deviceType': 'WATER_PUMP',
+        'status': 'ONLINE',
+        'currentState': {
+          'power': true,
+          'state': 'ON',
+        },
+      };
+
+      final dtoOn = DeviceDto.fromJson(jsonOn);
+      final domainOn = dtoOn.toDomain();
+
+      expect(domainOn.type, DeviceType.waterPump);
+      expect(domainOn.isOn, isTrue);
+
+      final jsonOff = {
+        'id': 'pump-001',
+        'name': 'Garden Water Pump',
+        'roomId': 'garden',
+        'deviceType': 'WATER_PUMP',
+        'status': 'ONLINE',
+        'currentState': {
+          'power': false,
+          'state': 'OFF',
+        },
+      };
+
+      final dtoOff = DeviceDto.fromJson(jsonOff);
+      final domainOff = dtoOff.toDomain();
+
+      expect(domainOff.type, DeviceType.waterPump);
+      expect(domainOff.isOn, isFalse);
+    });
+
+    test('deviceCommandToRequestBody creates POWER_ON / POWER_OFF for water pump', () {
+      expect(
+        deviceCommandToRequestBody(const DeviceCommand(isOn: true)),
+        {
+          'action': 'POWER_ON',
+          'parameters': {'power': true},
+        },
+      );
+      expect(
+        deviceCommandToRequestBody(const DeviceCommand(isOn: false)),
+        {
+          'action': 'POWER_OFF',
+          'parameters': {'power': false},
+        },
+      );
+    });
+  });
 }

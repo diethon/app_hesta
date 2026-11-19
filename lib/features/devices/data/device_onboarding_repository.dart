@@ -19,6 +19,10 @@ abstract interface class DeviceOnboardingRepository {
     String? name,
     String? nodeCode,
   });
+
+  Future<String> createHome(String name);
+
+  Future<String> createRoom({required String homeId, required String name});
 }
 
 class ApiDeviceOnboardingRepository implements DeviceOnboardingRepository {
@@ -71,6 +75,42 @@ class ApiDeviceOnboardingRepository implements DeviceOnboardingRepository {
         throw const UnknownException('Không thể liên kết thiết bị.');
       }
       return DeviceDto.fromJson(result).toDomain();
+    } on DioException catch (error) {
+      throw mapDioException(error);
+    }
+  }
+
+  @override
+  Future<String> createHome(String name) async {
+    try {
+      final response = await _client.post<Map<String, dynamic>>(
+        '/api/v1/homes',
+        data: {'name': name},
+      );
+      final body = response.data;
+      final result = body?['result'];
+      if (result is Map) {
+        return (result['homeId'] ?? result['id'] ?? '').toString();
+      }
+      throw const UnknownException('Không thể tạo nhà.');
+    } on DioException catch (error) {
+      throw mapDioException(error);
+    }
+  }
+
+  @override
+  Future<String> createRoom({required String homeId, required String name}) async {
+    try {
+      final response = await _client.post<Map<String, dynamic>>(
+        '/api/v1/homes/$homeId/rooms',
+        data: {'name': name, 'icon': 'default'},
+      );
+      final body = response.data;
+      final result = body?['result'];
+      if (result is Map && result['id'] != null) {
+        return result['id'].toString();
+      }
+      return '';
     } on DioException catch (error) {
       throw mapDioException(error);
     }

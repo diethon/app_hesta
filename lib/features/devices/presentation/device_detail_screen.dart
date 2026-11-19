@@ -563,7 +563,56 @@ class _StatusBlock extends StatelessWidget {
     final l10n = context.l10n;
     final pills = <Widget>[];
 
-    if (device.type == DeviceType.lock) {
+    if (device.isGate) {
+      final isClosing = device.gateState == 'CLOSING';
+      final isOpening = device.gateState == 'OPENING';
+      final isStopped = device.gateState == 'STOPPED';
+      final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
+      final isOpen = device.gateState == 'OPEN' || (device.gateState == null && !device.isOn);
+
+      final gateLabel = isOpening
+          ? 'Đang mở cổng...'
+          : (isClosing
+              ? 'Đang đóng cổng...'
+              : (isStopped
+                  ? 'Đang tạm dừng'
+                  : (isClosed ? 'Cổng đã đóng' : 'Cổng đang mở')));
+
+      final gateColor = (isOpening || isClosing)
+          ? AppColors.auroraWarning
+          : (isStopped
+              ? Colors.orangeAccent
+              : (isClosed ? AppColors.auroraMint : AppColors.orbTeal));
+
+      final gateIcon = (isClosed)
+          ? Icons.door_front_door_rounded
+          : (isOpen ? Icons.meeting_room_rounded : Icons.sync_rounded);
+
+      pills.addAll([
+        GlassStatusPill(
+          icon: gateIcon,
+          label: gateLabel,
+          color: gateColor,
+        ),
+        GlassStatusPill(
+          icon: device.status == DeviceStatus.online
+              ? Icons.wifi_rounded
+              : Icons.wifi_off_rounded,
+          label: device.status == DeviceStatus.online
+              ? l10n.deviceOnline
+              : l10n.deviceOffline,
+          color: device.status == DeviceStatus.online
+              ? AppColors.auroraMint
+              : AppColors.auroraError,
+        ),
+        if (device.subtitle != null && device.subtitle!.isNotEmpty)
+          GlassStatusPill(
+            icon: Icons.location_on_outlined,
+            label: device.subtitle!,
+            color: accent,
+          ),
+      ]);
+    } else if (device.type == DeviceType.lock) {
       pills.addAll([
         GlassStatusPill(icon: Icons.threesixty_rounded, label: '360°'),
         GlassStatusPill(
@@ -648,6 +697,9 @@ class _MainControls extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (device.isGate) {
+      return _GateControls(device: device, accent: accent);
+    }
     return switch (device.type) {
       DeviceType.light => _LightControls(device: device, accent: accent),
       DeviceType.ledRgb => LedRgbControls(device: device, accent: accent),
@@ -658,6 +710,7 @@ class _MainControls extends ConsumerWidget {
       ),
       DeviceType.fan => _FanControls(device: device, accent: accent),
       DeviceType.speaker => _SpeakerControls(device: device, accent: accent),
+      DeviceType.waterPump => _WaterPumpControls(device: device, accent: accent),
       DeviceType.sensor ||
       DeviceType.camera => _SensorControls(device: device, accent: accent),
     };
@@ -843,6 +896,242 @@ class _LockControls extends ConsumerWidget {
   }
 }
 
+class _GateControls extends ConsumerWidget {
+  const _GateControls({required this.device, required this.accent});
+
+  final Device device;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final offline = device.status == DeviceStatus.offline;
+    final controller = ref.read(devicesControllerProvider.notifier);
+
+    final isClosing = device.gateState == 'CLOSING';
+    final isOpening = device.gateState == 'OPENING';
+    final isStopped = device.gateState == 'STOPPED';
+    final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
+    final isOpen = device.gateState == 'OPEN' || (device.gateState == null && !device.isOn);
+
+    void sendGate(String action) {
+      HapticFeedback.mediumImpact();
+      controller.updateDevice(
+        device.id,
+        DeviceCommand(gateAction: action),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Khối trạng thái & điều khiển 3 nút chính
+        GlassContainer(
+          radius: AppRadius.hero,
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          device.name,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          offline
+                              ? 'Thiết bị ngoại tuyến'
+                              : (isOpening
+                                  ? 'Đang mở cổng...'
+                                  : (isClosing
+                                      ? 'Đang đóng cổng...'
+                                      : (isStopped
+                                          ? 'Cổng đang dừng'
+                                          : (isClosed ? 'Cổng đã đóng hoàn toàn' : 'Cổng đang mở')))),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: offline
+                                ? AppColors.auroraError
+                                : (isOpening || isClosing
+                                    ? AppColors.auroraWarning
+                                    : (isClosed ? AppColors.auroraMint : AppColors.orbTeal)),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: (isClosed ? AppColors.auroraMint : AppColors.orbTeal).withValues(alpha: 0.15),
+                      boxShadow: GlassTokens.glow(
+                        isClosed ? AppColors.auroraMint : AppColors.orbTeal,
+                        intensity: 0.35,
+                      ),
+                    ),
+                    child: Icon(
+                      isClosed ? Icons.door_front_door_rounded : Icons.meeting_room_rounded,
+                      color: isClosed ? AppColors.auroraMint : AppColors.orbTeal,
+                      size: 26,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              // 3 Nút lệnh: Mở cổng (OPEN), Dừng (STOP), Đóng cổng (CLOSE)
+              Row(
+                children: [
+                  Expanded(
+                    child: _GateActionButton(
+                      icon: Icons.arrow_upward_rounded,
+                      label: 'Mở cổng',
+                      active: isOpening || isOpen,
+                      accent: AppColors.orbTeal,
+                      enabled: !offline && !isOpening,
+                      onTap: () => sendGate('OPEN'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _GateActionButton(
+                      icon: Icons.stop_rounded,
+                      label: 'Dừng',
+                      active: isStopped,
+                      accent: Colors.orangeAccent,
+                      enabled: !offline,
+                      onTap: () => sendGate('STOP'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _GateActionButton(
+                      icon: Icons.arrow_downward_rounded,
+                      label: 'Đóng cổng',
+                      active: isClosing || isClosed,
+                      accent: AppColors.auroraMint,
+                      enabled: !offline && !isClosing,
+                      onTap: () => sendGate('CLOSE'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        // Thanh trượt xác nhận thao tác mở / đóng an toàn
+        SlideToConfirm(
+          label: isClosed
+              ? 'Kéo để MỞ cổng'
+              : (isOpen ? 'Kéo để ĐÓNG cổng' : 'Kéo để DỪNG cổng'),
+          icon: isClosed
+              ? Icons.lock_open_rounded
+              : (isOpen ? Icons.lock_rounded : Icons.stop_circle_outlined),
+          color: isClosed
+              ? AppColors.orbTeal
+              : (isOpen ? AppColors.auroraMint : Colors.orangeAccent),
+          onConfirmed: () {
+            if (isClosed) {
+              sendGate('OPEN');
+            } else if (isOpen) {
+              sendGate('CLOSE');
+            } else {
+              sendGate('STOP');
+            }
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _GateActionButton extends StatelessWidget {
+  const _GateActionButton({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.accent,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final Color accent;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: AnimatedContainer(
+          duration: GlassTokens.durationMed,
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            color: active
+                ? accent.withValues(alpha: 0.22)
+                : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: active
+                  ? accent.withValues(alpha: 0.8)
+                  : Colors.white.withValues(alpha: 0.12),
+              width: active ? 1.5 : 1.0,
+            ),
+            boxShadow: active
+                ? GlassTokens.glow(accent, intensity: 0.35)
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: enabled
+                    ? (active ? accent : Colors.white.withValues(alpha: 0.85))
+                    : Colors.white.withValues(alpha: 0.3),
+                size: 26,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                  color: enabled
+                      ? (active ? Colors.white : Colors.white.withValues(alpha: 0.75))
+                      : Colors.white.withValues(alpha: 0.3),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FanControls extends ConsumerStatefulWidget {
   const _FanControls({required this.device, required this.accent});
 
@@ -931,6 +1220,106 @@ class _SpeakerControls extends ConsumerWidget {
   }
 }
 
+class _WaterPumpControls extends ConsumerWidget {
+  const _WaterPumpControls({required this.device, required this.accent});
+
+  final Device device;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final offline = device.status == DeviceStatus.offline;
+
+    return GlassContainer(
+      radius: AppRadius.hero,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      device.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      offline
+                          ? l10n.deviceOffline
+                          : (device.isOn ? l10n.deviceOn : l10n.deviceOff),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: device.isOn
+                            ? AppColors.auroraMint
+                            : Colors.white.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _PowerButton(device: device, accent: accent),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.water_drop_rounded,
+                  color: device.isOn ? accent : Colors.white.withValues(alpha: 0.4),
+                  size: 22,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    device.isOn
+                        ? (device.subtitle ?? 'Máy bơm đang hoạt động')
+                        : 'Máy bơm đang tắt',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ),
+                GlassToggle(
+                  value: device.isOn,
+                  onChanged: offline
+                      ? null
+                      : (val) {
+                          ref
+                              .read(devicesControllerProvider.notifier)
+                              .updateDevice(
+                                device.id,
+                                DeviceCommand(isOn: val),
+                              );
+                        },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SensorControls extends StatelessWidget {
   const _SensorControls({required this.device, required this.accent});
 
@@ -992,11 +1381,55 @@ class _SecondaryBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (device.isGate) {
+      return const _GateInfoCard();
+    }
     return switch (device.type) {
       DeviceType.light || DeviceType.ledRgb => _WeeklySchedule(accent: accent),
       DeviceType.lock => const _LockHistory(),
       _ => _EnergyHistory(accent: accent),
     };
+  }
+}
+
+class _GateInfoCard extends StatelessWidget {
+  const _GateInfoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GlassContainer(
+      radius: AppRadius.hero,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: AppColors.auroraMint, size: 20),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'Hướng dẫn điều khiển cổng',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '• Mở cổng: Kích hoạt động cơ trượt mở cổng cho đến khi chạm công tắc giới hạn.\n'
+            '• Đóng cổng: Kích hoạt động cơ trượt đóng cổng an toàn.\n'
+            '• Dừng: Dừng ngay chuyển động của cổng tại vị trí hiện tại.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.white.withValues(alpha: 0.7),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

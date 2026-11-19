@@ -57,10 +57,10 @@ final deviceStateStreamProvider = StreamProvider.family<Device, String>((
           return DeviceDto.fromJson(event).toDomain();
         });
   }
-
-  return webSocketService
-      .subscribeJson('/topic/devices/$deviceId/state')
-      .map((json) => DeviceDto.fromJson(json).toDomain());
+  // return webSocketService
+  //     .subscribeJson('/topic/devices/$deviceId/state')
+  //     .map((json) => DeviceDto.fromJson(json).toDomain());
+  return const Stream<Device>.empty();
 });
 
 final devicesControllerProvider =
@@ -180,7 +180,7 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
     }
     _realtimeSubs.clear();
 
-    // 1. Topic chuẩn theo kiến trúc backend_hesta: /topic/homes/{homeId}/events
+    // Topic chuẩn theo kiến trúc backend_hesta: /topic/homes/{homeId}/events
     if (homeId != null) {
       _realtimeSubs.add(
         realtime.subscribeJson('/topic/homes/$homeId/events').listen((event) {
@@ -198,13 +198,13 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
     }
 
     // 2. Kênh fallback
-    for (final device in devices) {
-      _realtimeSubs.add(
-        realtime
-            .subscribeJson('/topic/devices/${device.id}/state')
-            .listen(_applyRealtimeUpdate),
-      );
-    }
+    // for (final device in devices) {
+    //   _realtimeSubs.add(
+    //     realtime
+    //         .subscribeJson('/topic/devices/${device.id}/state')
+    //         .listen(_applyRealtimeUpdate),
+    //   );
+    // }
   }
 
   void _applySensorReadingUpdate(Map<String, dynamic> data) {

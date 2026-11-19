@@ -6,8 +6,13 @@ import '../../authentication/presentation/auth_controller.dart';
 import 'models/home_dto.dart';
 
 final myHomesProvider = FutureProvider.autoDispose<List<HomeDto>>((ref) async {
+  if (kUseMockData) {
+    return const [
+      HomeDto(id: 'mock-home-1', name: 'Nhà của tôi', role: 'OWNER'),
+    ];
+  }
   final session = ref.watch(authControllerProvider).session;
-  if (session == null || kUseMockData) {
+  if (session == null) {
     return const [];
   }
 
