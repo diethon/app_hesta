@@ -6,13 +6,11 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/glass_tokens.dart';
-import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
 import '../../../core/widgets/glass/glass_card.dart';
 import '../../../core/widgets/glass/glass_status_pill.dart';
 import '../../../core/widgets/glass/glass_toggle.dart';
-import '../../home/data/home_providers.dart';
 import '../data/automation_providers.dart';
 import '../domain/automation_models.dart';
 import 'automation_rule_editor_screen.dart';
@@ -30,7 +28,6 @@ class AutomationRuleDetailScreen extends ConsumerStatefulWidget {
 class _AutomationRuleDetailScreenState
     extends ConsumerState<AutomationRuleDetailScreen> {
   late AutomationRule _rule;
-  bool _isTesting = false;
 
   @override
   void initState() {
@@ -38,86 +35,6 @@ class _AutomationRuleDetailScreenState
     _rule = widget.rule;
   }
 
-  Future<void> _testRule() async {
-    final homeId = ref.read(currentHomeIdProvider);
-    if (homeId == null) return;
-
-    setState(() => _isTesting = true);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    try {
-      final repo = ref.read(automationRepositoryProvider);
-      // Same simulated event as the web RuleTestSheet: each condition reports its expected value.
-      final eventCond = _rule.conditions
-          .where((c) => c.attribute == 'eventType')
-          .firstOrNull;
-      final result = await repo.testRule(
-        homeId,
-        _rule.id,
-        eventData: {
-          'sourceDeviceId': _rule.conditions
-              .where((c) => c.deviceId != null)
-              .firstOrNull
-              ?.deviceId,
-          'eventType': _rule.triggerType == 'EVENT'
-              ? (eventCond?.expectedValue?.toString() ?? 'EVENT')
-              : 'SENSOR',
-          'data': {
-            for (final c in _rule.conditions)
-              if (c.attribute.isNotEmpty && c.attribute != 'eventType')
-                c.attribute: c.expectedValue,
-          },
-        },
-      );
-      final matched = result['matched'] == true;
-      final proposed = (result['proposedActions'] as List?)?.length ?? 0;
-
-      if (!mounted) return;
-      await showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: isDark
-              ? AppColors.auroraCanvasMid
-              : AppColors.surface,
-          title: Row(
-            children: [
-              Icon(
-                matched
-                    ? Icons.check_circle_rounded
-                    : Icons.info_outline_rounded,
-                color: matched ? AppColors.success : AppColors.warning,
-              ),
-              const SizedBox(width: 8),
-              const Text('Kết quả chạy thử'),
-            ],
-          ),
-          content: Text(
-            matched
-                ? 'Điều kiện khớp. Quy tắc sẽ thực hiện $proposed hành động (chạy thử không điều khiển thiết bị thật).'
-                : 'Điều kiện chưa khớp nên quy tắc sẽ không chạy.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Đóng'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Chạy thử thất bại: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isTesting = false);
-    }
-  }
 
   Future<void> _deleteRule() async {
     final theme = Theme.of(context);
@@ -277,16 +194,6 @@ class _AutomationRuleDetailScreenState
                                       : AppColors.onSurfaceVariant,
                                   height: 1.4,
                                 ),
-                              ),
-                            ],
-                            // Like the web: a SCHEDULE rule has no event to simulate.
-                            if (_rule.triggerType != 'SCHEDULE') ...[
-                              const SizedBox(height: AppSpacing.lg),
-                              AppButton(
-                                label: 'Chạy thử quy tắc',
-                                icon: Icons.play_arrow_rounded,
-                                isLoading: _isTesting,
-                                onPressed: _testRule,
                               ),
                             ],
                           ],

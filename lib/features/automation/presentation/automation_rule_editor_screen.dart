@@ -428,7 +428,7 @@ class _AutomationRuleEditorScreenState
                   deviceName: isDevice ? selectedDevice?.name : null,
                   sceneId: !isDevice ? selectedScene?.id : null,
                   sceneName: !isDevice ? selectedScene?.name : null,
-                  action: isDevice ? actionCmd : 'TRIGGER_SCENE',
+                  action: isDevice ? actionCmd : 'EXECUTE_SCENE',
                   order: _actions.length,
                 );
                 Navigator.of(ctx).pop(act);

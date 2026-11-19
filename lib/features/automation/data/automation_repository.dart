@@ -125,18 +125,6 @@ class AutomationRepository {
         .toList();
   }
 
-  Future<Map<String, dynamic>> testRule(
-    String homeId,
-    String ruleId, {
-    Map<String, dynamic>? eventData,
-  }) async {
-    final response = await client.post<dynamic>(
-      '/api/v1/homes/$homeId/automation-rules/$ruleId/test',
-      data: eventData ?? {},
-    );
-    return _extractMap(response.data);
-  }
-
   List<dynamic> _extractList(dynamic body) {
     if (body is Map) {
       final result = body['result'] ?? body['data'];
