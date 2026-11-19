@@ -46,6 +46,27 @@ class RuleCondition {
     };
   }
 
+  RuleCondition copyWith({
+    String? deviceId,
+    bool clearDevice = false,
+    String? attribute,
+    String? operator,
+    Object? expectedValue,
+    String? logicalOperator,
+    int? order,
+  }) {
+    return RuleCondition(
+      id: id,
+      deviceId: clearDevice ? null : (deviceId ?? this.deviceId),
+      deviceName: clearDevice ? null : deviceName,
+      attribute: attribute ?? this.attribute,
+      operator: operator ?? this.operator,
+      expectedValue: expectedValue ?? this.expectedValue,
+      logicalOperator: logicalOperator ?? this.logicalOperator,
+      order: order ?? this.order,
+    );
+  }
+
   String get operatorSymbol {
     switch (operator.toUpperCase()) {
       case 'GT':
@@ -98,6 +119,27 @@ class RuleAction {
       action: (json['action'] ?? '').toString(),
       parameters: params is Map ? Map<String, dynamic>.from(params) : const {},
       order: (json['order'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  RuleAction copyWith({
+    String? deviceId,
+    String? deviceName,
+    String? sceneId,
+    String? sceneName,
+    String? action,
+    Map<String, dynamic>? parameters,
+    int? order,
+  }) {
+    return RuleAction(
+      id: id,
+      deviceId: deviceId ?? this.deviceId,
+      deviceName: deviceName ?? this.deviceName,
+      sceneId: sceneId ?? this.sceneId,
+      sceneName: sceneName ?? this.sceneName,
+      action: action ?? this.action,
+      parameters: parameters ?? this.parameters,
+      order: order ?? this.order,
     );
   }
 
@@ -258,4 +300,53 @@ class AutomationExecution {
       details: summary.isEmpty ? null : summary,
     );
   }
+}
+
+/// Một giờ chạy của quy tắc SCHEDULE (ScheduleResponse của backend).
+@immutable
+class RuleSchedule {
+  const RuleSchedule({
+    this.id,
+    required this.time,
+    this.repeatDays = const [],
+    this.active = true,
+  });
+
+  /// null = chưa lưu.
+  final String? id;
+
+  /// "HH:mm".
+  final String time;
+
+  /// ISO 1=T2 … 7=CN; rỗng = hằng ngày.
+  final List<int> repeatDays;
+  final bool active;
+
+  factory RuleSchedule.fromJson(Map<String, dynamic> json) {
+    final t = (json['scheduledTime'] ?? json['time'] ?? '00:00').toString();
+    final days = json['repeatDays'];
+    return RuleSchedule(
+      id: json['id']?.toString(),
+      time: t.length >= 5 ? t.substring(0, 5) : t,
+      repeatDays: days is List
+          ? days.whereType<num>().map((n) => n.toInt()).toList()
+          : const [],
+      active: json['active'] as bool? ?? json['enabled'] as bool? ?? true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    if (id != null) 'id': id,
+    'scheduledTime': time,
+    'repeatDays': [...repeatDays]..sort(),
+    'active': active,
+  };
+
+  RuleSchedule copyWith({String? time, List<int>? repeatDays, bool? active}) =>
+      RuleSchedule(
+        id: id,
+        time: time ?? this.time,
+        repeatDays: repeatDays ?? this.repeatDays,
+        active: active ?? this.active,
+      );
 }

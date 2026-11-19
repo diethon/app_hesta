@@ -51,23 +51,22 @@ void main() {
         // Verify device name & explanation
         expect(find.text('Đèn ngủ'), findsOneWidget);
         expect(find.text('Thói quen tắt đèn lúc 23:00'), findsOneWidget);
-        expect(find.text('95% tin cậy'), findsOneWidget);
+        expect(find.text('Rất phù hợp'), findsOneWidget);
 
         // Verify trigger time and repeat days
-        expect(find.text('Lúc 23:00'), findsOneWidget);
-        expect(find.text('Thứ 2 - Thứ 6'), findsOneWidget);
+        expect(find.text('Lúc 23:00 · Thứ 2 – Thứ 6'), findsOneWidget);
 
         // Verify action buttons
-        expect(find.text('Chấp nhận & Tạo quy tắc'), findsOneWidget);
-        expect(find.text('Từ chối'), findsOneWidget);
+        expect(find.text('Tạo quy tắc'), findsOneWidget);
+        expect(find.text('Không cần'), findsOneWidget);
 
         // Tap approve
-        await tester.tap(find.text('Chấp nhận & Tạo quy tắc'));
+        await tester.tap(find.text('Tạo quy tắc'));
         await tester.pump();
         expect(approved, true);
 
         // Tap reject
-        await tester.tap(find.text('Từ chối'));
+        await tester.tap(find.text('Không cần'));
         await tester.pump();
         expect(rejected, true);
 
@@ -116,9 +115,9 @@ void main() {
       );
 
       expect(find.text('Điều hòa phòng khách'), findsOneWidget);
-      expect(find.text('Hàng ngày'), findsOneWidget);
-      expect(find.text('ĐÃ DUYỆT'), findsOneWidget);
-      expect(find.text('Chấp nhận & Tạo quy tắc'), findsNothing);
+      expect(find.textContaining('Hằng ngày'), findsOneWidget);
+      expect(find.text('Đã tạo quy tắc'), findsOneWidget);
+      expect(find.text('Tạo quy tắc'), findsNothing);
     });
   });
 
@@ -134,7 +133,7 @@ void main() {
       await tester.pump();
 
       // Check title and segmented control exist
-      expect(find.text('Tự động hóa (Automations)'), findsOneWidget);
+      expect(find.text('Tự động hoá'), findsOneWidget);
       expect(find.byType(AutomationScreen), findsOneWidget);
     });
   });

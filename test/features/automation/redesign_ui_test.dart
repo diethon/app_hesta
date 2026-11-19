@@ -105,10 +105,10 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('KÍCH HOẠT NHANH 1-CHẠM'), findsOneWidget);
+      expect(find.text('Chạy nhanh'), findsOneWidget);
       expect(find.text('Chào buổi sáng'), findsAtLeastNWidgets(1));
       expect(find.text('1 thiết bị'), findsOneWidget);
-      expect(find.text('Chạy ngay'), findsOneWidget);
+      expect(find.text('Chạy'), findsOneWidget);
     });
 
     testWidgets('AutomationRulesScreen renders visual IF/THEN recipe card', (
@@ -158,9 +158,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Tự động bật điều hòa khi nóng'), findsOneWidget);
-      expect(find.text('KHI (IF)'), findsOneWidget);
-      expect(find.text('THÌ (THEN)'), findsOneWidget);
-      expect(find.text('CẢM BIẾN'), findsAtLeastNWidgets(1));
+      expect(find.text('Khi'), findsOneWidget);
+      expect(find.text('Thì'), findsOneWidget);
+      expect(find.textContaining('Cảm biến'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('RecommendationsScreen renders ML model card and scan action', (
@@ -214,12 +214,16 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Mô hình AI & Machine Learning'), findsOneWidget);
+      expect(find.text('Trợ lý thói quen'), findsOneWidget);
+      // Số liệu kỹ thuật ẩn trong mục "Chi tiết".
+      expect(find.text('94%'), findsNothing);
+      await tester.tap(find.text('Chi tiết'));
+      await tester.pumpAndSettle();
       expect(find.text('94%'), findsOneWidget);
       expect(find.text('1500'), findsOneWidget);
-      expect(find.text('Phân tích hành vi & Quét đề xuất mới'), findsOneWidget);
+      expect(find.text('Tìm gợi ý mới'), findsOneWidget);
       expect(find.text('Đèn ban công'), findsOneWidget);
-      expect(find.text('92% tin cậy'), findsOneWidget);
+      expect(find.text('Rất phù hợp'), findsOneWidget);
     });
   });
 }

@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
-import '../../../app/theme/app_colors.dart';
-import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
-import '../../../app/theme/glass_tokens.dart';
-import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
-import '../../../core/widgets/glass/glass_card.dart';
-import '../../../core/widgets/glass/glass_status_pill.dart';
 import '../../../core/widgets/glass/glass_toggle.dart';
+import '../../../core/widgets/studio.dart';
 import '../data/automation_providers.dart';
 import '../domain/automation_models.dart';
 import 'automation_rule_editor_screen.dart';
@@ -37,27 +31,22 @@ class _AutomationRuleDetailScreenState
 
 
   Future<void> _deleteRule() async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? AppColors.auroraCanvasMid : AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        title: const Text('Xác nhận xóa'),
-        content: Text('Bạn có chắc muốn xóa quy tắc "${_rule.name}"?'),
+        title: const Text('Xoá quy tắc?'),
+        content: Text('"${_rule.name}" sẽ ngừng chạy và bị xoá vĩnh viễn.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy'),
+            child: const Text('Huỷ'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Xóa quy tắc'),
+            style: TextButton.styleFrom(
+              foregroundColor: StudioColors.of(ctx).danger,
+            ),
+            child: const Text('Xoá'),
           ),
         ],
       ),
@@ -71,93 +60,84 @@ class _AutomationRuleDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = theme.colorScheme.primary;
-    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
     final executionsAsync = ref.watch(
       automationRuleExecutionsProvider(_rule.id),
     );
+    final join = _rule.conditions.isNotEmpty &&
+            _rule.conditions.first.logicalOperator.toUpperCase() == 'OR'
+        ? 'hoặc'
+        : 'và';
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AmbientBackground(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              automaticallyImplyLeading: false,
-              toolbarHeight: 68,
-              flexibleSpace: GlassAppBar(
-                title: 'Chi tiết quy tắc',
-                onBack: () => Navigator.of(context).maybePop(),
-                actions: [
-                  GlassIconButton(
-                    icon: Icons.edit_outlined,
-                    tooltip: 'Sửa quy tắc',
-                    onTap: () async {
-                      final updated = await Navigator.of(context).push<bool>(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AutomationRuleEditorScreen(rule: _rule),
-                        ),
-                      );
-                      if (updated == true && context.mounted) {
-                        await ref
-                            .read(automationRulesListProvider.notifier)
-                            .refresh();
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                        }
-                      }
-                    },
+    return StudioBackground(
+      child: Builder(
+        builder: (context) {
+          final c = StudioColors.of(context);
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            body: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  automaticallyImplyLeading: false,
+                  toolbarHeight: 68,
+                  flexibleSpace: GlassAppBar(
+                    title: 'Chi tiết quy tắc',
+                    onBack: () => Navigator.of(context).maybePop(),
+                    actions: [
+                      GlassIconButton(
+                        icon: Icons.edit_outlined,
+                        tooltip: 'Sửa quy tắc',
+                        onTap: () async {
+                          final updated = await Navigator.of(context)
+                              .push<bool>(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      AutomationRuleEditorScreen(rule: _rule),
+                                ),
+                              );
+                          if (updated == true && context.mounted) {
+                            await ref
+                                .read(automationRulesListProvider.notifier)
+                                .refresh();
+                            if (context.mounted) Navigator.of(context).pop();
+                          }
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.sm,
-                AppSpacing.screen,
-                AppSpacing.navClearance * 1.5,
-              ),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Hero Header Card
-                  Builder(
-                    builder: (context) {
-                      final trigColor = _rule.triggerType == 'SCHEDULE'
-                          ? const Color(0xFFFBBF24)
-                          : (_rule.triggerType == 'SENSOR'
-                                ? const Color(0xFF38BDF8)
-                                : const Color(0xFFA855F7));
-
-                      return GlassCard(
-                        padding: const EdgeInsets.all(AppSpacing.xl),
-                        radius: AppRadius.hero,
-                        borderGradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            trigColor.withValues(alpha: 0.5),
-                            Colors.white.withValues(alpha: 0.08),
-                          ],
-                        ),
-                        shadows: GlassTokens.glow(trigColor, intensity: 0.35),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    AppSpacing.sm,
+                    AppSpacing.screen,
+                    AppSpacing.navClearance * 1.5,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      StudioCard(
+                        padding: const EdgeInsets.all(20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                GlassStatusPill(
-                                  label: _rule.triggerType,
-                                  color: trigColor,
+                                StudioTag(
+                                  label: describeTrigger(_rule.triggerType),
+                                  color: c.accent,
                                 ),
+                                const Spacer(),
+                                Text(
+                                  _rule.enabled ? 'Đang bật' : 'Đã tắt',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: c.muted,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
                                 GlassToggle(
                                   value: _rule.enabled,
                                   onChanged: (_) async {
@@ -175,272 +155,252 @@ class _AutomationRuleDetailScreenState
                                 ),
                               ],
                             ),
-                            const SizedBox(height: AppSpacing.md),
+                            const SizedBox(height: 14),
                             Text(
                               _rule.name,
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.3,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: c.text,
                               ),
                             ),
                             if (_rule.description != null &&
                                 _rule.description!.isNotEmpty) ...[
-                              const SizedBox(height: AppSpacing.xs),
+                              const SizedBox(height: 6),
                               Text(
                                 _rule.description!,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: isDark
-                                      ? AppColors.onDarkMuted
-                                      : AppColors.onSurfaceVariant,
+                                style: TextStyle(
+                                  fontSize: 14,
                                   height: 1.4,
+                                  color: c.muted,
                                 ),
                               ),
                             ],
                           ],
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
+                      ),
+                      const SizedBox(height: 24),
 
-                  // IF Conditions
-                  Text(
-                    'ĐIỀU KIỆN KÍCH HOẠT (IF)',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: accent,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  GlassCard(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    radius: AppRadius.card,
-                    child: _rule.conditions.isEmpty
-                        ? const Text('Luôn thỏa mãn')
-                        : Column(
-                            children: _rule.conditions
-                                .map(
-                                  (c) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: accent.withValues(
-                                              alpha: 0.2,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'IF',
-                                            style: TextStyle(
-                                              color: accent,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                      _SectionTitle('Khi nào chạy'),
+                      StudioCard(
+                        child: _rule.conditions.isEmpty
+                            ? _Line(
+                                icon: Icons.schedule_rounded,
+                                text: _rule.triggerType.toUpperCase() ==
+                                        'SCHEDULE'
+                                    ? 'Theo giờ đã hẹn'
+                                    : 'Mỗi khi có sự kiện xảy ra',
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  for (final (i, cond)
+                                      in _rule.conditions.indexed) ...[
+                                    if (i > 0)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 28,
+                                          bottom: 4,
+                                        ),
+                                        child: Text(
+                                          join,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: c.faint,
                                           ),
                                         ),
-                                        const SizedBox(width: AppSpacing.md),
-                                        Expanded(
-                                          child: Text(
-                                            '${c.deviceName ?? c.attribute} ${c.operatorSymbol} ${c.expectedValue}',
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                        ),
-                                      ],
+                                      ),
+                                    _Line(
+                                      icon: Icons.sensors_rounded,
+                                      text: describeCondition(
+                                        cond.attribute,
+                                        cond.operator,
+                                        cond.expectedValue,
+                                        deviceName: cond.deviceName,
+                                      ),
                                     ),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // THEN Actions
-                  Text(
-                    'HÀNH ĐỘNG THỰC THI (THEN)',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: mint,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  GlassCard(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    radius: AppRadius.card,
-                    child: _rule.actions.isEmpty
-                        ? const Text('Chưa có hành động')
-                        : Column(
-                            children: _rule.actions
-                                .map(
-                                  (a) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: mint.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'THEN',
-                                            style: TextStyle(
-                                              color: mint,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: AppSpacing.md),
-                                        Expanded(
-                                          child: Text(
-                                            '${a.deviceName ?? a.sceneName ?? "Hành động"}: ${a.action}',
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Execution History Logs
-                  Text(
-                    'NHẬT KÝ THỰC THI GẦN ĐÂY',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: accent,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  executionsAsync.when(
-                    data: (logs) => GlassCard(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      radius: AppRadius.card,
-                      child: logs.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                child: Text(
-                                  'Chưa có lịch sử thực thi nào.',
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? AppColors.onDarkFaint
-                                        : Colors.grey,
-                                  ),
-                                ),
+                                  ],
+                                ],
                               ),
-                            )
-                          : Column(
-                              children: logs
-                                  .map(
-                                    (log) => Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 6,
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                DateFormat(
-                                                  'HH:mm:ss • dd/MM',
-                                                ).format(log.executedAt),
-                                                style: theme.textTheme.bodySmall
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                              ),
-                                              if (log.details != null)
-                                                Text(
-                                                  log.details!,
-                                                  style: theme
-                                                      .textTheme
-                                                      .bodySmall
-                                                      ?.copyWith(
-                                                        color: isDark
-                                                            ? AppColors
-                                                                  .onDarkMuted
-                                                            : Colors
-                                                                  .grey
-                                                                  .shade600,
-                                                        fontSize: 11,
-                                                      ),
-                                                ),
-                                            ],
-                                          ),
-                                          GlassStatusPill(
-                                            label: log.status,
-                                            color: log.status == 'SUCCESS'
-                                                ? mint
-                                                : AppColors.error,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                    ),
-                    loading: () => const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(),
                       ),
-                    ),
-                    error: (_, __) => const SizedBox(),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: 24),
 
-                  // Delete Rule
-                  Center(
-                    child: TextButton.icon(
-                      icon: const Icon(
-                        Icons.delete_outline_rounded,
-                        color: AppColors.error,
+                      _SectionTitle('Sẽ làm gì'),
+                      StudioCard(
+                        child: _rule.actions.isEmpty
+                            ? Text(
+                                'Chưa có hành động.',
+                                style: TextStyle(color: c.faint),
+                              )
+                            : Column(
+                                children: [
+                                  for (final a in _rule.actions)
+                                    _Line(
+                                      icon: a.sceneName != null &&
+                                              a.deviceName == null
+                                          ? Icons.layers_outlined
+                                          : Icons.arrow_forward_rounded,
+                                      text: a.sceneName != null &&
+                                              a.deviceName == null
+                                          ? 'Chạy ngữ cảnh "${a.sceneName}"'
+                                          : '${a.deviceName ?? 'Thiết bị'}: ${describeAction(a.action, params: a.parameters)}',
+                                    ),
+                                ],
+                              ),
                       ),
-                      label: const Text(
-                        'Xóa quy tắc này',
-                        style: TextStyle(color: AppColors.error),
+                      const SizedBox(height: 24),
+
+                      _SectionTitle('Lần chạy gần đây'),
+                      executionsAsync.when(
+                        data: (logs) => StudioCard(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          child: logs.isEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'Quy tắc này chưa chạy lần nào.',
+                                      style: TextStyle(color: c.faint),
+                                    ),
+                                  ),
+                                )
+                              : Column(
+                                  children: [
+                                    for (final log in logs)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 10,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              log.status.toUpperCase() ==
+                                                      'SUCCESS'
+                                                  ? Icons.check_circle_rounded
+                                                  : Icons.error_rounded,
+                                              size: 18,
+                                              color:
+                                                  log.status.toUpperCase() ==
+                                                      'SUCCESS'
+                                                  ? c.on
+                                                  : c.danger,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                log.details ??
+                                                    (log.status.toUpperCase() ==
+                                                            'SUCCESS'
+                                                        ? 'Chạy thành công'
+                                                        : 'Chạy không thành công'),
+                                                style: TextStyle(
+                                                  fontSize: 13.5,
+                                                  color: c.text,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              describeWhen(log.executedAt),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: c.faint,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                        ),
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        error: (_, __) => const SizedBox(),
                       ),
-                      onPressed: _deleteRule,
-                    ),
+                      const SizedBox(height: 28),
+
+                      Center(
+                        child: TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: c.danger,
+                          ),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text(
+                            'Xoá quy tắc',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: _deleteRule,
+                        ),
+                      ),
+                    ]),
                   ),
-                ]),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 10),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: StudioColors.of(context).text,
+        ),
+      ),
+    );
+  }
+}
+
+class _Line extends StatelessWidget {
+  const _Line({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StudioColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: c.accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+                color: c.text,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
