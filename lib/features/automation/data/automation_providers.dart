@@ -72,6 +72,30 @@ class AutomationRulesListNotifier extends AsyncNotifier<List<AutomationRule>> {
     }
   }
 
+  /// Như web: bản sao "(bản sao)", tạo ở trạng thái tắt, chép cả giờ chạy.
+  Future<void> duplicateRule(AutomationRule rule) async {
+    final homeId = ref.read(currentHomeIdProvider);
+    if (homeId == null) return;
+    final repo = ref.read(automationRepositoryProvider);
+    final schedules = rule.triggerType == 'SCHEDULE'
+        ? (await repo.getSchedules(homeId, rule.id))
+              .map((s) => RuleSchedule(time: s.time, repeatDays: s.repeatDays, active: s.active).toJson())
+              .toList()
+        : null;
+    final name = '${rule.name} (bản sao)';
+    await repo.createRule(
+      homeId,
+      name: name.length > 40 ? name.substring(0, 40) : name,
+      description: rule.description,
+      triggerType: rule.triggerType,
+      enabled: false,
+      conditions: rule.conditions,
+      actions: rule.actions,
+      schedules: schedules,
+    );
+    await refresh();
+  }
+
   Future<void> deleteRule(String ruleId) async {
     final current = state.valueOrNull ?? [];
     state = AsyncValue.data(current.where((r) => r.id != ruleId).toList());

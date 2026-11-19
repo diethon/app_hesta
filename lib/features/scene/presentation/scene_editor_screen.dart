@@ -2,14 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
-import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
-import '../../../core/widgets/glass/glass_card.dart';
+import '../../../core/widgets/studio.dart';
 import '../../../core/widgets/glass/glass_toggle.dart';
 import '../../devices/data/device_providers.dart';
 import '../../devices/domain/device.dart';
@@ -161,12 +158,11 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = theme.colorScheme.primary;
+    final accent = StudioColors.of(context).accent;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: AmbientBackground(
+      body: StudioBackground(
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
@@ -203,11 +199,11 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'XEM TRƯỚC NGỮ CẢNH',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: accent,
+                              'Xem trước',
+                              style: TextStyle(
+                                fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
+                                color: StudioColors.of(context).text,
                               ),
                             ),
                             const SizedBox(height: AppSpacing.sm),
@@ -216,51 +212,12 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                 final atmosphere = SceneIcons.getAtmosphere(
                                   _selectedIcon,
                                 );
-                                return GlassCard(
+                                return StudioCard(
                                   radius: AppRadius.card,
                                   padding: const EdgeInsets.all(AppSpacing.md),
-                                  borderGradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      atmosphere.accentColor.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                      Colors.white.withValues(alpha: 0.08),
-                                    ],
-                                  ),
-                                  shadows: GlassTokens.glow(
-                                    atmosphere.accentColor,
-                                    intensity: 0.25,
-                                  ),
                                   child: Row(
                                     children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: LinearGradient(
-                                            colors: atmosphere.gradient
-                                                .map(
-                                                  (c) =>
-                                                      c.withValues(alpha: 0.35),
-                                                )
-                                                .toList(),
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          border: Border.all(
-                                            color: atmosphere.accentColor
-                                                .withValues(alpha: 0.45),
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          atmosphere.icon,
-                                          color: atmosphere.accentColor,
-                                          size: 22,
-                                        ),
-                                      ),
+                                      StudioIconTile(icon: atmosphere.icon),
                                       const SizedBox(width: AppSpacing.md),
                                       Expanded(
                                         child: Column(
@@ -283,14 +240,13 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              '${_actions.length} hành động • ${atmosphere.vietnameseLabel}',
+                                              '${_actions.length} thiết bị · ${atmosphere.vietnameseLabel}',
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
                                                     fontSize: 11.5,
-                                                    color: isDark
-                                                        ? AppColors.onDarkMuted
-                                                        : AppColors
-                                                              .onSurfaceVariant,
+                                                    color: StudioColors.of(
+                                                      context,
+                                                    ).muted,
                                                   ),
                                             ),
                                           ],
@@ -306,7 +262,7 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                       ),
 
                       // Basic Info Card
-                      GlassCard(
+                      StudioCard(
                         padding: const EdgeInsets.all(AppSpacing.lg),
                         radius: AppRadius.card,
                         child: Column(
@@ -322,12 +278,12 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                             TextFormField(
                               controller: _nameController,
                               decoration: const InputDecoration(
-                                labelText: 'Tên kịch bản',
+                                labelText: 'Tên ngữ cảnh',
                                 hintText: 'Ví dụ: Xem phim buổi tối, Đi ngủ...',
                               ),
                               validator: (v) {
                                 if (v == null || v.trim().isEmpty) {
-                                  return 'Vui lòng nhập tên kịch bản';
+                                  return 'Vui lòng nhập tên ngữ cảnh';
                                 }
                                 return null;
                               },
@@ -339,7 +295,7 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                               decoration: const InputDecoration(
                                 labelText: 'Mô tả (tùy chọn)',
                                 hintText:
-                                    'Mô tả ngắn gọn mục đích của kịch bản',
+                                    'Ví dụ: Tắt đèn, hạ rèm, bật điều hoà 26°C',
                               ),
                             ),
                             const SizedBox(height: AppSpacing.md),
@@ -349,11 +305,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Kích hoạt kịch bản này',
+                                  'Bật ngữ cảnh này',
                                   style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: isDark
-                                        ? AppColors.onDark
-                                        : AppColors.onSurface,
+                                    color: StudioColors.of(context).text,
                                   ),
                                 ),
                                 GlassToggle(
@@ -369,7 +323,7 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                       const SizedBox(height: AppSpacing.lg),
 
                       // Icon Selector Card
-                      GlassCard(
+                      StudioCard(
                         padding: const EdgeInsets.all(AppSpacing.lg),
                         radius: AppRadius.card,
                         child: Column(
@@ -413,41 +367,24 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: isSelected
-                                              ? atmosphere.accentColor
-                                                    .withValues(alpha: 0.28)
-                                              : isDark
-                                              ? Colors.white.withValues(
-                                                  alpha: 0.05,
-                                                )
-                                              : Colors.black.withValues(
-                                                  alpha: 0.04,
-                                                ),
+                                              ? StudioColors.of(
+                                                  context,
+                                                ).accentSoft
+                                              : StudioColors.of(context).soft,
                                           border: Border.all(
                                             color: isSelected
-                                                ? atmosphere.accentColor
-                                                : isDark
-                                                ? Colors.white.withValues(
-                                                    alpha: 0.15,
-                                                  )
-                                                : Colors.black.withValues(
-                                                    alpha: 0.12,
-                                                  ),
+                                                ? StudioColors.of(
+                                                    context,
+                                                  ).accent
+                                                : Colors.transparent,
                                             width: isSelected ? 2 : 1,
                                           ),
-                                          boxShadow: isSelected
-                                              ? GlassTokens.glow(
-                                                  atmosphere.accentColor,
-                                                  intensity: 0.35,
-                                                )
-                                              : null,
                                         ),
                                         child: Icon(
                                           atmosphere.icon,
                                           color: isSelected
-                                              ? atmosphere.accentColor
-                                              : (isDark
-                                                    ? AppColors.onDarkMuted
-                                                    : Colors.grey.shade600),
+                                              ? StudioColors.of(context).accent
+                                              : (StudioColors.of(context).muted),
                                           size: 24,
                                         ),
                                       ),
@@ -462,7 +399,7 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                       const SizedBox(height: AppSpacing.lg),
 
                       // Actions List Card
-                      GlassCard(
+                      StudioCard(
                         padding: const EdgeInsets.all(AppSpacing.lg),
                         radius: AppRadius.card,
                         child: Column(
@@ -472,7 +409,7 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Hành động thiết bị (${_actions.length})',
+                                  'Thiết bị (${_actions.length})',
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -514,12 +451,10 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                 ),
                                 child: Center(
                                   child: Text(
-                                    'Chưa có hành động nào. Nhấn "+ Thêm" để chỉ định thiết bị hoạt động khi kịch bản chạy.',
+                                    'Chưa có thiết bị nào. Nhấn "Thêm" để chọn thiết bị sẽ bật/tắt khi chạy ngữ cảnh.',
                                     textAlign: TextAlign.center,
                                     style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: isDark
-                                          ? AppColors.onDarkFaint
-                                          : Colors.grey.shade600,
+                                      color: StudioColors.of(context).faint,
                                     ),
                                   ),
                                 ),
@@ -529,9 +464,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: _actions.length,
-                                separatorBuilder: (_, __) => const Divider(
+                                separatorBuilder: (_, __) => Divider(
                                   height: 16,
-                                  color: Colors.white10,
+                                  color: StudioColors.of(context).border,
                                 ),
                                 itemBuilder: (context, index) {
                                   final act = _actions[index];
@@ -543,7 +478,7 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                         alignment: Alignment.center,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: accent.withValues(alpha: 0.15),
+                                          color: StudioColors.of(context).accentSoft,
                                         ),
                                         child: Text(
                                           '${index + 1}',
@@ -568,23 +503,22 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                                   ),
                                             ),
                                             Text(
-                                              'Lệnh: ${act.action}${act.value != null ? ' (${act.value})' : ''}',
+                                              describeAction(act.action, value: act.value),
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                    color: isDark
-                                                        ? AppColors.onDarkMuted
-                                                        : AppColors
-                                                              .onSurfaceVariant,
+                                                    color: StudioColors.of(
+                                                      context,
+                                                    ).muted,
                                                   ),
                                             ),
                                           ],
                                         ),
                                       ),
                                       IconButton(
-                                        icon: const Icon(
+                                        icon: Icon(
                                           Icons.delete_outline_rounded,
                                           size: 20,
-                                          color: AppColors.error,
+                                          color: StudioColors.of(context).danger,
                                         ),
                                         onPressed: () {
                                           setState(() {
@@ -657,7 +591,6 @@ class _AddActionSheetState extends State<_AddActionSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       padding: EdgeInsets.only(
@@ -667,11 +600,11 @@ class _AddActionSheetState extends State<_AddActionSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
       ),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.auroraCanvasMid : AppColors.surface,
+        color: StudioColors.of(context).card,
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(AppRadius.hero),
         ),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: StudioColors.of(context).border),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -682,14 +615,14 @@ class _AddActionSheetState extends State<_AddActionSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
+                color: StudioColors.of(context).border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
           Text(
-            'Thêm hành động vào ngữ cảnh',
+            'Thêm thiết bị',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -701,9 +634,7 @@ class _AddActionSheetState extends State<_AddActionSheet> {
           const SizedBox(height: AppSpacing.xs),
           DropdownButtonFormField<Device>(
             initialValue: _selectedDevice,
-            dropdownColor: isDark
-                ? AppColors.auroraCanvasMid
-                : AppColors.surface,
+            dropdownColor: StudioColors.of(context).card,
             items: widget.devices
                 .map((d) => DropdownMenuItem(value: d, child: Text(d.name)))
                 .toList(),
@@ -722,11 +653,14 @@ class _AddActionSheetState extends State<_AddActionSheet> {
           const SizedBox(height: AppSpacing.xs),
           DropdownButtonFormField<String>(
             initialValue: _selectedAction,
-            dropdownColor: isDark
-                ? AppColors.auroraCanvasMid
-                : AppColors.surface,
+            dropdownColor: StudioColors.of(context).card,
             items: _commonActions
-                .map((a) => DropdownMenuItem(value: a, child: Text(a)))
+                .map(
+                  (a) => DropdownMenuItem(
+                    value: a,
+                    child: Text(describeAction(a)),
+                  ),
+                )
                 .toList(),
             onChanged: (a) {
               if (a != null) setState(() => _selectedAction = a);
@@ -768,7 +702,7 @@ class _AddActionSheetState extends State<_AddActionSheet> {
 
           const SizedBox(height: AppSpacing.xl),
           AppButton(
-            label: 'Thêm hành động',
+            label: 'Thêm',
             onPressed: _selectedDevice == null
                 ? null
                 : () {

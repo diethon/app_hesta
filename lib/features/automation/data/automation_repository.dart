@@ -105,6 +105,16 @@ class AutomationRepository {
     );
   }
 
+  Future<List<RuleSchedule>> getSchedules(String homeId, String ruleId) async {
+    final response = await client.get<dynamic>(
+      '/api/v1/homes/$homeId/automation-rules/$ruleId/schedules',
+    );
+    return _extractList(response.data)
+        .whereType<Map>()
+        .map((m) => RuleSchedule.fromJson(Map<String, dynamic>.from(m)))
+        .toList();
+  }
+
   Future<void> deleteRule(String homeId, String ruleId) async {
     await client.dio.delete<dynamic>(
       '/api/v1/homes/$homeId/automation-rules/$ruleId',
@@ -123,18 +133,6 @@ class AutomationRepository {
         .whereType<Map>()
         .map((m) => AutomationExecution.fromJson(Map<String, dynamic>.from(m)))
         .toList();
-  }
-
-  Future<Map<String, dynamic>> testRule(
-    String homeId,
-    String ruleId, {
-    Map<String, dynamic>? eventData,
-  }) async {
-    final response = await client.post<dynamic>(
-      '/api/v1/homes/$homeId/automation-rules/$ruleId/test',
-      data: eventData ?? {},
-    );
-    return _extractMap(response.data);
   }
 
   List<dynamic> _extractList(dynamic body) {

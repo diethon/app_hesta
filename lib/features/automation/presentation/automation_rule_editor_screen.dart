@@ -1,31 +1,32 @@
+// Trình soạn quy tắc IF/THEN — bản Flutter của RuleEditorPanel trên web.
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/app_colors.dart';
-import '../../../app/theme/app_radius.dart';
-import '../../../app/theme/app_spacing.dart';
-import '../../../app/theme/glass_tokens.dart';
-import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/glass/ambient_background.dart';
-import '../../../core/widgets/glass/glass_app_bar.dart';
-import '../../../core/widgets/glass/glass_card.dart';
-import '../../../core/widgets/glass/glass_filter_chip.dart';
-import '../../../core/widgets/glass/glass_toggle.dart';
 import '../../../core/network/error_mapper.dart';
+import '../../../core/widgets/glass/glass_app_bar.dart';
+import '../../../core/widgets/glass/glass_toggle.dart';
+import '../../../core/widgets/studio.dart';
 import '../../devices/data/device_providers.dart';
 import '../../devices/domain/device.dart';
 import '../../home/data/home_providers.dart';
+import '../../rooms/data/room_providers.dart';
 import '../../scene/data/scene_providers.dart';
 import '../../scene/domain/scene.dart';
 import '../data/automation_providers.dart';
 import '../domain/automation_models.dart';
+import '../domain/rule_options.dart';
+import 'rule_editor_parts.dart';
 
 class AutomationRuleEditorScreen extends ConsumerStatefulWidget {
-  const AutomationRuleEditorScreen({this.rule, super.key});
+  const AutomationRuleEditorScreen({this.rule, this.openHistory = false, super.key});
 
   final AutomationRule? rule;
+
+  /// Mở thẳng tab "Lịch sử" (menu "Xem lịch sử" ở danh sách).
+  final bool openHistory;
 
   @override
   ConsumerState<AutomationRuleEditorScreen> createState() =>
@@ -34,1068 +35,882 @@ class AutomationRuleEditorScreen extends ConsumerStatefulWidget {
 
 class _AutomationRuleEditorScreenState
     extends ConsumerState<AutomationRuleEditorScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
-  late final TextEditingController _descController;
-  late String _triggerType;
+  late final TextEditingController _name;
+  late final TextEditingController _desc;
+  late bool _showDesc;
+  late String _trigger;
   late bool _enabled;
   late List<RuleCondition> _conditions;
   late List<RuleAction> _actions;
-  bool _isSaving = false;
+  List<RuleSchedule> _schedules = [];
+  late String _logicalOp;
+  late bool _mixedOps;
+  bool _loadingSchedules = false;
+  bool _saving = false;
+  late bool _showTemplates;
+  late int _tab;
+  int? _openCond;
+  int? _openAct;
+  String _snapshot = '';
 
-  /// Time of a new schedule. A rule saved as SCHEDULE keeps its existing times, so it is optional then.
-  TimeOfDay? _scheduleTime;
-
-  /// ISO weekdays 1 (Mon) .. 7 (Sun); empty means every day.
-  final Set<int> _repeatDays = {};
-
-  static const _dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-
-  bool get _needsScheduleTime =>
-      _triggerType == 'SCHEDULE' && widget.rule?.triggerType != 'SCHEDULE';
+  bool get _isEdit => widget.rule != null;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.rule?.name ?? '');
-    _descController = TextEditingController(
-      text: widget.rule?.description ?? '',
-    );
-    _triggerType = widget.rule?.triggerType ?? 'SENSOR';
-    _enabled = widget.rule?.enabled ?? true;
-    _conditions = List.of(widget.rule?.conditions ?? []);
-    _actions = List.of(widget.rule?.actions ?? []);
+    final r = widget.rule;
+    _name = TextEditingController(text: r?.name ?? '');
+    _desc = TextEditingController(text: r?.description ?? '');
+    _showDesc = (r?.description ?? '').isNotEmpty;
+    _trigger = r?.triggerType.toUpperCase() ?? 'SENSOR';
+    _enabled = r?.enabled ?? true;
+    _conditions = [...?r?.conditions]..sort((a, b) => a.order.compareTo(b.order));
+    _actions = [...?r?.actions]..sort((a, b) => a.order.compareTo(b.order));
+    // Điều kiện đầu không nối với gì nên lấy toán tử của điều kiện thứ 2 (giống ruleToDraft).
+    final ops = _conditions.skip(1).map((c) => c.logicalOperator.toUpperCase()).toSet();
+    _logicalOp = ops.length == 1 ? ops.first : 'AND';
+    _mixedOps = ops.length > 1;
+    _showTemplates = r == null;
+    _tab = widget.openHistory && r != null ? 1 : 0;
+    _name.addListener(() => setState(() {}));
+    _desc.addListener(() => setState(() {}));
+    if (r != null && _trigger == 'SCHEDULE') _loadSchedules(r.id);
+    _snapshot = _draftJson();
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _descController.dispose();
+    _name.dispose();
+    _desc.dispose();
     super.dispose();
   }
 
-  List<Map<String, dynamic>>? get _schedulePayload {
-    final time = _scheduleTime;
-    if (_triggerType != 'SCHEDULE' || time == null) return null;
-    final hh = time.hour.toString().padLeft(2, '0');
-    final mm = time.minute.toString().padLeft(2, '0');
-    return [
-      {
-        'scheduledTime': '$hh:$mm',
-        'repeatDays': (_repeatDays.toList()..sort()),
-        'active': true,
-      },
-    ];
+  Future<void> _loadSchedules(String ruleId) async {
+    final homeId = ref.read(currentHomeIdProvider);
+    if (homeId == null) return;
+    setState(() => _loadingSchedules = true);
+    try {
+      final list = await ref.read(automationRepositoryProvider).getSchedules(homeId, ruleId);
+      if (!mounted) return;
+      setState(() => _schedules = list);
+      _snapshot = _draftJson();
+    } catch (_) {
+      // Không tải được giờ chạy: để trống, người dùng vẫn thấy cảnh báo "Thêm ít nhất 1 giờ chạy".
+    } finally {
+      if (mounted) setState(() => _loadingSchedules = false);
+    }
   }
 
-  Future<void> _pickScheduleTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _scheduleTime ?? const TimeOfDay(hour: 7, minute: 0),
-    );
-    if (picked != null) setState(() => _scheduleTime = picked);
+  // ── Dữ liệu gửi đi ──
+
+  List<RuleCondition> get _payloadConditions => _trigger == 'SCHEDULE'
+      ? const []
+      : [
+          for (final (i, c) in _conditions.indexed)
+            c.copyWith(order: i, logicalOperator: _logicalOp),
+        ];
+
+  List<RuleAction> get _payloadActions => [
+    for (final (i, a) in _actions.indexed) a.copyWith(order: i),
+  ];
+
+  String _draftJson() => jsonEncode({
+    'n': _name.text.trim(),
+    'd': _desc.text.trim(),
+    't': _trigger,
+    'e': _enabled,
+    'c': _payloadConditions.map((c) => c.toJson()).toList(),
+    'a': _payloadActions.map((a) => a.toJson()).toList(),
+    's': _trigger == 'SCHEDULE' ? _schedules.map((s) => s.toJson()).toList() : [],
+  });
+
+  bool get _dirty => !_showTemplates && _draftJson() != _snapshot;
+
+  String? get _error => validateRuleDraft(
+    name: _name.text,
+    triggerType: _trigger,
+    conditions: [
+      for (final c in _conditions) (deviceId: c.deviceId, expectedValue: c.expectedValue),
+    ],
+    actions: [
+      for (final a in _actions) (action: a.action, deviceId: a.deviceId, sceneId: a.sceneId),
+    ],
+    activeScheduleCount: _schedules.where((s) => s.active).length,
+  );
+
+  // ── Thao tác ──
+
+  List<Device> get _devices => ref.read(devicesControllerProvider).valueOrNull ?? const [];
+  List<Scene> get _scenes => ref.read(scenesListProvider).valueOrNull ?? const [];
+  Map<String, String> get _roomNames => {for (final r in ref.read(roomsProvider)) r.id: r.name};
+
+  Device? _device(String? id) => _devices.where((d) => d.id == id).firstOrNull;
+
+  void _applyTemplate(AutomationTemplate? t) {
+    final devices = _devices;
+    Device? firstOf(String type) => devices.where((d) => deviceTypeCode(d).contains(type)).firstOrNull;
+    setState(() {
+      _showTemplates = false;
+      _schedules = [];
+      if (t == null) {
+        _trigger = 'SENSOR';
+        _conditions = [];
+        _actions = [];
+        _snapshot = _draftJson();
+        return;
+      }
+      _name.text = t.name;
+      _desc.text = t.description;
+      _showDesc = true;
+      _trigger = t.triggerType;
+      switch (t.id) {
+        case 'motion-light':
+          final sensor = devices.where((d) => isSensorDevice(d) && attributesFor(d).any((a) => a.key == 'motion')).firstOrNull;
+          _conditions = [
+            RuleCondition(deviceId: sensor?.id, attribute: 'motion', operator: 'EQ', expectedValue: true),
+          ];
+        case 'door-ac':
+          _conditions = [
+            const RuleCondition(attribute: 'eventType', operator: 'EQ', expectedValue: 'EVENT'),
+          ];
+        default:
+          _conditions = [];
+          _schedules = [const RuleSchedule(time: '18:00')];
+      }
+      final target = t.id == 'door-ac' ? firstOf('AC') : firstOf('LIGHT');
+      _actions = [
+        RuleAction(deviceId: target?.id, deviceName: target?.name, action: t.action),
+      ];
+      _openAct = target == null ? 0 : null;
+      _openCond = _trigger == 'SENSOR' && _conditions.first.deviceId == null ? 0 : null;
+      // Mẫu chưa lưu cũng tính là thay đổi, để "Đóng" hỏi lại.
+      _snapshot = '';
+    });
   }
+
+  void _setTrigger(String t) {
+    if (_isEdit || t == _trigger) return;
+    setState(() {
+      _trigger = t;
+      _openCond = null;
+      if (t == 'EVENT') {
+        _conditions = [
+          const RuleCondition(attribute: 'eventType', operator: 'EQ', expectedValue: 'MOTION_DETECTED'),
+        ];
+      } else {
+        _conditions = [];
+      }
+    });
+  }
+
+  Future<void> _pickConditionDevice(int i) async {
+    final cond = _conditions[i];
+    final d = await showDevicePicker(
+      context,
+      devices: _devices,
+      roomNames: _roomNames,
+      mode: DevicePickMode.sensorsOnly,
+      title: 'Chọn cảm biến',
+      selectedId: cond.deviceId,
+    );
+    if (d == null) return;
+    final attrs = attributesFor(d);
+    final keep = attrs.any((a) => a.key == cond.attribute.toLowerCase());
+    final attr = keep ? null : attrs.first;
+    setState(() {
+      _conditions[i] = cond.copyWith(
+        deviceId: d.id,
+        attribute: attr?.key,
+        expectedValue: attr == null
+            ? null
+            : attr.isBool
+            ? true
+            : attr.key == 'temperature'
+            ? 28
+            : attr.key == 'humidity'
+            ? 60
+            : 100,
+      );
+    });
+  }
+
+  Future<void> _pickActionDevice(int i) async {
+    final act = _actions[i];
+    final d = await showDevicePicker(
+      context,
+      devices: _devices,
+      roomNames: _roomNames,
+      mode: DevicePickMode.actionableOnly,
+      title: 'Chọn thiết bị',
+      selectedId: act.deviceId,
+    );
+    if (d == null) return;
+    final options = deviceActions(d);
+    final keep = options.any((o) => o.code == act.action);
+    setState(() {
+      _actions[i] = act.copyWith(
+        deviceId: d.id,
+        deviceName: d.name,
+        action: keep ? null : options.first.code,
+        parameters: keep ? null : defaultParamsFor(options.first.code),
+      );
+    });
+  }
+
+  Future<void> _pickActionScene(int i) async {
+    final act = _actions[i];
+    final s = await showScenePicker(context, scenes: _scenes, selectedId: act.sceneId);
+    if (s == null) return;
+    setState(() => _actions[i] = act.copyWith(sceneId: s.id, sceneName: s.name));
+  }
+
+  Future<void> _pickEvent() async {
+    final current = _conditions.firstOrNull;
+    final code = await showEventPicker(context, selected: '${current?.expectedValue ?? ''}');
+    if (code == null) return;
+    setState(() {
+      _conditions = [
+        (current ?? const RuleCondition(attribute: 'eventType', operator: 'EQ', expectedValue: ''))
+            .copyWith(attribute: 'eventType', operator: 'EQ', expectedValue: code),
+      ];
+    });
+  }
+
+  Future<void> _pickEventSource() async {
+    final current = _conditions.firstOrNull;
+    if (current == null) return;
+    final d = await showDevicePicker(
+      context,
+      devices: _devices,
+      roomNames: _roomNames,
+      mode: DevicePickMode.all,
+      title: 'Chỉ khi từ thiết bị',
+      selectedId: current.deviceId,
+    );
+    if (d != null) setState(() => _conditions[0] = current.copyWith(deviceId: d.id));
+  }
+
+  void _moveAction(int from, int to) => setState(() {
+    final a = _actions.removeAt(from);
+    _actions.insert(to, a);
+    if (_openAct == from) _openAct = to;
+  });
+
+  Future<bool> _confirm(String title, String body, String ok, {bool danger = false}) async {
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: danger ? TextButton.styleFrom(foregroundColor: StudioColors.of(context).danger) : null,
+            child: Text(ok),
+          ),
+        ],
+      ),
+    );
+    return res == true;
+  }
+
+  Future<void> _close() async {
+    if (_dirty &&
+        !await _confirm('Bỏ thay đổi?', 'Những thay đổi chưa lưu sẽ bị mất.', 'Bỏ thay đổi', danger: true)) {
+      return;
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _delete() async {
+    final rule = widget.rule!;
+    if (!await _confirm('Xoá quy tắc?', '"${rule.name}" sẽ ngừng chạy và bị xoá vĩnh viễn.', 'Xoá', danger: true)) {
+      return;
+    }
+    await ref.read(automationRulesListProvider.notifier).deleteRule(rule.id);
+    if (mounted) Navigator.of(context).pop(true);
+  }
+
+  Future<void> _duplicate() async {
+    try {
+      await ref.read(automationRulesListProvider.notifier).duplicateRule(widget.rule!);
+      if (mounted) {
+        showStudioSnack(context, 'Đã tạo bản sao (đang tắt)');
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) showStudioSnack(context, 'Không nhân bản được: ${_reason(e)}', success: false);
+    }
+  }
+
+  String _reason(Object e) => e is DioException
+      ? readBackendError(e.response?.data).message ?? e.message ?? 'Lỗi mạng'
+      : e.toString();
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_needsScheduleTime && _scheduleTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chọn giờ chạy cho quy tắc hẹn giờ.')),
-      );
-      return;
-    }
-
-    if (_actions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Vui lòng thêm ít nhất 1 hành động (THEN) cho quy tắc.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    if (_triggerType == 'SENSOR' && _conditions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Quy tắc cảm biến cần ít nhất 1 điều kiện kích hoạt (IF).',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
+    if (_error != null) return;
     final homeId = ref.read(currentHomeIdProvider);
     if (homeId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn ngôi nhà trước khi lưu.')),
-      );
+      showStudioSnack(context, 'Vui lòng chọn ngôi nhà trước khi lưu.', success: false);
       return;
     }
-
-    setState(() => _isSaving = true);
-
+    setState(() => _saving = true);
     try {
       final repo = ref.read(automationRepositoryProvider);
-      if (widget.rule == null) {
-        await repo.createRule(
-          homeId,
-          name: _nameController.text.trim(),
-          description: _descController.text.trim().isEmpty
-              ? null
-              : _descController.text.trim(),
-          triggerType: _triggerType,
-          enabled: _enabled,
-          // SCHEDULE rules run at their times only; the backend rejects conditions on them.
-          conditions: _triggerType == 'SCHEDULE' ? const [] : _conditions,
-          actions: _actions,
-          schedules: _schedulePayload,
-        );
-      } else {
+      final desc = _desc.text.trim();
+      final schedules = _trigger == 'SCHEDULE' ? _schedules.map((s) => s.toJson()).toList() : null;
+      if (_isEdit) {
         await repo.updateRule(
           homeId,
           widget.rule!.id,
-          name: _nameController.text.trim(),
-          description: _descController.text.trim().isEmpty
-              ? null
-              : _descController.text.trim(),
-          triggerType: _triggerType,
+          name: _name.text.trim(),
+          description: desc.isEmpty ? null : desc,
+          triggerType: _trigger,
           enabled: _enabled,
-          // SCHEDULE rules run at their times only; the backend rejects conditions on them.
-          conditions: _triggerType == 'SCHEDULE' ? const [] : _conditions,
-          actions: _actions,
-          // A list here would replace the saved times, so it is only sent when the rule becomes SCHEDULE.
-          schedules: _needsScheduleTime ? _schedulePayload : null,
+          conditions: _payloadConditions,
+          actions: _payloadActions,
+          schedules: schedules,
         );
-        final added = _schedulePayload;
-        if (!_needsScheduleTime && added != null) {
-          await repo.addSchedule(homeId, widget.rule!.id, added.first);
-        }
+      } else {
+        await repo.createRule(
+          homeId,
+          name: _name.text.trim(),
+          description: desc.isEmpty ? null : desc,
+          triggerType: _trigger,
+          enabled: _enabled,
+          conditions: _payloadConditions,
+          actions: _payloadActions,
+          schedules: schedules,
+        );
       }
-
-      if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
+      await ref.read(automationRulesListProvider.notifier).refresh();
       if (mounted) {
-        final reason = e is DioException
-            ? readBackendError(e.response?.data).message ?? e.message
-            : e.toString();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lưu quy tắc thất bại: $reason')),
-        );
+        showStudioSnack(context, _isEdit ? 'Đã lưu quy tắc' : 'Đã tạo quy tắc');
+        Navigator.of(context).pop(true);
       }
+    } catch (e) {
+      if (mounted) showStudioSnack(context, 'Lưu quy tắc thất bại: ${_reason(e)}', success: false);
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
-  void _showAddConditionDialog() {
-    final devices = ref.read(devicesControllerProvider).valueOrNull ?? [];
-    Device? selectedDevice = devices.isNotEmpty ? devices.first : null;
-    String attribute = 'temperature';
-    String op = 'GT';
-    final valController = TextEditingController(text: '30');
-
-    showDialog<RuleCondition>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.auroraCanvasMid
-              : AppColors.surface,
-          title: const Text('Thêm điều kiện (IF)'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Thiết bị cảm biến'),
-                DropdownButtonFormField<Device>(
-                  initialValue: selectedDevice,
-                  isExpanded: true,
-                  items: devices
-                      .map(
-                        (d) => DropdownMenuItem(
-                          value: d,
-                          child: Text(d.name, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (d) => setDialogState(() => selectedDevice = d),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text('Thuộc tính'),
-                DropdownButtonFormField<String>(
-                  initialValue: attribute,
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'temperature',
-                      child: Text('Nhiệt độ (°C)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'humidity',
-                      child: Text('Độ ẩm (%)'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'motion',
-                      child: Text('Chuyển động'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'state',
-                      child: Text('Trạng thái bật/tắt'),
-                    ),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) setDialogState(() => attribute = v);
-                  },
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text('Toán tử so sánh'),
-                DropdownButtonFormField<String>(
-                  initialValue: op,
-                  items: const [
-                    DropdownMenuItem(value: 'EQ', child: Text('= (Bằng)')),
-                    DropdownMenuItem(value: 'GT', child: Text('> (Lớn hơn)')),
-                    DropdownMenuItem(
-                      value: 'GTE',
-                      child: Text('>= (Lớn hơn hoặc bằng)'),
-                    ),
-                    DropdownMenuItem(value: 'LT', child: Text('< (Nhỏ hơn)')),
-                    DropdownMenuItem(
-                      value: 'LTE',
-                      child: Text('<= (Nhỏ hơn hoặc bằng)'),
-                    ),
-                    DropdownMenuItem(value: 'NE', child: Text('!= (Khác)')),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) setDialogState(() => op = v);
-                  },
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text('Giá trị ngưỡng'),
-                TextField(
-                  controller: valController,
-                  decoration: const InputDecoration(
-                    hintText: 'Ví dụ: 30 hoặc true',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () {
-                dynamic parsedValue = valController.text.trim();
-                if (num.tryParse(valController.text.trim()) != null) {
-                  parsedValue = num.parse(valController.text.trim());
-                } else if (valController.text.trim().toLowerCase() == 'true') {
-                  parsedValue = true;
-                } else if (valController.text.trim().toLowerCase() == 'false') {
-                  parsedValue = false;
-                }
-
-                final cond = RuleCondition(
-                  deviceId: selectedDevice?.id,
-                  deviceName: selectedDevice?.name,
-                  attribute: attribute,
-                  operator: op,
-                  expectedValue: parsedValue,
-                  order: _conditions.length,
-                );
-                Navigator.of(ctx).pop(cond);
-              },
-              child: const Text('Thêm'),
-            ),
-          ],
-        ),
-      ),
-    ).then((cond) {
-      if (cond != null) setState(() => _conditions.add(cond));
-    });
-  }
-
-  void _showAddActionDialog() {
-    final devices = ref.read(devicesControllerProvider).valueOrNull ?? [];
-    final scenes = ref.read(scenesListProvider).valueOrNull ?? [];
-    bool isDevice = true;
-    Device? selectedDevice = devices.isNotEmpty ? devices.first : null;
-    Scene? selectedScene = scenes.isNotEmpty ? scenes.first : null;
-    String actionCmd = 'TURN_ON';
-
-    showDialog<RuleAction>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.auroraCanvasMid
-              : AppColors.surface,
-          title: const Text('Thêm hành động (THEN)'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    ChoiceChip(
-                      label: const Text('Thiết bị'),
-                      selected: isDevice,
-                      onSelected: (s) => setDialogState(() => isDevice = true),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    ChoiceChip(
-                      label: const Text('Kịch bản (Scene)'),
-                      selected: !isDevice,
-                      onSelected: (s) => setDialogState(() => isDevice = false),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                if (isDevice) ...[
-                  const Text('Chọn thiết bị'),
-                  DropdownButtonFormField<Device>(
-                    initialValue: selectedDevice,
-                    isExpanded: true,
-                    items: devices
-                        .map(
-                          (d) => DropdownMenuItem(
-                            value: d,
-                            child: Text(
-                              d.name,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (d) => setDialogState(() => selectedDevice = d),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  const Text('Hành động'),
-                  DropdownButtonFormField<String>(
-                    initialValue: actionCmd,
-                    items: const [
-                      DropdownMenuItem(value: 'TURN_ON', child: Text('Bật')),
-                      DropdownMenuItem(value: 'TURN_OFF', child: Text('Tắt')),
-                      DropdownMenuItem(
-                        value: 'TOGGLE',
-                        child: Text('Đổi trạng thái'),
-                      ),
-                      DropdownMenuItem(value: 'LOCK', child: Text('Khóa cửa')),
-                      DropdownMenuItem(value: 'UNLOCK', child: Text('Mở khóa')),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) setDialogState(() => actionCmd = v);
-                    },
-                  ),
-                ] else ...[
-                  const Text('Chọn kịch bản kích hoạt'),
-                  DropdownButtonFormField<Scene>(
-                    initialValue: selectedScene,
-                    isExpanded: true,
-                    items: scenes
-                        .map(
-                          (s) => DropdownMenuItem(
-                            value: s,
-                            child: Text(
-                              s.name,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (s) => setDialogState(() => selectedScene = s),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () {
-                final act = RuleAction(
-                  deviceId: isDevice ? selectedDevice?.id : null,
-                  deviceName: isDevice ? selectedDevice?.name : null,
-                  sceneId: !isDevice ? selectedScene?.id : null,
-                  sceneName: !isDevice ? selectedScene?.name : null,
-                  action: isDevice ? actionCmd : 'TRIGGER_SCENE',
-                  order: _actions.length,
-                );
-                Navigator.of(ctx).pop(act);
-              },
-              child: const Text('Thêm'),
-            ),
-          ],
-        ),
-      ),
-    ).then((act) {
-      if (act != null) setState(() => _actions.add(act));
-    });
-  }
+  // ── Giao diện ──
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    // Theo dõi để danh sách thiết bị/ngữ cảnh/phòng có dữ liệu khi mở bảng chọn.
+    final devices = ref.watch(devicesControllerProvider).valueOrNull ?? const <Device>[];
+    final scenes = ref.watch(scenesListProvider).valueOrNull ?? const <Scene>[];
+    final rooms = {for (final r in ref.watch(roomsProvider)) r.id: r.name};
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AmbientBackground(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              elevation: 0,
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _close();
+      },
+      child: StudioBackground(
+        child: Builder(
+          builder: (context) {
+            final c = StudioColors.of(context);
+            return Scaffold(
               backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              automaticallyImplyLeading: false,
-              toolbarHeight: 68,
-              flexibleSpace: GlassAppBar(
-                title: widget.rule == null
-                    ? 'Tạo quy tắc tự động'
-                    : 'Sửa quy tắc tự động',
-                onBack: () => Navigator.of(context).maybePop(),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.sm,
-                AppSpacing.screen,
-                AppSpacing.navClearance * 1.5,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Live Rule Flow Preview
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'XEM TRƯỚC QUY TRÌNH',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            Builder(
-                              builder: (context) {
-                                final isSensor = _triggerType == 'SENSOR';
-                                final isSchedule = _triggerType == 'SCHEDULE';
-                                final trigColor = isSchedule
-                                    ? const Color(0xFFFBBF24)
-                                    : (isSensor
-                                          ? const Color(0xFF38BDF8)
-                                          : const Color(0xFFA855F7));
-                                final mint = isDark
-                                    ? AppColors.auroraMint
-                                    : AppColors.auroraMintOnLight;
-
-                                return GlassCard(
-                                  radius: AppRadius.card,
-                                  padding: const EdgeInsets.all(AppSpacing.md),
-                                  borderGradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      trigColor.withValues(alpha: 0.45),
-                                      Colors.white.withValues(alpha: 0.08),
-                                    ],
-                                  ),
-                                  shadows: GlassTokens.glow(
-                                    trigColor,
-                                    intensity: 0.2,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 34,
-                                            height: 34,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: trigColor.withValues(
-                                                alpha: 0.2,
-                                              ),
-                                              border: Border.all(
-                                                color: trigColor.withValues(
-                                                  alpha: 0.4,
-                                                ),
-                                              ),
-                                            ),
-                                            child: Icon(
-                                              isSchedule
-                                                  ? Icons.schedule_rounded
-                                                  : (isSensor
-                                                        ? Icons.sensors_rounded
-                                                        : Icons
-                                                              .flash_on_rounded),
-                                              color: trigColor,
-                                              size: 18,
-                                            ),
-                                          ),
-                                          const SizedBox(width: AppSpacing.sm),
-                                          Expanded(
-                                            child: Text(
-                                              _nameController.text
-                                                      .trim()
-                                                      .isEmpty
-                                                  ? 'Tên quy tắc mới'
-                                                  : _nameController.text.trim(),
-                                              style: theme.textTheme.titleSmall
-                                                  ?.copyWith(
-                                                    fontWeight: FontWeight.w700,
-                                                    letterSpacing: -0.2,
-                                                  ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: AppSpacing.sm),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: AppSpacing.sm,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? Colors.black.withValues(
-                                                  alpha: 0.22,
-                                                )
-                                              : Colors.white.withValues(
-                                                  alpha: 0.6,
-                                                ),
-                                          borderRadius: BorderRadius.circular(
-                                            AppRadius.sm,
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'KHI: ${_conditions.isEmpty ? (_triggerType == "SCHEDULE" ? "Theo lịch định sẵn" : "Luôn kích hoạt khi có sự kiện") : _conditions.map((c) => "${c.deviceName ?? c.attribute} ${c.operatorSymbol} ${c.expectedValue}").join(" VÀ ")}',
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                    color: trigColor,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 11.5,
-                                                  ),
-                                            ),
-                                            const SizedBox(height: 3),
-                                            Text(
-                                              'THÌ: ${_actions.isEmpty ? "Chưa chọn hành động" : _actions.map((a) => "${a.deviceName ?? a.sceneName ?? 'Thiết bị'}: ${a.action}").join(", ")}',
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                    color: mint,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 11.5,
-                                                  ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(68),
+                child: SafeArea(
+                  bottom: false,
+                  child: GlassAppBar(
+                    title: _showTemplates ? 'Tạo quy tắc' : (_isEdit ? 'Sửa quy tắc' : 'Quy tắc mới'),
+                    onBack: _close,
+                    actions: [
+                      if (_isEdit)
+                        PopupMenuButton<VoidCallback>(
+                          tooltip: 'Tuỳ chọn',
+                          icon: Icon(Icons.more_horiz_rounded, color: c.text),
+                          onSelected: (fn) => fn(),
+                          itemBuilder: (ctx) => [
+                            menuItem(ctx, Icons.copy_rounded, 'Nhân bản', _duplicate),
+                            menuItem(ctx, Icons.delete_outline_rounded, 'Xoá quy tắc', _delete, danger: true),
                           ],
                         ),
-                      ),
-
-                      // Info Card
-                      GlassCard(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        radius: AppRadius.card,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Thông tin quy tắc',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            TextFormField(
-                              controller: _nameController,
-                              decoration: const InputDecoration(
-                                labelText: 'Tên quy tắc',
-                                hintText:
-                                    'Ví dụ: Bật điều hòa khi phòng quá nóng...',
-                              ),
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Vui lòng nhập tên quy tắc';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            TextFormField(
-                              controller: _descController,
-                              maxLines: 2,
-                              decoration: const InputDecoration(
-                                labelText: 'Mô tả (tùy chọn)',
-                                hintText: 'Mô tả tóm tắt hành vi tự động',
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Kích hoạt quy tắc này',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: isDark
-                                        ? AppColors.onDark
-                                        : AppColors.onSurface,
-                                  ),
-                                ),
-                                GlassToggle(
-                                  value: _enabled,
-                                  onChanged: (val) =>
-                                      setState(() => _enabled = val),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      // Trigger Type Selector Card
-                      GlassCard(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        radius: AppRadius.card,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Nguồn kích hoạt (Trigger Type)',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _TriggerOptionCard(
-                                    label: 'Cảm biến',
-                                    icon: Icons.sensors_rounded,
-                                    color: const Color(0xFF38BDF8),
-                                    selected: _triggerType == 'SENSOR',
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      setState(() => _triggerType = 'SENSOR');
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: _TriggerOptionCard(
-                                    label: 'Lịch biểu',
-                                    icon: Icons.schedule_rounded,
-                                    color: const Color(0xFFFBBF24),
-                                    selected: _triggerType == 'SCHEDULE',
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      setState(() => _triggerType = 'SCHEDULE');
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: _TriggerOptionCard(
-                                    label: 'Sự kiện',
-                                    icon: Icons.flash_on_rounded,
-                                    color: const Color(0xFFA855F7),
-                                    selected: _triggerType == 'EVENT',
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      setState(() => _triggerType = 'EVENT');
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-
-                      if (_triggerType == 'SCHEDULE') ...[
-                        _buildScheduleCard(theme),
-                        const SizedBox(height: AppSpacing.lg),
-                      ],
-
-                      // IF Conditions Card (SCHEDULE rules have none)
-                      if (_triggerType != 'SCHEDULE')
-                        GlassCard(
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          radius: AppRadius.card,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'ĐIỀU KIỆN (IF) (${_conditions.length})',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                  ),
-                                  InkWell(
-                                    onTap: _showAddConditionDialog,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.add_circle_outline_rounded,
-                                          size: 18,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Thêm',
-                                          style: TextStyle(
-                                            color: theme.colorScheme.primary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              if (_conditions.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      'Chưa có điều kiện nào. Nhấn "+ Thêm" để tạo điều kiện kiểm tra.',
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? AppColors.onDarkFaint
-                                            : Colors.grey,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              else
-                                ListView.separated(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: _conditions.length,
-                                  separatorBuilder: (_, __) => const Divider(
-                                    height: 16,
-                                    color: Colors.white10,
-                                  ),
-                                  itemBuilder: (context, i) {
-                                    final cond = _conditions[i];
-                                    return Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            '${cond.deviceName ?? cond.attribute} ${cond.operatorSymbol} ${cond.expectedValue}',
-                                            style: theme.textTheme.bodyMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                          ),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete_outline_rounded,
-                                            size: 20,
-                                            color: AppColors.error,
-                                          ),
-                                          onPressed: () => setState(
-                                            () => _conditions.removeAt(i),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                            ],
-                          ),
-                        ),
-                      if (_triggerType != 'SCHEDULE')
-                        const SizedBox(height: AppSpacing.lg),
-
-                      // THEN Actions Card
-                      GlassCard(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        radius: AppRadius.card,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'HÀNH ĐỘNG (THEN) (${_actions.length})',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                InkWell(
-                                  onTap: _showAddActionDialog,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.add_circle_outline_rounded,
-                                        size: 18,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Thêm',
-                                        style: TextStyle(
-                                          color: theme.colorScheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            if (_actions.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'Chưa có hành động nào. Nhấn "+ Thêm" để chọn hành động thực hiện.',
-                                    style: TextStyle(
-                                      color: isDark
-                                          ? AppColors.onDarkFaint
-                                          : Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                              )
-                            else
-                              ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _actions.length,
-                                separatorBuilder: (_, __) => const Divider(
-                                  height: 16,
-                                  color: Colors.white10,
-                                ),
-                                itemBuilder: (context, i) {
-                                  final act = _actions[i];
-                                  return Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          '${act.deviceName ?? act.sceneName ?? "Hành động"}: ${act.action}',
-                                          style: theme.textTheme.bodyMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete_outline_rounded,
-                                          size: 20,
-                                          color: AppColors.error,
-                                        ),
-                                        onPressed: () => setState(
-                                          () => _actions.removeAt(i),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-
-                      // Save Button
-                      AppButton(
-                        label: widget.rule == null
-                            ? 'Tạo quy tắc'
-                            : 'Lưu thay đổi',
-                        isLoading: _isSaving,
-                        onPressed: _save,
-                      ),
                     ],
                   ),
                 ),
               ),
-            ),
-          ],
+              body: _showTemplates
+                  ? ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      children: [
+                        TemplateGrid(onSelect: _applyTemplate, onBlank: () => _applyTemplate(null)),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        _header(c),
+                        if (_isEdit)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                            child: SegmentedButton<int>(
+                              showSelectedIcon: false,
+                              segments: const [
+                                ButtonSegment(value: 0, label: Text('Thiết lập')),
+                                ButtonSegment(value: 1, label: Text('Lịch sử')),
+                              ],
+                              selected: {_tab},
+                              onSelectionChanged: (s) => setState(() => _tab = s.first),
+                            ),
+                          ),
+                        Expanded(
+                          child: _tab == 1
+                              ? _History(ruleId: widget.rule!.id)
+                              : _setup(c, devices, scenes, rooms),
+                        ),
+                      ],
+                    ),
+              bottomNavigationBar: _showTemplates || _tab == 1 ? null : _footer(c),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildScheduleCard(ThemeData theme) {
-    final time = _scheduleTime;
-    return GlassCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      radius: AppRadius.card,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _header(StudioColors c) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Row(
         children: [
-          Text(
-            _needsScheduleTime
-                ? 'GIỜ CHẠY (bắt buộc)'
-                : 'THÊM GIỜ CHẠY (tùy chọn)',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+          Expanded(
+            child: Text(
+              '${describeTrigger(_trigger)} · ${_enabled ? 'Đang bật' : 'Đang tắt'}',
+              style: TextStyle(fontSize: 13, color: c.muted),
             ),
           ),
-          if (!_needsScheduleTime)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'Các giờ chạy hiện có được giữ nguyên.',
-                style: theme.textTheme.bodySmall,
+          GlassToggle(value: _enabled, onChanged: (v) => setState(() => _enabled = v)),
+        ],
+      ),
+    );
+  }
+
+  Widget _setup(
+    StudioColors c,
+    List<Device> devices,
+    List<Scene> scenes,
+    Map<String, String> rooms,
+  ) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+      children: [
+        RuleSummaryCard(
+          triggerType: _trigger,
+          conditions: _conditions,
+          actions: _actions,
+          devices: devices,
+          scenes: scenes,
+          schedules: _schedules,
+          logicalOp: _logicalOp,
+        ),
+        const SizedBox(height: 20),
+
+        _Section('1. Thông tin quy tắc'),
+        TextField(
+          controller: _name,
+          maxLength: 40,
+          decoration: const InputDecoration(
+            labelText: 'Tên quy tắc',
+            hintText: 'VD: Bật đèn khi có người',
+          ),
+        ),
+        if (_showDesc)
+          TextField(
+            controller: _desc,
+            maxLines: 2,
+            decoration: const InputDecoration(labelText: 'Mô tả (tuỳ chọn)'),
+          )
+        else
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () => setState(() => _showDesc = true),
+              child: const Text('+ Thêm mô tả'),
+            ),
+          ),
+        const SizedBox(height: 20),
+
+        _Section('2. Khi nào (Kích hoạt)'),
+        SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: 'SENSOR', icon: Icon(Icons.sensors_rounded), label: Text('Cảm biến')),
+            ButtonSegment(value: 'EVENT', icon: Icon(Icons.bolt_rounded), label: Text('Sự kiện')),
+            ButtonSegment(value: 'SCHEDULE', icon: Icon(Icons.schedule_rounded), label: Text('Lịch giờ')),
+          ],
+          selected: {_trigger},
+          onSelectionChanged: _isEdit ? null : (s) => _setTrigger(s.first),
+        ),
+        if (_isEdit)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Không thể đổi loại sau khi tạo',
+              style: TextStyle(fontSize: 12, color: c.faint),
+            ),
+          ),
+        const SizedBox(height: 12),
+        ...switch (_trigger) {
+          'SCHEDULE' => [
+            ScheduleSection(
+              schedules: _schedules,
+              loading: _loadingSchedules,
+              onChanged: (s) => setState(() => _schedules = s),
+            ),
+          ],
+          'EVENT' => _eventView(c, rooms),
+          _ => _sensorView(c, rooms),
+        },
+        const SizedBox(height: 20),
+
+        _Section('3. Thì làm gì (Hành động ${_actions.length})'),
+        if (_actions.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Cùng thiết bị chạy theo thứ tự từ trên xuống',
+              style: TextStyle(fontSize: 12.5, color: c.faint),
+            ),
+          ),
+        for (final (i, a) in _actions.indexed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: ActionStepCard(
+              key: ValueKey('act$i'),
+              action: a,
+              index: i,
+              total: _actions.length,
+              device: _device(a.deviceId),
+              scene: scenes.where((s) => s.id == a.sceneId).firstOrNull,
+              roomName: rooms[_device(a.deviceId)?.roomId],
+              expanded: _openAct == i,
+              onToggle: () => setState(() => _openAct = _openAct == i ? null : i),
+              onChanged: (n) => setState(() => _actions[i] = n),
+              onMoveUp: () => _moveAction(i, i - 1),
+              onMoveDown: () => _moveAction(i, i + 1),
+              onDuplicate: () => setState(() {
+                _actions.insert(i + 1, a.copyWith());
+                _openAct = i + 1;
+              }),
+              onDelete: () => setState(() {
+                _actions.removeAt(i);
+                _openAct = null;
+              }),
+              onPickDevice: () => _pickActionDevice(i),
+              onPickScene: () => _pickActionScene(i),
+            ),
+          ),
+        Row(
+          children: [
+            Expanded(
+              child: _AddButton(
+                icon: Icons.devices_other_rounded,
+                label: 'Điều khiển thiết bị',
+                onTap: () => setState(() {
+                  _actions.add(const RuleAction(action: 'TURN_ON'));
+                  _openAct = _actions.length - 1;
+                }),
               ),
             ),
-          const SizedBox(height: AppSpacing.md),
-          OutlinedButton.icon(
-            onPressed: _pickScheduleTime,
-            icon: const Icon(Icons.schedule_rounded),
-            label: Text(time == null ? 'Chọn giờ' : time.format(context)),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              for (var day = 1; day <= 7; day++)
-                GlassFilterChip(
-                  label: _dayLabels[day - 1],
-                  selected: _repeatDays.contains(day),
-                  onTap: () => setState(() {
-                    if (!_repeatDays.remove(day)) _repeatDays.add(day);
-                  }),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _AddButton(
+                icon: Icons.auto_awesome_outlined,
+                label: 'Chạy ngữ cảnh',
+                onTap: () => setState(() {
+                  _actions.add(const RuleAction(action: 'EXECUTE_SCENE'));
+                  _openAct = _actions.length - 1;
+                }),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _sensorView(StudioColors c, Map<String, String> rooms) {
+    return [
+      if (_conditions.length >= 2) ...[
+        SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: 'AND', label: Text('Tất cả điều kiện (VÀ)')),
+            ButtonSegment(value: 'OR', label: Text('Bất kỳ điều kiện (HOẶC)')),
+          ],
+          selected: {_logicalOp},
+          onSelectionChanged: (s) => setState(() {
+            _logicalOp = s.first;
+            _mixedOps = false;
+          }),
+        ),
+        const SizedBox(height: 10),
+      ],
+      if (_mixedOps)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: StudioCard(
+            color: c.warn.withValues(alpha: 0.08),
+            borderColor: c.warn.withValues(alpha: 0.4),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Quy tắc cũ này dùng lẫn VÀ / HOẶC. Khi lưu, mọi điều kiện sẽ dùng chung một toán tử.',
+                  style: TextStyle(fontSize: 13, color: c.text),
                 ),
-            ],
+                TextButton(
+                  onPressed: () => setState(() => _mixedOps = false),
+                  child: Text(
+                    'Áp dụng toán tử kết hợp (${_logicalOp == 'OR' ? 'HOẶC' : 'VÀ'})',
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            _repeatDays.isEmpty ? 'Không chọn ngày nào = chạy hằng ngày.' : '',
-            style: theme.textTheme.bodySmall,
+        ),
+      for (final (i, cond) in _conditions.indexed) ...[
+        if (i > 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Center(
+              child: StudioTag(label: _logicalOp == 'OR' ? 'HOẶC' : 'VÀ', color: c.accent),
+            ),
           ),
-        ],
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: ConditionCard(
+            key: ValueKey('cond$i'),
+            condition: cond,
+            device: _device(cond.deviceId),
+            roomName: rooms[_device(cond.deviceId)?.roomId],
+            expanded: _openCond == i,
+            onToggle: () => setState(() => _openCond = _openCond == i ? null : i),
+            onChanged: (n) => setState(() => _conditions[i] = n),
+            onDuplicate: () => setState(() {
+              _conditions.insert(i + 1, cond.copyWith());
+              _openCond = i + 1;
+            }),
+            onDelete: () => setState(() {
+              _conditions.removeAt(i);
+              _openCond = null;
+            }),
+            onPickDevice: () => _pickConditionDevice(i),
+          ),
+        ),
+      ],
+      const SizedBox(height: 4),
+      _AddButton(
+        icon: Icons.add_rounded,
+        label: 'Thêm điều kiện cảm biến',
+        onTap: () => setState(() {
+          _conditions.add(
+            RuleCondition(attribute: 'temperature', operator: 'GT', expectedValue: 30, logicalOperator: _logicalOp),
+          );
+          _openCond = _conditions.length - 1;
+        }),
+      ),
+    ];
+  }
+
+  List<Widget> _eventView(StudioColors c, Map<String, String> rooms) {
+    final cond = _conditions.firstOrNull;
+    final code = '${cond?.expectedValue ?? ''}';
+    final known = systemEvents.where((e) => e.code == code).firstOrNull;
+    final src = _device(cond?.deviceId);
+    return [
+      const FieldLabel('Sự kiện hệ thống'),
+      PickerField(
+        icon: known?.icon ?? Icons.bolt_rounded,
+        label: code.isEmpty ? 'Chọn sự kiện' : (known?.name ?? eventLabel(code)),
+        caption: code.isEmpty ? 'Nhấn để chọn sự kiện kích hoạt' : (known?.description ?? 'Mã sự kiện: $code'),
+        hasError: code.isEmpty,
+        onTap: _pickEvent,
+      ),
+      const SizedBox(height: 14),
+      FieldLabel(
+        'Chỉ khi từ thiết bị (tùy chọn)',
+        trailing: src == null
+            ? null
+            : GestureDetector(
+                onTap: () => setState(() => _conditions[0] = cond!.copyWith(clearDevice: true)),
+                child: Text('Xoá chọn thiết bị', style: TextStyle(fontSize: 12, color: c.danger)),
+              ),
+      ),
+      PickerField(
+        icon: deviceIconFor(src),
+        label: src?.name ?? 'Mọi thiết bị',
+        caption: src == null ? 'Để trống = mọi thiết bị' : rooms[src.roomId] ?? 'Thiết bị',
+        online: src == null ? null : src.status == DeviceStatus.online,
+        onTap: _pickEventSource,
+      ),
+    ];
+  }
+
+  Widget _footer(StudioColors c) {
+    final err = _error;
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        decoration: BoxDecoration(
+          color: c.card,
+          border: Border(top: BorderSide(color: c.border)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (err != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 16, color: c.warn),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(err, style: TextStyle(fontSize: 12.5, color: c.warn))),
+                  ],
+                ),
+              ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _saving ? null : _close,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: c.text,
+                      side: BorderSide(color: c.border),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Đóng'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    onPressed: err != null || _saving ? null : _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: c.accent,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(_isEdit ? 'Lưu quy tắc' : 'Tạo quy tắc'),
+                              if (_dirty && _isEdit) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                ),
+                              ],
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TriggerOptionCard extends StatelessWidget {
-  const _TriggerOptionCard({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
+class _Section extends StatelessWidget {
+  const _Section(this.text);
 
-  final String label;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Text(
+      text,
+      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: StudioColors.of(context).text),
+    ),
+  );
+}
+
+class _AddButton extends StatelessWidget {
+  const _AddButton({required this.icon, required this.label, required this.onTap});
+
   final IconData icon;
-  final Color color;
-  final bool selected;
+  final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.md,
-        ),
-        decoration: BoxDecoration(
-          color: selected
-              ? color.withValues(alpha: 0.18)
-              : (isDark
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.black.withValues(alpha: 0.03)),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-            color: selected
-                ? color.withValues(alpha: 0.6)
-                : (isDark
-                      ? Colors.white.withValues(alpha: 0.1)
-                      : Colors.black.withValues(alpha: 0.08)),
-            width: selected ? 1.5 : 1,
-          ),
-          boxShadow: selected ? GlassTokens.glow(color, intensity: 0.25) : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 24,
-              color: selected
-                  ? color
-                  : (isDark ? AppColors.onDarkFaint : Colors.grey),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected
-                    ? color
-                    : (isDark
-                          ? AppColors.onDarkMuted
-                          : AppColors.onSurfaceVariant),
-                fontSize: 12,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+    final c = StudioColors.of(context);
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label, overflow: TextOverflow.ellipsis),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: c.accent,
+        side: BorderSide(color: c.accent.withValues(alpha: 0.4)),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
+    );
+  }
+}
+
+class _History extends ConsumerWidget {
+  const _History({required this.ruleId});
+
+  final String ruleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = StudioColors.of(context);
+    return ref.watch(automationRuleExecutionsProvider(ruleId)).when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, _) => Center(child: Text('Không tải được lịch sử', style: TextStyle(color: c.faint))),
+      data: (logs) => logs.isEmpty
+          ? Center(child: Text('Quy tắc này chưa chạy lần nào.', style: TextStyle(color: c.faint)))
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+              itemCount: logs.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (_, i) {
+                final log = logs[i];
+                final ok = log.status.toUpperCase() == 'SUCCESS';
+                return StudioCard(
+                  padding: const EdgeInsets.all(12),
+                  radius: 16,
+                  child: Row(
+                    children: [
+                      Icon(ok ? Icons.check_circle_rounded : Icons.error_rounded, size: 20, color: ok ? c.on : c.danger),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          log.details ?? (ok ? 'Chạy thành công' : 'Chạy không thành công'),
+                          style: TextStyle(fontSize: 13.5, color: c.text),
+                        ),
+                      ),
+                      Text(describeWhen(log.executedAt), style: TextStyle(fontSize: 12, color: c.faint)),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 }
