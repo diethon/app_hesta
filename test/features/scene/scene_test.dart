@@ -95,11 +95,11 @@ void main() {
       // Backend ScheduleResponse sends "HH:mm:ss".
       final parsed = SceneSchedule.fromJson({
         'id': 'sched-2',
-        'scheduledTime': '21:30:00',
+        'scheduledTime': '21:30:15',
         'repeatDays': [6, 7],
         'active': false,
       });
-      expect(parsed.time, '21:30');
+      expect(parsed.time, '21:30:15');
       expect(parsed.repeatDays, [6, 7]);
       expect(parsed.enabled, false);
     });
