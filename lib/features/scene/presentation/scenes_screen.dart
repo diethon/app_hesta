@@ -15,6 +15,7 @@ import '../domain/scene.dart';
 import 'scene_detail_screen.dart';
 import 'scene_editor_screen.dart';
 import 'scene_icons.dart';
+import 'scene_timer.dart';
 
 class ScenesScreen extends ConsumerStatefulWidget {
   const ScenesScreen({this.isEmbedded = false, super.key});
@@ -48,7 +49,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
   }
 
   Future<void> _openEditor() async {
-    await Navigator.of(context).push<bool>(
+    await Navigator.of(context, rootNavigator: true).push<bool>(
       MaterialPageRoute(builder: (_) => const SceneEditorScreen()),
     );
     if (mounted) unawaited(ref.read(scenesListProvider.notifier).refresh());
@@ -147,9 +148,9 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                       EmptyView(
                         message: isFiltered
                             ? (_selectedFilter == 'enabled'
-                                  ? 'Không có ngữ cảnh nào đang bật.'
-                                  : 'Không có ngữ cảnh nào đang tắt.')
-                            : 'Chưa có ngữ cảnh nào.\nTạo một ngữ cảnh để điều khiển nhiều thiết bị chỉ với một chạm.',
+                                  ? 'Không có kịch bản nào đang bật.'
+                                  : 'Không có kịch bản nào đang tắt.')
+                            : 'Chưa có kịch bản nào.\nTạo một kịch bản để điều khiển nhiều thiết bị chỉ với một chạm.',
                         icon: Icons.layers_outlined,
                       ),
                       if (!isFiltered) ...[
@@ -157,7 +158,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                         FilledButton.icon(
                           onPressed: _openEditor,
                           icon: const Icon(Icons.add_rounded, size: 18),
-                          label: const Text('Tạo ngữ cảnh'),
+                          label: const Text('Tạo kịch bản'),
                           style: FilledButton.styleFrom(
                             backgroundColor: c.accent,
                             foregroundColor: Colors.white,
@@ -180,7 +181,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                         scene: scene,
                         isExecuting: _executingSceneId == scene.id,
                         onTap: () async {
-                          await Navigator.of(context).push(
+                          await Navigator.of(context, rootNavigator: true).push(
                             MaterialPageRoute(
                               builder: (_) => SceneDetailScreen(scene: scene),
                             ),
@@ -210,7 +211,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
           error: (e, _) => Padding(
             padding: const EdgeInsets.only(top: 30),
             child: ErrorView(
-              message: 'Không tải được ngữ cảnh. Kiểm tra kết nối rồi thử lại.',
+              message: 'Không tải được kịch bản. Kiểm tra kết nối rồi thử lại.',
               onRetry: () =>
                   unawaited(ref.read(scenesListProvider.notifier).refresh()),
             ),
@@ -232,7 +233,8 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
           return Scaffold(
             backgroundColor: Colors.transparent,
             floatingActionButton: Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              // A nested Scaffold ignores the shell's floating nav bar; its height is in padding.bottom.
+              padding: EdgeInsets.only(bottom: AppSpacing.md + MediaQuery.paddingOf(context).bottom),
               child: FloatingActionButton.extended(
                 onPressed: _openEditor,
                 backgroundColor: c.accent,
@@ -240,7 +242,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                 elevation: 2,
                 icon: const Icon(Icons.add_rounded),
                 label: const Text(
-                  'Thêm ngữ cảnh',
+                  'Thêm kịch bản',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
@@ -255,7 +257,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                   automaticallyImplyLeading: false,
                   toolbarHeight: 68,
                   flexibleSpace: GlassAppBar(
-                    title: 'Ngữ cảnh',
+                    title: 'Kịch bản',
                     onBack: () => Navigator.of(context).maybePop(),
                     actions: [
                       GlassIconButton(
@@ -385,7 +387,7 @@ class _SceneListItem extends StatelessWidget {
     }
     if (n.contains('rèm') || t.contains('curtain')) return Icons.curtains_rounded;
     if (n.contains('khóa') || t.contains('lock')) return Icons.lock_outline_rounded;
-    if (n.contains('quạt') || t.contains('fan')) return Icons.mode_fan_off_outlined;
+    if (n.contains('quạt') || t.contains('fan')) return Icons.air_rounded;
     return Icons.devices_other_rounded;
   }
 
@@ -427,10 +429,22 @@ class _SceneListItem extends StatelessWidget {
                       '$devices thiết bị · ${on ? 'Đang bật' : 'Đã tắt'}',
                       style: TextStyle(fontSize: 12.5, color: c.muted),
                     ),
+                    if (scene.pendingRunAt != null)
+                      SceneCountdown(
+                        runAt: scene.pendingRunAt!,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: c.accent,
+                        ),
+                      ),
                   ],
                 ),
               ),
-              GlassToggle(value: on, onChanged: (_) => onToggle()),
+              Semantics(
+                label: on ? 'Tắt kịch bản' : 'Bật kịch bản',
+                child: GlassToggle(value: on, onChanged: (_) => onToggle()),
+              ),
             ],
           ),
           if (scene.description != null && scene.description!.isNotEmpty) ...[
@@ -447,6 +461,7 @@ class _SceneListItem extends StatelessWidget {
             Wrap(
               spacing: 6,
               runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 for (final act in scene.actions.take(3))
                   _DeviceChip(
@@ -463,7 +478,8 @@ class _SceneListItem extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton.icon(
-              onPressed: isExecuting ? null : onExecute,
+              // The backend refuses to run a switched-off scene, so do not offer it.
+              onPressed: isExecuting || !on || devices == 0 ? null : onExecute,
               icon: isExecuting
                   ? SizedBox(
                       width: 14,
