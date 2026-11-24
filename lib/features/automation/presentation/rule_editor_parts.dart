@@ -3,12 +3,15 @@
 // EventPickerSheet, ScenePickerSheet, ScheduleSection, SummarySentence, TemplateGrid.
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/glass/glass_toggle.dart';
 import '../../../core/widgets/studio.dart';
 import '../../devices/domain/device.dart';
+import '../../groups/domain/device_group.dart';
 import '../../scene/domain/scene.dart';
 import '../../scene/presentation/scene_icons.dart';
 import '../domain/automation_models.dart';
@@ -20,7 +23,7 @@ IconData deviceIconFor(Device? d) {
   if (t.contains('RGB')) return Icons.palette_outlined;
   if (t.contains('LIGHT') || t.contains('LED')) return Icons.lightbulb_outline_rounded;
   if (t.contains('AC') || t.contains('AIR')) return Icons.ac_unit_rounded;
-  if (t.contains('FAN')) return Icons.mode_fan_off_outlined;
+  if (t.contains('FAN')) return Icons.air_rounded;
   if (t.contains('GATE') || t.contains('DOOR')) return Icons.door_sliding_outlined;
   if (t.contains('CURTAIN')) return Icons.curtains_rounded;
   if (t.contains('SOCKET') || t.contains('PLUG')) return Icons.power_outlined;
@@ -434,7 +437,9 @@ PopupMenuItem<VoidCallback> menuItem(
 // ── Điều kiện ───────────────────────────────────────────────────────
 
 String conditionSentence(RuleCondition cond, Device? device) {
-  final dev = device?.name ?? cond.deviceName ?? 'cảm biến';
+  final dev = cond.groupId != null
+      ? 'một thiết bị trong nhóm ${cond.groupName ?? '(chưa chọn)'}'
+      : device?.name ?? cond.deviceName ?? 'cảm biến';
   final a = cond.attribute.toLowerCase();
   final v = cond.expectedValue;
   final yes = v == true || v == 'true' || v == 'ON';
@@ -443,10 +448,10 @@ String conditionSentence(RuleCondition cond, Device? device) {
   if (a == 'motion' && (yes || no)) {
     return (yes != neg) ? '$dev phát hiện có người' : '$dev không còn thấy người';
   }
-  if (a == 'state' && (yes || no)) {
+  if ((a == 'state' || a == 'power') && (yes || no)) {
     return '$dev ${(yes != neg) ? 'đang bật' : 'đang tắt'}';
   }
-  final attr = attributeFor(a);
+  final attr = attributeOf(device, a);
   final label = attr?.label.toLowerCase() ?? cond.attribute;
   final unit = attr?.unit ?? '';
   final shown = v == true || v == 'true'
@@ -466,6 +471,15 @@ String conditionSentence(RuleCondition cond, Device? device) {
   return '$label ở $dev $cmp $value';
 }
 
+/// "Hằng ngày lúc 18:00 (+1 giờ khác)" cho thẻ và trang chi tiết của quy tắc SCHEDULE.
+String scheduleSentence(List<RuleSchedule> schedules) {
+  final active = schedules.where((s) => s.active).toList();
+  if (active.isEmpty) return 'Chưa có giờ chạy nào đang bật';
+  final first = active.first;
+  final more = active.length > 1 ? ' (+${active.length - 1} giờ khác)' : '';
+  return '${describeDays(first.repeatDays)} lúc ${displayTime(first.time)}$more';
+}
+
 String capitalize(String s) =>
     s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
@@ -480,10 +494,13 @@ class ConditionCard extends StatefulWidget {
     required this.onDuplicate,
     required this.onDelete,
     required this.onPickDevice,
+    this.onPickGroup,
     super.key,
   });
 
   final RuleCondition condition;
+  /// Chuyển sang theo dõi cả nhóm (đúng khi BẤT KỲ thiết bị nào thoả).
+  final VoidCallback? onPickGroup;
   final Device? device;
   final String? roomName;
   final bool expanded;
@@ -506,13 +523,16 @@ class _ConditionCardState extends State<ConditionCard> {
     final cond = widget.condition;
     final dev = widget.device;
     final offline = dev != null && dev.status == DeviceStatus.offline;
-    final attr = attributeFor(cond.attribute);
+    final attr = attributeOf(dev, cond.attribute);
     final isBool = attr?.isBool == true || cond.expectedValue is bool;
     final live = liveValue(dev, cond.attribute.toLowerCase());
+    final isGroup = cond.groupId != null;
 
     return _StepCard(
-      leading: const StudioIconTile(icon: Icons.sensors_rounded, size: 36),
-      title: dev?.name ?? cond.deviceName ?? 'Chọn cảm biến...',
+      leading: StudioIconTile(icon: isGroup ? Icons.grid_view_rounded : Icons.sensors_rounded, size: 36),
+      title: isGroup
+          ? (cond.groupName == null ? 'Chọn nhóm...' : 'Nhóm ${cond.groupName}')
+          : dev?.name ?? cond.deviceName ?? 'Chọn thiết bị...',
       subtitle: capitalize(conditionSentence(cond, dev)),
       expanded: widget.expanded,
       onToggle: widget.onToggle,
@@ -523,10 +543,38 @@ class _ConditionCardState extends State<ConditionCard> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const FieldLabel('Cảm biến nguồn'),
+          if (widget.onPickGroup != null) ...[
+            SegmentedButton<bool>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: false, label: Text('Một thiết bị')),
+                ButtonSegment(value: true, label: Text('Cả nhóm')),
+              ],
+              selected: {isGroup},
+              onSelectionChanged: (v) {
+                if (v.first) {
+                  widget.onPickGroup!();
+                } else {
+                  widget.onChanged(cond.copyWith(clearGroup: true));
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (isGroup) ...[
+            const FieldLabel('Nhóm theo dõi'),
+            PickerField(
+              icon: Icons.grid_view_rounded,
+              label: cond.groupName ?? 'Chọn nhóm',
+              caption: 'Đúng khi bất kỳ thiết bị nào trong nhóm thoả điều kiện',
+              hasError: cond.groupId!.isEmpty,
+              onTap: widget.onPickGroup!,
+            ),
+          ] else ...[
+          const FieldLabel('Thiết bị nguồn'),
           PickerField(
             icon: Icons.sensors_rounded,
-            label: dev?.name ?? 'Chọn cảm biến',
+            label: dev?.name ?? 'Chọn thiết bị',
             caption: dev == null
                 ? 'Nhấn để chọn cảm biến kích hoạt'
                 : offline
@@ -544,6 +592,7 @@ class _ConditionCardState extends State<ConditionCard> {
                 style: TextStyle(fontSize: 11.5, color: c.warn),
               ),
             ),
+          ],
           const SizedBox(height: 14),
           FieldLabel(
             'Chỉ số theo dõi',
@@ -559,7 +608,7 @@ class _ConditionCardState extends State<ConditionCard> {
             items: [for (final a in attributesFor(dev)) (a.key, a.label)],
             selected: cond.attribute.toLowerCase(),
             onSelected: (key) {
-              final a = attributeFor(key)!;
+              final a = attributeOf(dev, key)!;
               Object? next = cond.expectedValue;
               if (a.isBool) {
                 next = true;
@@ -570,7 +619,8 @@ class _ConditionCardState extends State<ConditionCard> {
                     ? 60
                     : 100;
               }
-              widget.onChanged(cond.copyWith(attribute: key, expectedValue: next));
+              // Có/không chỉ so bằng; > hay < sẽ không bao giờ khớp.
+              widget.onChanged(cond.copyWith(attribute: key, expectedValue: next, operator: a.isBool ? 'EQ' : null));
             },
           ),
           if (_customOpen)
@@ -714,11 +764,23 @@ class _OptionTile extends StatelessWidget {
 
 /// Câu tóm tắt hành động như web (formatActionSummaryHuman), dùng tham số đã dịch.
 String actionSentence(RuleAction act, Device? device, Scene? scene) {
+  if (act.action == kDelayAction) {
+    return 'Chờ ${formatDuration(num.tryParse('${act.parameters['seconds']}') ?? 0)}';
+  }
+  final text = _commandSentence(act, device, scene);
+  final autoOff = num.tryParse('${act.parameters[kAutoOffKey] ?? ''}') ?? 0;
+  final verb = autoOffVerb(act.action, act.parameters);
+  return autoOff > 0 && verb != null ? '$text, ${verb.toLowerCase()} sau ${formatDuration(autoOff)}' : text;
+}
+
+String _commandSentence(RuleAction act, Device? device, Scene? scene) {
   if (act.action == 'EXECUTE_SCENE') {
     final name = scene?.name ?? act.sceneName;
-    return name == null ? 'Chạy ngữ cảnh (chưa chọn)' : 'Chạy ngữ cảnh: $name';
+    return name == null ? 'Chạy kịch bản (chưa chọn)' : 'Chạy kịch bản: $name';
   }
-  final dev = device?.name ?? act.deviceName ?? 'Thiết bị';
+  final dev = act.groupId != null
+      ? 'nhóm ${act.groupName ?? '(chưa chọn)'}'
+      : device?.name ?? act.deviceName ?? 'Thiết bị';
   return switch (act.action) {
     'TURN_ON' => 'Bật $dev',
     'TURN_OFF' => 'Tắt $dev',
@@ -747,10 +809,15 @@ class ActionStepCard extends StatefulWidget {
     required this.onDelete,
     required this.onPickDevice,
     required this.onPickScene,
+    this.onPickGroup,
+    this.groupDevices = const [],
     super.key,
   });
 
   final RuleAction action;
+  final VoidCallback? onPickGroup;
+  /// Thiết bị của nhóm đang chọn (bước nhóm): lệnh hiện ra là lệnh mà ít nhất một thiết bị làm được.
+  final List<Device> groupDevices;
   final int index;
   final int total;
   final Device? device;
@@ -783,12 +850,24 @@ class _ActionStepCardState extends State<ActionStepCard> {
   @override
   Widget build(BuildContext context) {
     final c = StudioColors.of(context);
+    final isDelay = _a.action == kDelayAction;
+    final isGroup = _a.groupId != null;
     final isScene = _a.action == 'EXECUTE_SCENE';
     final dev = widget.device;
     final scene = widget.scene;
     final offline = dev != null && dev.status == DeviceStatus.offline;
-    final options = dev == null ? const <ActionOption>[] : deviceActions(dev);
-    final icon = isScene
+    final options = isGroup
+        ? {for (final d in widget.groupDevices) for (final o in deviceActions(d)) o.code: o}.values.toList()
+        : dev == null
+        ? const <ActionOption>[]
+        : deviceActions(dev);
+    final autoOff = (num.tryParse('${_a.parameters[kAutoOffKey] ?? ''}') ?? 0).toInt();
+    final undoVerb = isDelay || isScene ? null : autoOffVerb(_a.action, _a.parameters);
+    final icon = isDelay
+        ? Icons.hourglass_bottom_rounded
+        : isGroup
+        ? Icons.grid_view_rounded
+        : isScene
         ? (scene == null ? Icons.auto_awesome_outlined : SceneIcons.getAtmosphere(scene.icon).icon)
         : deviceIconFor(dev);
     num p(List<String> keys, num fallback) {
@@ -802,8 +881,12 @@ class _ActionStepCardState extends State<ActionStepCard> {
     return _StepCard(
       badge: '${widget.index + 1}',
       leading: StudioIconTile(icon: icon, size: 36),
-      title: isScene
-          ? (scene?.name ?? _a.sceneName ?? 'Chọn ngữ cảnh...')
+      title: isDelay
+          ? 'Chờ'
+          : isGroup
+          ? (_a.groupName == null ? 'Chọn nhóm...' : 'Nhóm ${_a.groupName}')
+          : isScene
+          ? (scene?.name ?? _a.sceneName ?? 'Chọn kịch bản...')
           : (dev?.name ?? _a.deviceName ?? 'Chọn thiết bị...'),
       subtitle: actionSentence(_a, dev, scene),
       expanded: widget.expanded,
@@ -819,13 +902,32 @@ class _ActionStepCardState extends State<ActionStepCard> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isScene) ...[
-            const FieldLabel('Ngữ cảnh thực thi'),
+          if (isDelay) ...[
+            const FieldLabel('Chờ bao lâu rồi làm bước tiếp theo'),
+            DurationField(
+              label: 'Thời gian chờ',
+              seconds: (num.tryParse('${_a.parameters['seconds']}') ?? 30).toInt(),
+              max: kMaxDelaySeconds,
+              onChanged: (s) => widget.onChanged(_a.copyWith(parameters: {'seconds': s})),
+            ),
+          ] else if (isGroup) ...[
+            const FieldLabel('Nhóm thiết bị'),
+            PickerField(
+              icon: Icons.grid_view_rounded,
+              label: _a.groupName ?? 'Chọn nhóm',
+              caption: _a.groupId!.isEmpty
+                  ? 'Nhấn để chọn nhóm'
+                  : '${widget.groupDevices.length} thiết bị · thiết bị không hỗ trợ lệnh sẽ được bỏ qua',
+              hasError: _a.groupId!.isEmpty,
+              onTap: widget.onPickGroup ?? () {},
+            ),
+          ] else if (isScene) ...[
+            const FieldLabel('Kịch bản thực thi'),
             PickerField(
               icon: Icons.auto_awesome_outlined,
-              label: scene?.name ?? 'Chọn ngữ cảnh',
+              label: scene?.name ?? 'Chọn kịch bản',
               caption: scene == null
-                  ? 'Nhấn để chọn ngữ cảnh'
+                  ? 'Nhấn để chọn kịch bản'
                   : '${scene.actions.length} thiết bị',
               hasError: _a.sceneId == null,
               onTap: widget.onPickScene,
@@ -854,7 +956,7 @@ class _ActionStepCardState extends State<ActionStepCard> {
               ),
           ],
 
-          if (!isScene && dev != null) ...[
+          if (!isScene && !isDelay && options.isNotEmpty) ...[
             const SizedBox(height: 14),
             const FieldLabel('Lệnh điều khiển'),
             ChoiceChipRow<String>(
@@ -864,6 +966,32 @@ class _ActionStepCardState extends State<ActionStepCard> {
                 _a.copyWith(action: code, parameters: defaultParamsFor(code)),
               ),
             ),
+          ],
+
+          if (undoVerb != null) ...[
+            const SizedBox(height: 10),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text('$undoVerb sau một khoảng thời gian', style: TextStyle(fontSize: 13.5, color: c.text)),
+              value: autoOff > 0,
+              onChanged: (on) {
+                final next = {..._a.parameters};
+                if (on) {
+                  next[kAutoOffKey] = 300;
+                } else {
+                  next.remove(kAutoOffKey);
+                }
+                widget.onChanged(_a.copyWith(parameters: next));
+              },
+            ),
+            if (autoOff > 0)
+              DurationField(
+                label: '$undoVerb sau',
+                seconds: autoOff,
+                max: kMaxAutoOffSeconds,
+                onChanged: (s) => _setParam(kAutoOffKey, s),
+              ),
           ],
 
           if (!isScene && const ['OPEN', 'CLOSE', 'STOP'].contains(_a.action)) ...[
@@ -1374,8 +1502,8 @@ Future<Scene?> showScenePicker(
   return _sheet<Scene>(
     context,
     (ctx) => _SheetScaffold(
-      title: 'Chọn ngữ cảnh',
-      hint: 'Tìm ngữ cảnh...',
+      title: 'Chọn kịch bản',
+      hint: 'Tìm kịch bản...',
       builder: (q) {
         final list = scenes.where((s) => q.isEmpty || s.name.toLowerCase().contains(q)).toList();
         return ListView(
@@ -1385,7 +1513,7 @@ Future<Scene?> showScenePicker(
               Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  'Chưa có ngữ cảnh nào.',
+                  'Chưa có kịch bản nào.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: StudioColors.of(ctx).faint),
                 ),
@@ -1412,16 +1540,18 @@ class ScheduleSection extends StatelessWidget {
     required this.schedules,
     required this.onChanged,
     this.loading = false,
+    this.emptyText = 'Chưa có giờ chạy. Thêm ít nhất 1 giờ để quy tắc tự chạy.',
     super.key,
   });
 
+  final String emptyText;
   final List<RuleSchedule> schedules;
   final ValueChanged<List<RuleSchedule>> onChanged;
   final bool loading;
 
   Future<void> _edit(BuildContext context, int? index) async {
     final current = index == null
-        ? const RuleSchedule(time: '07:00')
+        ? const RuleSchedule(time: '07:00:00')
         : schedules[index];
     final result = await showModalBottomSheet<RuleSchedule>(
       context: context,
@@ -1459,7 +1589,7 @@ class ScheduleSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
-              'Chưa có giờ chạy. Thêm ít nhất 1 giờ để quy tắc tự chạy.',
+              emptyText,
               style: TextStyle(fontSize: 13, color: c.faint),
             ),
           ),
@@ -1474,19 +1604,26 @@ class ScheduleSection extends StatelessWidget {
                 children: [
                   Icon(Icons.alarm_rounded, color: s.active ? c.accent : c.off),
                   const SizedBox(width: 10),
-                  Text(
-                    s.time,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: s.active ? c.text : c.muted,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
+                  // Time above, repeat days below — same as the web schedule row.
                   Expanded(
-                    child: Text(
-                      describeDays(s.repeatDays),
-                      style: TextStyle(fontSize: 13, color: c.muted),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayTime(s.time),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: s.active ? c.text : c.muted,
+                          ),
+                        ),
+                        Text(
+                          describeDays(s.repeatDays),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12.5, color: c.muted),
+                        ),
+                      ],
                     ),
                   ),
                   GlassToggle(
@@ -1498,7 +1635,14 @@ class ScheduleSection extends StatelessWidget {
                     },
                   ),
                   IconButton(
+                    tooltip: 'Sửa giờ chạy',
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(Icons.edit_outlined, color: c.muted, size: 20),
+                    onPressed: () => _edit(context, i),
+                  ),
+                  IconButton(
                     tooltip: 'Xoá giờ chạy',
+                    visualDensity: VisualDensity.compact,
                     icon: Icon(Icons.delete_outline_rounded, color: c.danger),
                     onPressed: () => onChanged([...schedules]..removeAt(i)),
                   ),
@@ -1536,17 +1680,23 @@ class _ScheduleEditor extends StatefulWidget {
 
 class _ScheduleEditorState extends State<_ScheduleEditor> {
   late String _time = widget.initial.time;
+  late final List<FixedExtentScrollController> _wheels = [
+    for (final v in formatHms(_time).split(':').map(int.parse)) FixedExtentScrollController(initialItem: v),
+  ];
+
+  @override
+  void dispose() {
+    for (final w in _wheels) {
+      w.dispose();
+    }
+    super.dispose();
+  }
   late final Set<int> _days = {...widget.initial.repeatDays};
   static const _labels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
   @override
   Widget build(BuildContext context) {
     final c = StudioColors.of(context);
-    final parts = _time.split(':');
-    final tod = TimeOfDay(
-      hour: int.tryParse(parts.first) ?? 7,
-      minute: int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0,
-    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(
@@ -1558,26 +1708,43 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: c.text),
           ),
           const SizedBox(height: 16),
-          StudioCard(
-            onTap: () async {
-              final picked = await showTimePicker(context: context, initialTime: tod);
-              if (picked != null) {
-                setState(
-                  () => _time =
-                      '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}',
-                );
-              }
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.schedule_rounded, color: c.accent),
-                const SizedBox(width: 10),
-                Text(
-                  _time,
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: c.text),
+          Text(
+            _time,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: c.text),
+          ),
+          const FieldLabel('Giờ : phút : giây'),
+          SizedBox(
+            height: 180,
+            child: CupertinoTheme(
+              data: CupertinoThemeData(
+                textTheme: CupertinoTextThemeData(
+                  pickerTextStyle: TextStyle(fontSize: 20, color: c.text),
                 ),
-              ],
+              ),
+              // Same H:M:S wheel the web form offers. Own columns instead of CupertinoTimerPicker,
+              // whose Vietnamese labels pad only the hours and glue "0giây" together.
+              child: Row(
+                children: [
+                  for (final (i, unit) in const [(0, 'giờ'), (1, 'phút'), (2, 'giây')])
+                    Expanded(
+                      child: CupertinoPicker(
+                        scrollController: _wheels[i],
+                        itemExtent: 36,
+                        looping: true,
+                        onSelectedItemChanged: (_) => setState(() {
+                          String two(FixedExtentScrollController w) =>
+                              (w.selectedItem % (w == _wheels[0] ? 24 : 60)).toString().padLeft(2, '0');
+                          _time = '${two(_wheels[0])}:${two(_wheels[1])}:${two(_wheels[2])}';
+                        }),
+                        children: [
+                          for (var v = 0; v < (i == 0 ? 24 : 60); v++)
+                            Center(child: Text('${v.toString().padLeft(2, '0')} $unit')),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -1658,7 +1825,7 @@ class RuleSummaryCard extends StatelessWidget {
       final days = first == null ? 'Hằng ngày' : describeDays(first.repeatDays);
       trigger.addAll([
         TextSpan(text: days == 'Hằng ngày' ? 'Mỗi ngày lúc ' : '$days lúc '),
-        TextSpan(text: first?.time ?? 'giờ bạn chọn', style: bold),
+        TextSpan(text: first == null ? 'giờ bạn chọn' : displayTime(first.time), style: bold),
         if (schedules.length > 1) TextSpan(text: ' (+${schedules.length - 1} giờ khác)'),
       ]);
     } else if (triggerType == 'EVENT') {
@@ -1796,6 +1963,144 @@ class TemplateGrid extends StatelessWidget {
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+// ── Nhóm thiết bị & thời gian ───────────────────────────────────────
+
+Future<DeviceGroup?> showGroupPicker(
+  BuildContext context, {
+  required List<DeviceGroup> groups,
+  String? selectedId,
+}) {
+  return _sheet<DeviceGroup>(
+    context,
+    (ctx) => _SheetScaffold(
+      title: 'Chọn nhóm thiết bị',
+      hint: 'Tìm nhóm...',
+      builder: (q) {
+        final list = groups.where((g) => q.isEmpty || g.name.toLowerCase().contains(q)).toList();
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            if (list.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Chưa có nhóm nào. Tạo nhóm ở trang Thiết bị.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: StudioColors.of(ctx).faint),
+                ),
+              ),
+            for (final g in list)
+              _PickRow(
+                icon: Icons.grid_view_rounded,
+                title: g.name,
+                subtitle: g.deviceIds.isEmpty ? 'Nhóm chưa có thiết bị' : '${g.deviceIds.length} thiết bị',
+                selected: g.id == selectedId,
+                onTap: g.deviceIds.isEmpty ? () {} : () => Navigator.pop(ctx, g),
+              ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// Ô số + đơn vị (giây/phút/giờ); chỉ báo về khi giá trị nằm trong 1..[max] giây.
+class DurationField extends StatefulWidget {
+  const DurationField({
+    required this.seconds,
+    required this.max,
+    required this.onChanged,
+    required this.label,
+    super.key,
+  });
+
+  final int seconds;
+  final int max;
+  final ValueChanged<int> onChanged;
+  final String label;
+
+  @override
+  State<DurationField> createState() => _DurationFieldState();
+}
+
+class _DurationFieldState extends State<DurationField> {
+  static const _units = <(String, int)>[('giây', 1), ('phút', 60), ('giờ', 3600)];
+  late int _unit = _bestUnit(widget.seconds);
+  late final _text = TextEditingController(text: '${widget.seconds ~/ _unit}');
+
+  static int _bestUnit(int s) => s >= 3600 && s % 3600 == 0 ? 3600 : s >= 60 && s % 60 == 0 ? 60 : 1;
+
+  int? _value(String text, int unit) {
+    final v = double.tryParse(text.replaceAll(',', '.'));
+    if (v == null) return null;
+    final s = (v * unit).round();
+    return s >= 1 && s <= widget.max ? s : null;
+  }
+
+  @override
+  void didUpdateWidget(DurationField old) {
+    super.didUpdateWidget(old);
+    // Giá trị khác từ bên ngoài (vd nhân bản bước) thì hiện lại; lần sửa của chính ô này thì giữ nguyên chữ.
+    if (widget.seconds != _value(_text.text, _unit)) {
+      _unit = _bestUnit(widget.seconds);
+      _text.text = '${widget.seconds ~/ _unit}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  void _commit() {
+    final s = _value(_text.text, _unit);
+    setState(() {});
+    if (s != null && s != widget.seconds) widget.onChanged(s);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StudioColors.of(context);
+    final valid = _value(_text.text, _unit) != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            SizedBox(
+              width: 96,
+              child: TextField(
+                controller: _text,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(isDense: true, labelText: widget.label),
+                onChanged: (_) => _commit(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            DropdownButton<int>(
+              value: _unit,
+              items: [for (final (l, v) in _units) DropdownMenuItem(value: v, child: Text(l))],
+              onChanged: (v) {
+                _unit = v ?? _unit;
+                _commit();
+              },
+            ),
+          ],
+        ),
+        if (!valid)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Chọn từ 1 giây đến ${formatDuration(widget.max)}.',
+              style: TextStyle(fontSize: 12, color: c.danger),
+            ),
+          ),
       ],
     );
   }

@@ -60,7 +60,10 @@ class DeviceDto {
     } else if (currentState.containsKey('state')) {
       final st = currentState['state']?.toString().toUpperCase();
       final upperType = rawType.toUpperCase();
-      if (upperType.contains('GATE') || upperType.contains('LOCK') || upperType.contains('DOOR')) {
+      if (upperType.contains('GATE') ||
+          upperType.contains('LOCK') ||
+          upperType.contains('DOOR') ||
+          upperType.contains('CURTAIN')) {
         // Với Lock/Gate trong app SYNA: isOn = true là "khoá/đóng", isOn = false là "mở khoá/mở"
         isOn = st != 'OPEN' && st != 'OPENING' && st != 'UNLOCKED';
       } else {
@@ -284,7 +287,9 @@ class DeviceDto {
 
   static DeviceType _parseDeviceType(String raw) {
     final upper = raw.trim().toUpperCase();
-    if (upper.contains('GATE') || upper.contains('ROLLING_DOOR')) {
+    if (upper.contains('GATE') ||
+        upper.contains('DOOR') ||
+        upper.contains('CURTAIN')) {
       return DeviceType.lock;
     }
     if (upper.contains('WATER_PUMP') ||
@@ -299,12 +304,15 @@ class DeviceDto {
       'AC' || 'THERMOSTAT' || 'AIR_CONDITIONER' => DeviceType.thermostat,
       'LOCK' || 'DOOR' => DeviceType.lock,
       'FAN' => DeviceType.fan,
+      'TV' || 'SMART_TV' => DeviceType.tv,
       'WATER_PUMP' || 'PUMP' || 'MOTOR' || 'WATERPUMP' => DeviceType.waterPump,
       'SENSOR' ||
       'TEMP_SENSOR' ||
       'MOTION_SENSOR' ||
       'TEMP_HUMID_SENSOR' ||
-      'SMOKE_SENSOR' => DeviceType.sensor,
+      'SMOKE_SENSOR' ||
+      'FLAME_SENSOR' ||
+      'LUX_SENSOR' => DeviceType.sensor,
       'CAMERA' || 'CAMERA_AI' => DeviceType.camera,
       'SPEAKER' || 'SOCKET' || 'SMART_PLUG' => DeviceType.speaker,
       _ =>

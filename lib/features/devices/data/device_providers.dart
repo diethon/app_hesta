@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/network_client.dart';
 import '../../../core/services/websocket_service.dart';
 import '../../authentication/data/auth_providers.dart' show kUseMockData;
 import '../../home/data/home_providers.dart';
+import '../../notifications/data/notification_providers.dart';
 import '../domain/device.dart';
 import '../domain/device_repository.dart';
 import 'api_device_repository.dart';
@@ -68,14 +70,25 @@ final devicesControllerProvider =
         ref.watch(deviceRepositoryProvider),
         homeId: homeId,
         realtime: kUseMockData ? null : ref.watch(webSocketServiceProvider),
+        onCommandError: (message) => ref
+            .read(scaffoldMessengerKeyProvider)
+            .currentState
+            ?.showSnackBar(SnackBar(content: Text(message))),
       )..load();
       return controller;
     });
 
 class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
-  DevicesController(this._repository, {this.homeId, WebSocketService? realtime})
-    : _realtime = realtime,
-      super(const AsyncValue.loading());
+  DevicesController(
+    this._repository, {
+    this.homeId,
+    WebSocketService? realtime,
+    this.onCommandError,
+  }) : _realtime = realtime,
+       super(const AsyncValue.loading());
+
+  /// Báo lỗi lệnh cho người dùng (vd: thiết bị ngoại tuyến) — các nút gọi updateDevice không await.
+  final void Function(String message)? onCommandError;
 
   final DeviceRepository _repository;
   final String? homeId;
@@ -84,40 +97,35 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
 
   Future<void> load() async {
     state = const AsyncValue.loading();
-    try {
-      final devices = await _repository.getDevices();
-      if (devices.isNotEmpty) {
-        state = AsyncValue.data(devices);
-      } else {
-        final mockDevices = await MockDeviceRepository().getDevices();
-        state = AsyncValue.data(mockDevices);
-      }
-    } catch (_) {
-      final mockDevices = await MockDeviceRepository().getDevices();
-      state = AsyncValue.data(mockDevices);
-    }
-    _subscribeRealtime();
+    await refresh();
   }
 
   Future<void> refresh() async {
+    List<Device> devices;
     try {
-      final devices = await _repository.getDevices();
-      if (devices.isNotEmpty) {
-        state = AsyncValue.data(devices);
-      } else {
-        final mockDevices = await MockDeviceRepository().getDevices();
-        state = AsyncValue.data(mockDevices);
-      }
+      devices = await _repository.getDevices();
     } catch (_) {
-      final mockDevices = await MockDeviceRepository().getDevices();
-      state = AsyncValue.data(mockDevices);
+      devices = const [];
     }
+    if (devices.isEmpty) {
+      devices = await MockDeviceRepository().getDevices();
+    }
+    // The provider may be disposed (logout / home switch) while awaiting.
+    if (!mounted) return;
+    state = AsyncValue.data(devices);
     _subscribeRealtime();
   }
 
   Future<void> updateDevice(String id, DeviceCommand command) async {
     final previous = state.valueOrNull ?? const <Device>[];
-    final updated = await _repository.updateDeviceState(id, command);
+    final Device updated;
+    try {
+      updated = await _repository.updateDeviceState(id, command);
+    } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      onCommandError?.call(msg.isEmpty ? 'Không gửi được lệnh tới thiết bị' : msg);
+      return;
+    }
     state = AsyncValue.data([
       for (final device in previous) device.id == id ? updated : device,
     ]);
@@ -250,6 +258,7 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
             timerEnabled: updated.timerEnabled ?? device.timerEnabled,
             timerHour: updated.timerHour ?? device.timerHour,
             timerHalfHour: updated.timerHalfHour ?? device.timerHalfHour,
+            gateState: updated.gateState ?? device.gateState,
           )
         else
           device,
