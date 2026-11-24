@@ -19,6 +19,7 @@ class RuleCondition {
   final String? id;
   final String? deviceId;
   final String? deviceName;
+
   /// Set instead of [deviceId]: true when ANY device of the group matches. '' = not picked yet.
   final String? groupId;
   final String? groupName;
@@ -120,6 +121,7 @@ class RuleAction {
   final String? deviceName;
   final String? sceneId;
   final String? sceneName;
+
   /// Group step: every member that supports [action]. '' = not picked yet.
   final String? groupId;
   final String? groupName;
@@ -205,8 +207,10 @@ class AutomationRule {
   final bool enabled;
   final List<RuleCondition> conditions;
   final List<RuleAction> actions;
+
   /// Run only when the conditions stay true this long (0 = at once).
   final int holdSeconds;
+
   /// Giờ chạy của quy tắc SCHEDULE (server gửi kèm để danh sách hiện "18:00 hằng ngày").
   final List<RuleSchedule> schedules;
   final DateTime? createdAt;
@@ -240,7 +244,10 @@ class AutomationRule {
       actions: actList,
       holdSeconds: (json['holdSeconds'] as num?)?.toInt() ?? 0,
       schedules: json['schedules'] is List
-          ? (json['schedules'] as List).whereType<Map>().map((m) => RuleSchedule.fromJson(Map<String, dynamic>.from(m))).toList()
+          ? (json['schedules'] as List)
+                .whereType<Map>()
+                .map((m) => RuleSchedule.fromJson(Map<String, dynamic>.from(m)))
+                .toList()
           : const [],
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())

@@ -20,12 +20,42 @@ const actionOptions = <ActionOption>[
   ActionOption('TURN_ON', 'Bật nguồn', ActionValueKind.none),
   ActionOption('TURN_OFF', 'Tắt nguồn', ActionValueKind.none),
   ActionOption('TOGGLE', 'Đảo trạng thái bật/tắt', ActionValueKind.none),
-  ActionOption('SET_BRIGHTNESS', 'Đặt độ sáng', ActionValueKind.percentage, parameterKey: 'level'),
-  ActionOption('SET_RGB', 'Đặt màu RGB', ActionValueKind.color, parameterKey: 'color'),
-  ActionOption('SET_COLOR', 'Đổi màu', ActionValueKind.color, parameterKey: 'color'),
-  ActionOption('SET_TEMPERATURE', 'Đặt nhiệt độ', ActionValueKind.number, parameterKey: 'temperature'),
-  ActionOption('SET_SPEED', 'Đặt tốc độ', ActionValueKind.percentage, parameterKey: 'speed'),
-  ActionOption('SET_MODE', 'Đặt chế độ', ActionValueKind.text, parameterKey: 'mode'),
+  ActionOption(
+    'SET_BRIGHTNESS',
+    'Đặt độ sáng',
+    ActionValueKind.percentage,
+    parameterKey: 'level',
+  ),
+  ActionOption(
+    'SET_RGB',
+    'Đặt màu RGB',
+    ActionValueKind.color,
+    parameterKey: 'color',
+  ),
+  ActionOption(
+    'SET_COLOR',
+    'Đổi màu',
+    ActionValueKind.color,
+    parameterKey: 'color',
+  ),
+  ActionOption(
+    'SET_TEMPERATURE',
+    'Đặt nhiệt độ',
+    ActionValueKind.number,
+    parameterKey: 'temperature',
+  ),
+  ActionOption(
+    'SET_SPEED',
+    'Đặt tốc độ',
+    ActionValueKind.percentage,
+    parameterKey: 'speed',
+  ),
+  ActionOption(
+    'SET_MODE',
+    'Đặt chế độ',
+    ActionValueKind.text,
+    parameterKey: 'mode',
+  ),
   ActionOption('OPEN', 'Mở cửa', ActionValueKind.none),
   ActionOption('CLOSE', 'Đóng cửa', ActionValueKind.none),
   ActionOption('STOP', 'Dừng cửa', ActionValueKind.none),
@@ -35,10 +65,31 @@ const actionOptions = <ActionOption>[
 const _actionsByType = <String, List<String>>{
   'LIGHT': ['TURN_ON', 'TURN_OFF', 'TOGGLE', 'SET_BRIGHTNESS'],
   'LED': ['TURN_ON', 'TURN_OFF', 'TOGGLE', 'SET_BRIGHTNESS'],
-  'LED_RGB': ['TURN_ON', 'TURN_OFF', 'TOGGLE', 'SET_BRIGHTNESS', 'SET_RGB', 'SET_COLOR'],
+  'LED_RGB': [
+    'TURN_ON',
+    'TURN_OFF',
+    'TOGGLE',
+    'SET_BRIGHTNESS',
+    'SET_RGB',
+    'SET_COLOR',
+  ],
   'FAN': ['TURN_ON', 'TURN_OFF', 'TOGGLE', 'SET_SPEED'],
-  'AC': ['TURN_ON', 'TURN_OFF', 'TOGGLE', 'SET_TEMPERATURE', 'SET_MODE', 'SET_SPEED'],
-  'AIR_CONDITIONER': ['TURN_ON', 'TURN_OFF', 'TOGGLE', 'SET_TEMPERATURE', 'SET_MODE', 'SET_SPEED'],
+  'AC': [
+    'TURN_ON',
+    'TURN_OFF',
+    'TOGGLE',
+    'SET_TEMPERATURE',
+    'SET_MODE',
+    'SET_SPEED',
+  ],
+  'AIR_CONDITIONER': [
+    'TURN_ON',
+    'TURN_OFF',
+    'TOGGLE',
+    'SET_TEMPERATURE',
+    'SET_MODE',
+    'SET_SPEED',
+  ],
   'SOCKET': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
   'SMART_PLUG': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
   'WATER_PUMP': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
@@ -53,7 +104,8 @@ const _actionsByType = <String, List<String>>{
 String deviceTypeCode(Device d) {
   final raw = (d.rawType ?? '').toUpperCase();
   if (raw.isNotEmpty) {
-    if (raw == 'RGB_LED' || raw == 'RGB' || raw == 'LED_STRIP') return 'LED_RGB';
+    if (raw == 'RGB_LED' || raw == 'RGB' || raw == 'LED_STRIP')
+      return 'LED_RGB';
     if (raw == 'THERMOSTAT') return 'AC';
     return raw;
   }
@@ -77,12 +129,23 @@ List<ActionOption> deviceActions(Device d) {
   return actionOptions.where((o) => allowed.contains(o.code)).toList();
 }
 
-const _sensorTypes = ['SENSOR', 'TEMP_HUMID', 'MOTION', 'SMOKE', 'DOOR_SENSOR', 'WATER_LEAK', 'DHT', 'PIR', 'LDR'];
+const _sensorTypes = [
+  'SENSOR',
+  'TEMP_HUMID',
+  'MOTION',
+  'SMOKE',
+  'DOOR_SENSOR',
+  'WATER_LEAK',
+  'DHT',
+  'PIR',
+  'LDR',
+];
 
 bool isSensorDevice(Device d) =>
     d.type == DeviceType.sensor || _sensorTypes.any(deviceTypeCode(d).contains);
 
-bool isControllableDevice(Device d) => !isSensorDevice(d) && d.type != DeviceType.camera;
+bool isControllableDevice(Device d) =>
+    !isSensorDevice(d) && d.type != DeviceType.camera;
 
 // ── Điều kiện cảm biến ──────────────────────────────────────────────
 
@@ -108,7 +171,8 @@ const kPowerOnOff = SensorAttribute('power', 'Bật / tắt', '', isBool: true);
 
 /// [attributeFor], nhưng 'power' của thiết bị điều khiển là bật/tắt chứ không phải công suất W.
 SensorAttribute? attributeOf(Device? d, String key) =>
-    attributesFor(d).where((a) => a.key == key.toLowerCase()).firstOrNull ?? attributeFor(key);
+    attributesFor(d).where((a) => a.key == key.toLowerCase()).firstOrNull ??
+    attributeFor(key);
 
 SensorAttribute? attributeFor(String key) {
   for (final a in sensorAttributes) {
@@ -122,13 +186,16 @@ List<SensorAttribute> attributesFor(Device? d) {
   if (d == null) return sensorAttributes;
   final t = deviceTypeCode(d);
   // Đèn, quạt, ổ cắm…: "khi bật / tắt" (power ON/OFF nó báo về), giống web.
-  if (isControllableDevice(d) && !t.contains('SENSOR')) return const [kPowerOnOff];
+  if (isControllableDevice(d) && !t.contains('SENSOR'))
+    return const [kPowerOnOff];
   List<SensorAttribute> only(List<String> keys) =>
       sensorAttributes.where((a) => keys.contains(a.key)).toList();
-  if (t.contains('TEMP') || t.contains('DHT')) return only(['temperature', 'humidity']);
+  if (t.contains('TEMP') || t.contains('DHT'))
+    return only(['temperature', 'humidity']);
   if (t.contains('MOTION') || t.contains('PIR')) return only(['motion']);
   if (t.contains('LIGHT') || t.contains('LDR')) return only(['light']);
-  if (t.contains('POWER') || t.contains('ENERGY') || t.contains('SOCKET')) return only(['power', 'state']);
+  if (t.contains('POWER') || t.contains('ENERGY') || t.contains('SOCKET'))
+    return only(['power', 'state']);
   return sensorAttributes;
 }
 
@@ -304,26 +371,42 @@ const automationTemplates = <AutomationTemplate>[
 String? validateRuleDraft({
   required String name,
   required String triggerType,
-  required List<({String? deviceId, String? groupId, Object? expectedValue})> conditions,
-  required List<({String action, String? deviceId, String? sceneId, String? groupId, Object? seconds})> actions,
+  required List<({String? deviceId, String? groupId, Object? expectedValue})>
+  conditions,
+  required List<
+    ({
+      String action,
+      String? deviceId,
+      String? sceneId,
+      String? groupId,
+      Object? seconds,
+    })
+  >
+  actions,
   required int activeScheduleCount,
 }) {
   if (name.trim().isEmpty) return 'Nhập tên quy tắc (tối đa 40 ký tự)';
-  if (triggerType == 'SCHEDULE' && activeScheduleCount == 0) return 'Thêm ít nhất 1 giờ chạy';
+  if (triggerType == 'SCHEDULE' && activeScheduleCount == 0)
+    return 'Thêm ít nhất 1 giờ chạy';
   if (triggerType == 'SENSOR') {
     if (conditions.isEmpty) return 'Thêm ít nhất 1 điều kiện cho cảm biến';
-    if (conditions.any((c) => c.groupId != null ? c.groupId!.isEmpty : c.deviceId == null)) {
+    if (conditions.any(
+      (c) => c.groupId != null ? c.groupId!.isEmpty : c.deviceId == null,
+    )) {
       return 'Chọn thiết bị hoặc nhóm cho điều kiện';
     }
   }
   if (triggerType == 'EVENT' &&
-      (conditions.isEmpty || '${conditions.first.expectedValue ?? ''}'.isEmpty)) {
+      (conditions.isEmpty ||
+          '${conditions.first.expectedValue ?? ''}'.isEmpty)) {
     return 'Chọn sự kiện kích hoạt';
   }
   if (actions.isEmpty) return 'Thêm ít nhất 1 hành động thực thi';
-  if (actions.every((a) => a.action == kDelayAction)) return 'Thêm ít nhất 1 hành động ngoài bước chờ';
+  if (actions.every((a) => a.action == kDelayAction))
+    return 'Thêm ít nhất 1 hành động ngoài bước chờ';
   final incomplete = actions.any((a) {
-    if (a.action == kDelayAction) return !((num.tryParse('${a.seconds}') ?? 0) >= 1);
+    if (a.action == kDelayAction)
+      return !((num.tryParse('${a.seconds}') ?? 0) >= 1);
     if (a.action == 'EXECUTE_SCENE') return a.sceneId == null;
     return a.groupId != null ? a.groupId!.isEmpty : a.deviceId == null;
   });
@@ -353,7 +436,10 @@ String formatDuration(num totalSeconds) {
 /// Lệnh tự hoàn tác được và từ để gọi việc đó; null = không có.
 String? autoOffVerb(String action, [Map<String, dynamic> params = const {}]) {
   if (action == 'TURN_ON' || action == 'POWER_ON') return 'Tự tắt';
-  if (action == 'SET_POWER' && params['power'] != false && params['power'] != 'OFF') return 'Tự tắt';
+  if (action == 'SET_POWER' &&
+      params['power'] != false &&
+      params['power'] != 'OFF')
+    return 'Tự tắt';
   if (action == 'OPEN' || action == 'GATE_OPEN') return 'Tự đóng';
   return null;
 }

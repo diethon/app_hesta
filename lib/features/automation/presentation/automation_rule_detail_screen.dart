@@ -9,7 +9,8 @@ import '../data/automation_providers.dart';
 import '../domain/automation_models.dart';
 import 'automation_rule_editor_screen.dart';
 import '../domain/rule_options.dart' show formatDuration, kDelayAction;
-import 'rule_editor_parts.dart' show actionSentence, capitalize, conditionSentence, scheduleSentence;
+import 'rule_editor_parts.dart'
+    show actionSentence, capitalize, conditionSentence, scheduleSentence;
 
 class AutomationRuleDetailScreen extends ConsumerStatefulWidget {
   const AutomationRuleDetailScreen({required this.rule, super.key});
@@ -30,7 +31,6 @@ class _AutomationRuleDetailScreenState
     super.initState();
     _rule = widget.rule;
   }
-
 
   Future<void> _deleteRule() async {
     final confirmed = await showDialog<bool>(
@@ -65,7 +65,8 @@ class _AutomationRuleDetailScreenState
     final executionsAsync = ref.watch(
       automationRuleExecutionsProvider(_rule.id),
     );
-    final join = _rule.conditions.isNotEmpty &&
+    final join =
+        _rule.conditions.isNotEmpty &&
             _rule.conditions.first.logicalOperator.toUpperCase() == 'OR'
         ? 'hoặc'
         : 'và';
@@ -188,7 +189,8 @@ class _AutomationRuleDetailScreenState
                         child: _rule.conditions.isEmpty
                             ? _Line(
                                 icon: Icons.schedule_rounded,
-                                text: _rule.triggerType.toUpperCase() ==
+                                text:
+                                    _rule.triggerType.toUpperCase() ==
                                         'SCHEDULE'
                                     ? scheduleSentence(_rule.schedules)
                                     : 'Mỗi khi có sự kiện xảy ra',
@@ -214,13 +216,16 @@ class _AutomationRuleDetailScreenState
                                       ),
                                     _Line(
                                       icon: Icons.sensors_rounded,
-                                      text: capitalize(conditionSentence(cond, null)),
+                                      text: capitalize(
+                                        conditionSentence(cond, null),
+                                      ),
                                     ),
                                   ],
                                   if (_rule.holdSeconds > 0)
                                     _Line(
                                       icon: Icons.timer_outlined,
-                                      text: 'Chỉ chạy khi đúng liên tục ${formatDuration(_rule.holdSeconds)}',
+                                      text:
+                                          'Chỉ chạy khi đúng liên tục ${formatDuration(_rule.holdSeconds)}',
                                     ),
                                 ],
                               ),
@@ -242,7 +247,8 @@ class _AutomationRuleDetailScreenState
                                           ? Icons.hourglass_bottom_rounded
                                           : a.groupId != null
                                           ? Icons.grid_view_rounded
-                                          : a.sceneName != null && a.deviceName == null
+                                          : a.sceneName != null &&
+                                                a.deviceName == null
                                           ? Icons.layers_outlined
                                           : Icons.arrow_forward_rounded,
                                       text: actionSentence(a, null, null),
