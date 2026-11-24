@@ -123,7 +123,9 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
       updated = await _repository.updateDeviceState(id, command);
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
-      onCommandError?.call(msg.isEmpty ? 'Không gửi được lệnh tới thiết bị' : msg);
+      onCommandError?.call(
+        msg.isEmpty ? 'Không gửi được lệnh tới thiết bị' : msg,
+      );
       return;
     }
     state = AsyncValue.data([
