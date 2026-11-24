@@ -50,15 +50,31 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
       );
     }
     if (m.isTraining) {
-      return ('Đang học', 'Đang phân tích thói quen mới nhất của bạn…', c.accent);
+      return (
+        'Đang học',
+        'Đang phân tích thói quen mới nhất của bạn…',
+        c.accent,
+      );
     }
     if (m.isUnavailable) {
-      return ('Tạm ngưng', 'Chưa kết nối được trợ lý AI. Bạn vẫn dùng app bình thường.', c.off);
+      return (
+        'Tạm ngưng',
+        'Chưa kết nối được trợ lý AI. Bạn vẫn dùng app bình thường.',
+        c.off,
+      );
     }
     if (m.isNotTrained) {
-      return ('Chưa sẵn sàng', 'Chưa có đủ dữ liệu. Nhấn "Học lại" sau khi dùng thiết bị vài ngày.', c.warn);
+      return (
+        'Chưa sẵn sàng',
+        'Chưa có đủ dữ liệu. Nhấn "Học lại" sau khi dùng thiết bị vài ngày.',
+        c.warn,
+      );
     }
-    return ('Đang hoạt động', 'Cập nhật ${describeWhen(m.trainedAt).toLowerCase()}', c.on);
+    return (
+      'Đang hoạt động',
+      'Cập nhật ${describeWhen(m.trainedAt).toLowerCase()}',
+      c.on,
+    );
   }
 
   @override
@@ -176,12 +192,18 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
                   child: Column(
                     children: [
                       _DetailRow('Độ chính xác', '${model.accuracyPercent}%'),
-                      _DetailRow('Số lần ghi nhận', '${model.trainSamples ?? 0}'),
+                      _DetailRow(
+                        'Số lần ghi nhận',
+                        '${model.trainSamples ?? 0}',
+                      ),
                       _DetailRow(
                         'Chỉ gợi ý khi chắc chắn từ',
                         '${(model.confidenceThreshold * 100).round()}%',
                       ),
-                      _DetailRow('Phiên bản', '${model.modelType} v${model.version}'),
+                      _DetailRow(
+                        'Phiên bản',
+                        '${model.modelType} v${model.version}',
+                      ),
                     ],
                   ),
                 ),
@@ -204,7 +226,8 @@ class _MlModelStatusCardState extends ConsumerState<MlModelStatusCard> {
             IconButton(
               icon: Icon(Icons.refresh_rounded, size: 20, color: c.accent),
               tooltip: 'Thử lại',
-              onPressed: () => ref.read(mlModelStatusProvider.notifier).refresh(),
+              onPressed: () =>
+                  ref.read(mlModelStatusProvider.notifier).refresh(),
             ),
           ],
         ),
@@ -227,7 +250,10 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: TextStyle(fontSize: 12.5, color: c.muted)),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12.5, color: c.muted),
+            ),
           ),
           Text(
             value,

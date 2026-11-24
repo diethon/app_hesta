@@ -24,7 +24,9 @@ class RecommendationItemCard extends StatelessWidget {
     if (name.contains('đèn') || name.contains('light')) {
       return Icons.lightbulb_outline_rounded;
     }
-    if (name.contains('lạnh') || name.contains('điều hòa') || name.contains('ac')) {
+    if (name.contains('lạnh') ||
+        name.contains('điều hòa') ||
+        name.contains('ac')) {
       return Icons.ac_unit_rounded;
     }
     if (name.contains('rèm') || name.contains('curtain')) {
@@ -174,7 +176,11 @@ class RecommendationItemCard extends StatelessWidget {
                   child: const Text('Không cần'),
                 ),
                 IconButton(
-                  icon: Icon(Icons.visibility_off_outlined, size: 20, color: c.faint),
+                  icon: Icon(
+                    Icons.visibility_off_outlined,
+                    size: 20,
+                    color: c.faint,
+                  ),
                   tooltip: 'Ẩn tạm thời',
                   onPressed: () {
                     HapticFeedback.lightImpact();
@@ -211,7 +217,11 @@ class RecommendationItemCard extends StatelessWidget {
 }
 
 class _RuleLine extends StatelessWidget {
-  const _RuleLine({required this.icon, required this.label, required this.text});
+  const _RuleLine({
+    required this.icon,
+    required this.label,
+    required this.text,
+  });
 
   final IconData icon;
   final String label;
@@ -226,10 +236,7 @@ class _RuleLine extends StatelessWidget {
         const SizedBox(width: 8),
         SizedBox(
           width: 28,
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 12.5, color: c.muted),
-          ),
+          child: Text(label, style: TextStyle(fontSize: 12.5, color: c.muted)),
         ),
         Expanded(
           child: Text(

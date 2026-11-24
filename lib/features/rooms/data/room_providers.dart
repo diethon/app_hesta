@@ -9,51 +9,53 @@ import '../domain/room.dart';
 import '../../home/data/home_providers.dart';
 
 /// Danh sách phòng theo `homeId` cụ thể (FutureProvider.family)
-final roomsForHomeProvider =
-    FutureProvider.family.autoDispose<List<Room>, String>((ref, homeId) async {
-  if (homeId.isEmpty) {
-    return const <Room>[];
-  }
+final roomsForHomeProvider = FutureProvider.family
+    .autoDispose<List<Room>, String>((ref, homeId) async {
+      if (homeId.isEmpty) {
+        return const <Room>[];
+      }
 
-  if (kUseMockData) {
-    final devices = ref.watch(devicesControllerProvider).valueOrNull ?? [];
-    return [
-      _mockRoom('living-room', 'Phòng khách', 22, devices),
-      _mockRoom('bedroom', 'Phòng ngủ', 20, devices),
-      _mockRoom('kitchen', 'Nhà bếp', 24, devices),
-      _mockRoom('garage', 'Nhà để xe', 18, devices),
-      _mockRoom('bathroom', 'Phòng tắm', 23, devices),
-      _mockRoom('garden', 'Sân vườn', 21, devices),
-    ];
-  }
+      if (kUseMockData) {
+        final devices = ref.watch(devicesControllerProvider).valueOrNull ?? [];
+        return [
+          _mockRoom('living-room', 'Phòng khách', 22, devices),
+          _mockRoom('bedroom', 'Phòng ngủ', 20, devices),
+          _mockRoom('kitchen', 'Nhà bếp', 24, devices),
+          _mockRoom('garage', 'Nhà để xe', 18, devices),
+          _mockRoom('bathroom', 'Phòng tắm', 23, devices),
+          _mockRoom('garden', 'Sân vườn', 21, devices),
+        ];
+      }
 
-  final client = ref.watch(cloudApiClientProvider);
-  try {
-    final response = await client.get<dynamic>('/api/v1/homes/$homeId/rooms');
-    final body = response.data;
-    final data = body is Map
-        ? (body['result'] ?? body['data'])
-        : (body is List ? body : null);
-    if (data is! List) {
-      return const <Room>[];
-    }
-    return data
-        .whereType<Map>()
-        .map(
-          (json) => Room(
-            id: (json['id'] ?? '').toString(),
-            name: (json['name'] ?? '').toString(),
-            deviceCount: (json['deviceCount'] as num?)?.toInt() ?? 0,
-            activeCount: (json['activeCount'] as num?)?.toInt() ?? 0,
-            temperature: (json['temperature'] as num?)?.toInt() ?? 22,
-            floor: (json['floor'] as num?)?.toInt(),
-          ),
-        )
-        .toList();
-  } catch (_) {
-    return const <Room>[];
-  }
-});
+      final client = ref.watch(cloudApiClientProvider);
+      try {
+        final response = await client.get<dynamic>(
+          '/api/v1/homes/$homeId/rooms',
+        );
+        final body = response.data;
+        final data = body is Map
+            ? (body['result'] ?? body['data'])
+            : (body is List ? body : null);
+        if (data is! List) {
+          return const <Room>[];
+        }
+        return data
+            .whereType<Map>()
+            .map(
+              (json) => Room(
+                id: (json['id'] ?? '').toString(),
+                name: (json['name'] ?? '').toString(),
+                deviceCount: (json['deviceCount'] as num?)?.toInt() ?? 0,
+                activeCount: (json['activeCount'] as num?)?.toInt() ?? 0,
+                temperature: (json['temperature'] as num?)?.toInt() ?? 22,
+                floor: (json['floor'] as num?)?.toInt(),
+              ),
+            )
+            .toList();
+      } catch (_) {
+        return const <Room>[];
+      }
+    });
 
 /// Danh sách phòng thật từ backend_hesta `GET /api/v1/homes/{homeId}/rooms`
 /// ({id, name}). autoDispose để refetch khi quay lại màn hình.
