@@ -27,6 +27,7 @@ extension _DeviceFilterX on _DeviceFilter {
       type == DeviceType.thermostat ||
           type == DeviceType.fan ||
           type == DeviceType.speaker ||
+          type == DeviceType.tv ||
           type == DeviceType.waterPump,
     _DeviceFilter.sensors =>
       type == DeviceType.sensor || type == DeviceType.camera,
@@ -434,6 +435,7 @@ class _RoomDeviceCard extends ConsumerWidget {
         DeviceType.thermostat ||
         DeviceType.fan ||
         DeviceType.speaker ||
+        DeviceType.tv ||
         DeviceType.waterPump => l10n.filterElectric,
         DeviceType.sensor || DeviceType.camera => l10n.filterSensors,
         DeviceType.lock => l10n.filterOther,
@@ -464,6 +466,7 @@ class _CardControl extends ConsumerWidget {
       case DeviceType.fan:
       case DeviceType.speaker:
       case DeviceType.waterPump:
+      case DeviceType.tv:
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -507,7 +510,7 @@ class _CardControl extends ConsumerWidget {
               ? 'Đang mở'
               : (isClosing
                   ? 'Đang đóng'
-                  : (isStopped ? 'Tạm dừng' : (isClosed ? 'Đã đóng' : 'Đang mở')));
+                  : (isStopped ? 'Tạm dừng' : (isClosed ? 'Đã đóng' : 'Đã mở')));
 
           final gateColor = (isOpening || isClosing)
               ? AppColors.auroraWarning

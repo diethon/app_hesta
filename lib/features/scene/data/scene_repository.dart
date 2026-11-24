@@ -38,7 +38,8 @@ class SceneRepository {
       if (icon != null) 'icon': icon,
       if (description != null) 'description': description,
       'enabled': enabled,
-      'actions': actions.map((a) => a.toJson()).toList(),
+      // Backend needs contiguous orders from 0; list position is the source of truth.
+      'actions': [for (final (i, a) in actions.indexed) {...a.toJson(), 'order': i}],
     };
 
     final response = await client.post<dynamic>(
@@ -63,7 +64,8 @@ class SceneRepository {
       'icon': icon,
       'description': description,
       'enabled': enabled,
-      if (actions != null) 'actions': actions.map((a) => a.toJson()).toList(),
+      if (actions != null)
+        'actions': [for (final (i, a) in actions.indexed) {...a.toJson(), 'order': i}],
     };
 
     final response = await client.put<dynamic>(
@@ -84,6 +86,27 @@ class SceneRepository {
     );
     final data = _extractMap(response.data);
     return SceneExecution.fromJson(data);
+  }
+
+  /// Runs the scene once after [delaySeconds] (1s..24h); replaces a pending timer. Returns the run time.
+  Future<DateTime> runLater(
+    String homeId,
+    String sceneId,
+    int delaySeconds,
+  ) async {
+    final response = await client.dio.post<dynamic>(
+      '/api/v1/homes/$homeId/scenes/$sceneId/run-later',
+      queryParameters: {'delaySeconds': delaySeconds},
+    );
+    final body = response.data;
+    final raw = body is Map ? body['result'] : body;
+    return DateTime.parse(raw.toString());
+  }
+
+  Future<void> cancelRunLater(String homeId, String sceneId) async {
+    await client.dio.delete<dynamic>(
+      '/api/v1/homes/$homeId/scenes/$sceneId/run-later',
+    );
   }
 
   Future<List<SceneExecution>> getExecutions(
