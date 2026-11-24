@@ -5,6 +5,8 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
 import '../../../core/widgets/state_views.dart';
 import '../../../core/widgets/studio.dart';
+import '../../devices/data/device_providers.dart';
+import '../../devices/domain/device.dart';
 import '../data/scene_providers.dart';
 import '../domain/scene.dart';
 
@@ -16,6 +18,7 @@ class SceneHistoryScreen extends ConsumerWidget {
   static String _source(String raw) => switch (raw.toUpperCase()) {
     'MANUAL' || 'USER' || 'APP' => 'Bạn chạy thủ công',
     'SCHEDULE' || 'SCHEDULED' => 'Theo lịch hẹn giờ',
+    'TIMER' => 'Hẹn giờ chạy một lần',
     'AUTOMATION' || 'RULE' => 'Do quy tắc tự động',
     'VOICE' => 'Bằng giọng nói',
     'RECOMMENDATION' => 'Từ gợi ý AI',
@@ -25,7 +28,9 @@ class SceneHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final historyAsync = ref.watch(sceneExecutionsProvider(scene.id));
+    // Steps removed from the scene since a run still need a name, so fall back to the home's devices.
     final names = {
+      for (final d in ref.watch(devicesControllerProvider).valueOrNull ?? const <Device>[]) d.id: d.name,
       for (final a in scene.actions) a.targetDeviceId: a.targetDeviceName,
     };
 
@@ -46,7 +51,10 @@ class SceneHistoryScreen extends ConsumerWidget {
                   toolbarHeight: 68,
                   flexibleSpace: GlassAppBar(
                     title: 'Lịch sử chạy',
+                    subtitle: scene.name,
                     onBack: () => Navigator.of(context).maybePop(),
+                    // Same width as the back button so the title is centred.
+                    actions: const [SizedBox(width: 44)],
                   ),
                 ),
                 SliverPadding(
@@ -61,7 +69,7 @@ class SceneHistoryScreen extends ConsumerWidget {
                       if (executions.isEmpty) {
                         return const SliverFillRemaining(
                           child: EmptyView(
-                            message: 'Ngữ cảnh này chưa chạy lần nào.',
+                            message: 'Kịch bản này chưa chạy lần nào.',
                             icon: Icons.history_rounded,
                           ),
                         );
