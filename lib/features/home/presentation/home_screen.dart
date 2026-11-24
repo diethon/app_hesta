@@ -171,7 +171,12 @@ class _GreetingHeader extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                l10n.goodMorning(name),
+                // Same 12h / 18h split as the web dashboard.
+                switch (DateTime.now().hour) {
+                  < 12 => l10n.goodMorning(name),
+                  < 18 => l10n.goodAfternoon(name),
+                  _ => l10n.goodEvening(name),
+                },
                 style: theme.textTheme.headlineSmall?.copyWith(fontSize: 26),
               ),
             ],
@@ -277,7 +282,7 @@ class _DashboardContent extends ConsumerWidget {
                   width: tileWidth,
                   child: GlassIconTile(
                     icon: Icons.layers_rounded,
-                    label: 'Ngữ cảnh',
+                    label: 'Kịch bản',
                     subtitle: 'Kịch bản thiết bị',
                     color: theme.colorScheme.primary,
                     onTap: () => context.push('/scenes'),
@@ -601,7 +606,7 @@ class _QuickScenesState extends ConsumerState<_QuickScenes> {
           children: [
             _AddSceneButton(
               onTap: () => context.push('/scenes'),
-              label: 'Mở Ngữ cảnh',
+              label: 'Mở Kịch bản',
             ),
           ],
         ),
@@ -747,12 +752,14 @@ class DeviceCard extends ConsumerWidget {
                 Text(
                   device.isGate
                       ? (device.gateState == 'OPENING'
-                          ? 'Đang mở'
-                          : (device.gateState == 'CLOSING'
-                              ? 'Đang đóng'
-                              : (device.gateState == 'CLOSED' || (device.gateState == null && device.isOn)
-                                  ? 'Đã đóng'
-                                  : 'Đang mở')))
+                            ? 'Đang mở'
+                            : (device.gateState == 'CLOSING'
+                                  ? 'Đang đóng'
+                                  : (device.gateState == 'CLOSED' ||
+                                            (device.gateState == null &&
+                                                device.isOn)
+                                        ? 'Đã đóng'
+                                        : 'Đang mở')))
                       : (device.isOn ? l10n.locked : l10n.unlocked),
                   style: theme.textTheme.labelSmall?.copyWith(color: accent),
                 )
@@ -973,15 +980,23 @@ class _DeviceCardFooter extends ConsumerWidget {
 
     if (device.type == DeviceType.lock) {
       if (device.isGate) {
-        final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
+        final isClosed =
+            device.gateState == 'CLOSED' ||
+            (device.gateState == null && device.isOn);
         final isOpening = device.gateState == 'OPENING';
         final isClosing = device.gateState == 'CLOSING';
         return GlassStatusPill(
-          icon: isClosed ? Icons.door_front_door_rounded : Icons.meeting_room_rounded,
+          icon: isClosed
+              ? Icons.door_front_door_rounded
+              : Icons.meeting_room_rounded,
           label: isOpening
               ? 'Đang mở'
               : (isClosing ? 'Đang đóng' : (isClosed ? 'Đã đóng' : 'Đang mở')),
-          color: isClosed ? AppColors.auroraMint : (isOpening || isClosing ? AppColors.auroraWarning : AppColors.orbTeal),
+          color: isClosed
+              ? AppColors.auroraMint
+              : (isOpening || isClosing
+                    ? AppColors.auroraWarning
+                    : AppColors.orbTeal),
         );
       }
       return GlassStatusPill(

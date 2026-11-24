@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/network_client.dart';
 import '../../authentication/data/auth_providers.dart' show kUseMockData;
 import '../../home/data/home_providers.dart';
+import '../../groups/data/device_group_providers.dart';
+import '../../groups/domain/device_group.dart';
 import '../domain/automation_models.dart';
 import 'automation_repository.dart';
 
@@ -28,12 +30,8 @@ class AutomationRulesListNotifier extends AsyncNotifier<List<AutomationRule>> {
       return _mockRules();
     }
 
-    try {
-      final repo = ref.read(automationRepositoryProvider);
-      return await repo.getRules(homeId);
-    } catch (_) {
-      return const [];
-    }
+    // Errors reach the screen's ErrorView with a retry button; an empty list would look like "no data".
+    return ref.read(automationRepositoryProvider).getRules(homeId);
   }
 
   Future<void> refresh() async {
@@ -70,6 +68,37 @@ class AutomationRulesListNotifier extends AsyncNotifier<List<AutomationRule>> {
         state = AsyncValue.data(current);
       }
     }
+  }
+
+  /// Như web: bản sao "(bản sao)", tạo ở trạng thái tắt, chép cả giờ chạy.
+  Future<void> duplicateRule(AutomationRule rule) async {
+    final homeId = ref.read(currentHomeIdProvider);
+    if (homeId == null) return;
+    final repo = ref.read(automationRepositoryProvider);
+    final schedules = rule.triggerType == 'SCHEDULE'
+        ? (await repo.getSchedules(homeId, rule.id))
+              .map(
+                (s) => RuleSchedule(
+                  time: s.time,
+                  repeatDays: s.repeatDays,
+                  active: s.active,
+                ).toJson(),
+              )
+              .toList()
+        : null;
+    final name = '${rule.name} (bản sao)';
+    await repo.createRule(
+      homeId,
+      name: name.length > 40 ? name.substring(0, 40) : name,
+      description: rule.description,
+      triggerType: rule.triggerType,
+      enabled: false,
+      conditions: rule.conditions,
+      actions: rule.actions,
+      schedules: schedules,
+      holdSeconds: rule.holdSeconds,
+    );
+    await refresh();
   }
 
   Future<void> deleteRule(String ruleId) async {
@@ -198,3 +227,12 @@ final automationRuleExecutionsProvider = FutureProvider.family
         return [];
       }
     });
+
+/// Nhóm thiết bị thật của nhà (không lấy nhóm demo) cho trình soạn và bộ lọc quy tắc.
+final automationGroupsProvider = FutureProvider.autoDispose<List<DeviceGroup>>((
+  ref,
+) async {
+  final homeId = ref.watch(currentHomeIdProvider);
+  if (homeId == null || kUseMockData) return const [];
+  return ref.watch(deviceGroupRepositoryProvider).getGroups(homeId);
+});

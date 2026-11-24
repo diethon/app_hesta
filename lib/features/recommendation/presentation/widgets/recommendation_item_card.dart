@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/time_format.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 
-import '../../../../app/theme/app_colors.dart';
-import '../../../../app/theme/app_radius.dart';
-import '../../../../app/theme/app_spacing.dart';
-import '../../../../app/theme/glass_tokens.dart';
-import '../../../../core/widgets/glass/glass_card.dart';
-import '../../../../core/widgets/glass/glass_status_pill.dart';
+import '../../../../core/widgets/studio.dart';
 import '../../domain/recommendation_models.dart';
 
 class RecommendationItemCard extends StatelessWidget {
@@ -24,61 +19,10 @@ class RecommendationItemCard extends StatelessWidget {
   final VoidCallback onReject;
   final VoidCallback onDismiss;
 
-  String _formatRepeatDays(List<int> days) {
-    if (days.isEmpty) return '';
-    if (days.length == 7) return 'Hàng ngày';
-    if (days.length == 5 &&
-        days.contains(1) &&
-        days.contains(2) &&
-        days.contains(3) &&
-        days.contains(4) &&
-        days.contains(5)) {
-      return 'Thứ 2 - Thứ 6';
-    }
-    if (days.length == 2 && days.contains(6) && days.contains(7)) {
-      return 'Cuối tuần (T7, CN)';
-    }
-    const dayNames = {
-      1: 'T2',
-      2: 'T3',
-      3: 'T4',
-      4: 'T5',
-      5: 'T6',
-      6: 'T7',
-      7: 'CN',
-    };
-    return days.map((d) => dayNames[d] ?? 'T$d').join(', ');
-  }
-
-  String _translateAction(String action) {
-    switch (action.toUpperCase()) {
-      case 'TURN_ON':
-        return 'Bật nguồn';
-      case 'TURN_OFF':
-        return 'Tắt nguồn';
-      case 'TOGGLE':
-        return 'Đổi trạng thái';
-      case 'SET_TEMPERATURE':
-        return 'Cài đặt nhiệt độ';
-      case 'SET_BRIGHTNESS':
-        return 'Chỉnh độ sáng';
-      case 'OPEN':
-        return 'Mở rèm/cửa';
-      case 'CLOSE':
-        return 'Đóng rèm/cửa';
-      case 'LOCK':
-        return 'Khóa cửa';
-      case 'UNLOCK':
-        return 'Mở khóa';
-      default:
-        return action;
-    }
-  }
-
-  IconData _getDeviceIcon(String? deviceName) {
+  static IconData deviceIcon(String? deviceName) {
     final name = (deviceName ?? '').toLowerCase();
     if (name.contains('đèn') || name.contains('light')) {
-      return Icons.lightbulb_rounded;
+      return Icons.lightbulb_outline_rounded;
     }
     if (name.contains('lạnh') ||
         name.contains('điều hòa') ||
@@ -89,437 +33,222 @@ class RecommendationItemCard extends StatelessWidget {
       return Icons.curtains_rounded;
     }
     if (name.contains('khóa') || name.contains('lock')) {
-      return Icons.lock_rounded;
+      return Icons.lock_outline_rounded;
     }
     if (name.contains('quạt') || name.contains('fan')) {
-      return Icons.mode_fan_off_rounded;
+      return Icons.air_rounded;
     }
     if (name.contains('tivi') || name.contains('tv')) {
       return Icons.tv_rounded;
     }
-    return Icons.auto_awesome_rounded;
+    return Icons.devices_other_rounded;
+  }
+
+  /// Mức phù hợp bằng lời thay cho con số phần trăm thô.
+  static String fitLabel(int percent) => percent >= 90
+      ? 'Rất phù hợp'
+      : percent >= 80
+      ? 'Phù hợp'
+      : 'Có thể phù hợp';
+
+  String get _when {
+    final t = recommendation.triggerCondition;
+    final time = t.time;
+    if (time == null || time.isEmpty) return 'Khi có hoạt động tương tự';
+    return 'Lúc ${formatHms(time)} · ${describeDays(t.repeatDays)}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = StudioColors.of(context);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = theme.colorScheme.primary;
-    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    final rec = recommendation;
+    final device = rec.deviceName ?? 'Thiết bị';
+    final percent = rec.confidencePercent;
 
-    Color confidenceColor = mint;
-    if (recommendation.confidencePercent < 80) {
-      confidenceColor = AppColors.auroraWarning;
-    } else if (recommendation.confidencePercent < 88) {
-      confidenceColor = accent;
-    }
-
-    final repeatDaysStr = _formatRepeatDays(
-      recommendation.triggerCondition.repeatDays,
-    );
-    final deviceIcon = _getDeviceIcon(recommendation.deviceName);
-
-    return GlassCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      shadows: recommendation.confidencePercent >= 90
-          ? GlassTokens.glow(mint, intensity: 0.2)
-          : null,
-      borderGradient: recommendation.confidencePercent >= 90
-          ? LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                mint.withValues(alpha: 0.6),
-                Colors.white.withValues(alpha: 0.08),
-              ],
-            )
-          : null,
+    return StudioCard(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Device Icon, Name, and Confidence Score Pill
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      (isDark ? AppColors.orbViolet : Colors.purple).withValues(
-                        alpha: 0.28,
-                      ),
-                      (isDark ? AppColors.orbViolet : Colors.purple).withValues(
-                        alpha: 0.08,
-                      ),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(
-                    color: (isDark ? AppColors.orbViolet : Colors.purple)
-                        .withValues(alpha: 0.35),
-                  ),
-                  boxShadow: GlassTokens.glow(
-                    isDark ? AppColors.orbViolet : Colors.purple,
-                    intensity: 0.25,
-                  ),
-                ),
-                child: Icon(
-                  deviceIcon,
-                  size: 22,
-                  color: isDark ? AppColors.orbViolet : Colors.purple,
-                ),
+              StudioIconTile(
+                icon: deviceIcon(rec.deviceName),
+                active: rec.isPending || rec.isApproved,
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      recommendation.deviceName ?? 'Gợi ý tự động hóa',
+                      device,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                        color: isDark ? AppColors.onDark : AppColors.onSurface,
+                        color: c.text,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.psychology_rounded,
-                          size: 13,
-                          color: AppColors.onDarkFaint,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Mô hình BehaviorML phát hiện',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 11,
-                            color: isDark
-                                ? AppColors.onDarkMuted
-                                : AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Gợi ý từ thói quen của bạn',
+                      style: TextStyle(fontSize: 12, color: c.muted),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
-              GlassStatusPill(
-                label: '${recommendation.confidencePercent}% tin cậy',
-                color: confidenceColor,
+              Tooltip(
+                message: 'Độ tin cậy $percent%',
+                child: StudioTag(label: fitLabel(percent), color: c.accent),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Habit Explanation
+          const SizedBox(height: 12),
           Text(
-            recommendation.explanation,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: isDark ? AppColors.onDark : AppColors.onSurface,
-              height: 1.45,
-              fontSize: 13.5,
-            ),
+            rec.explanation,
+            style: TextStyle(fontSize: 14, height: 1.45, color: c.text),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 12),
 
-          // Visual IF -> THEN Recipe Flow Container
+          // Quy tắc sẽ được tạo, viết thành 2 dòng dễ đọc.
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm + 4,
-            ),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.22)
-                  : Colors.white.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.06),
-              ),
+              color: c.soft,
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Trigger (WHEN / KHI)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: accent.withValues(alpha: 0.35),
-                        ),
-                      ),
-                      child: Text(
-                        'KHI',
-                        style: TextStyle(
-                          color: accent,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 10,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    const Icon(
-                      Icons.schedule_rounded,
-                      size: 15,
-                      color: AppColors.onDarkMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            recommendation.triggerCondition.time != null
-                                ? 'Lúc ${recommendation.triggerCondition.time}'
-                                : 'Theo sự kiện hoạt động',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? AppColors.onDark
-                                  : AppColors.onSurface,
-                            ),
-                          ),
-                          if (repeatDaysStr.isNotEmpty)
-                            Text(
-                              repeatDaysStr,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: isDark
-                                    ? AppColors.onDarkMuted
-                                    : AppColors.onSurfaceVariant,
-                                fontSize: 11,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+                _RuleLine(
+                  icon: Icons.schedule_rounded,
+                  label: 'Khi',
+                  text: _when,
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 14),
-                  child: Container(
-                    width: 1.5,
-                    height: 12,
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.15)
-                        : Colors.black.withValues(alpha: 0.15),
-                  ),
-                ),
-
-                // Proposed Action (THEN / THÌ)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: mint.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: mint.withValues(alpha: 0.35)),
-                      ),
-                      child: Text(
-                        'THÌ',
-                        style: TextStyle(
-                          color: mint,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 10,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    const Icon(
-                      Icons.bolt_rounded,
-                      size: 16,
-                      color: AppColors.onDarkMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _translateAction(
-                              recommendation.proposedAction.action,
-                            ),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? AppColors.onDark
-                                  : AppColors.onSurface,
-                            ),
-                          ),
-                          if (recommendation
-                              .proposedAction
-                              .parameters
-                              .isNotEmpty)
-                            Text(
-                              recommendation.proposedAction.parameters.entries
-                                  .map((e) => '${e.key}: ${e.value}')
-                                  .join(', '),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: isDark
-                                    ? AppColors.onDarkMuted
-                                    : AppColors.onSurfaceVariant,
-                                fontSize: 11,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 8),
+                _RuleLine(
+                  icon: Icons.bolt_rounded,
+                  label: 'Thì',
+                  text:
+                      '$device: ${describeAction(rec.proposedAction.action, params: rec.proposedAction.parameters)}',
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 14),
 
-          // Actions or Resolved History
-          if (recommendation.isPending) ...[
+          if (rec.isPending)
             Row(
               children: [
-                // Approve Button
                 Expanded(
-                  flex: 3,
-                  child: ElevatedButton.icon(
+                  child: FilledButton.icon(
                     onPressed: () {
                       HapticFeedback.mediumImpact();
                       onApprove();
                     },
-                    icon: const Icon(Icons.check_rounded, size: 17),
-                    label: const Text(
-                      'Chấp nhận & Tạo quy tắc',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: mint,
-                      foregroundColor: const Color(0xFF032612),
-                      elevation: 0,
-                      shadowColor: mint.withValues(alpha: 0.4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: AppSpacing.md,
-                      ),
-                      textStyle: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        letterSpacing: -0.1,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-
-                // Reject Button
-                Expanded(
-                  flex: 2,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      onReject();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.error,
-                      side: BorderSide(
-                        color: AppColors.error.withValues(alpha: 0.5),
-                        width: 1.2,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
-                      ),
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Tạo quy tắc'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: c.accent,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      textStyle: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
+                      shape: const StadiumBorder(),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    child: const Text('Từ chối'),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
-
-                // Dismiss Button
-                IconButton(
-                  icon: const Icon(
-                    Icons.visibility_off_outlined,
-                    size: 19,
-                    color: AppColors.onDarkMuted,
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    onReject();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: c.muted,
+                    side: BorderSide(color: c.border),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 18,
+                    ),
+                    shape: const StadiumBorder(),
                   ),
-                  tooltip: 'Tạm ẩn đề xuất',
+                  child: const Text('Không cần'),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.visibility_off_outlined,
+                    size: 20,
+                    color: c.faint,
+                  ),
+                  tooltip: 'Ẩn tạm thời',
                   onPressed: () {
                     HapticFeedback.lightImpact();
                     onDismiss();
                   },
                 ),
               ],
-            ),
-          ] else ...[
+            )
+          else
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.history_rounded,
-                      size: 14,
-                      color: AppColors.onDarkFaint,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      recommendation.resolvedAt != null
-                          ? 'Xử lý: ${DateFormat('dd/MM HH:mm').format(recommendation.resolvedAt!)}'
-                          : 'Đã lưu trong lịch sử',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? AppColors.onDarkFaint : Colors.grey,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ],
+                StudioTag(
+                  label: rec.isApproved
+                      ? 'Đã tạo quy tắc'
+                      : rec.status.toUpperCase() == 'REJECTED'
+                      ? 'Đã từ chối'
+                      : 'Đã ẩn',
+                  icon: rec.isApproved
+                      ? Icons.check_circle_rounded
+                      : Icons.remove_circle_outline_rounded,
+                  color: rec.isApproved ? c.on : null,
                 ),
-                GlassStatusPill(
-                  label: recommendation.isApproved
-                      ? 'ĐÃ DUYỆT'
-                      : (recommendation.status == 'REJECTED'
-                            ? 'ĐÃ TỪ CHỐI'
-                            : 'ĐÃ BỎ QUA'),
-                  color: recommendation.isApproved
-                      ? mint
-                      : (recommendation.status == 'REJECTED'
-                            ? AppColors.error
-                            : Colors.grey),
+                const Spacer(),
+                Text(
+                  describeWhen(rec.resolvedAt),
+                  style: TextStyle(fontSize: 12, color: c.faint),
                 ),
               ],
             ),
-          ],
         ],
       ),
+    );
+  }
+}
+
+class _RuleLine extends StatelessWidget {
+  const _RuleLine({
+    required this.icon,
+    required this.label,
+    required this.text,
+  });
+
+  final IconData icon;
+  final String label;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StudioColors.of(context);
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: c.accent),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 28,
+          child: Text(label, style: TextStyle(fontSize: 12.5, color: c.muted)),
+        ),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: c.text,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

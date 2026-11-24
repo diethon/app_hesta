@@ -53,6 +53,7 @@ dependencies:
   mobile_scanner: ^7.4.2
   flutter_blue_plus: ^2.3.14
   flutter_dotenv: ^6.0.1
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:
@@ -87,6 +88,7 @@ flutter:
   generate: true
   assets:
     - config/
+    - assets/branding/
     - assets/models/
     - assets/images/devices/
     - assets/images/rooms/horizontal_room/
@@ -99,9 +101,9 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-  adaptive_icon_background: '#0058BC'
-  adaptive_icon_foreground: android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+  image_path: assets/branding/hesta_icon.png
+  adaptive_icon_background: '#FFFFFF'
+  adaptive_icon_foreground: assets/branding/hesta_icon_foreground.png
   remove_alpha_ios: true
 
 flutter_native_splash:

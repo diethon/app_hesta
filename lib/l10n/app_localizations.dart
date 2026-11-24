@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appName.
   ///
   /// In vi, this message translates to:
-  /// **'Syna'**
+  /// **'Hesta'**
   String get appName;
 
   /// No description provided for @welcomeBack.
@@ -218,6 +218,18 @@ abstract class AppLocalizations {
   /// **'Chào buổi sáng, {name}'**
   String goodMorning(String name);
 
+  /// No description provided for @goodAfternoon.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chào buổi chiều, {name}'**
+  String goodAfternoon(String name);
+
+  /// No description provided for @goodEvening.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chào buổi tối, {name}'**
+  String goodEvening(String name);
+
   /// No description provided for @everythingSecure.
   ///
   /// In vi, this message translates to:
@@ -233,7 +245,7 @@ abstract class AppLocalizations {
   /// No description provided for @quickScenes.
   ///
   /// In vi, this message translates to:
-  /// **'Ngữ cảnh nhanh'**
+  /// **'Kịch bản nhanh'**
   String get quickScenes;
 
   /// No description provided for @favoriteDevices.
@@ -311,7 +323,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingTitle.
   ///
   /// In vi, this message translates to:
-  /// **'Syna kết nối ngôi nhà thông minh Edge-first'**
+  /// **'Hesta kết nối ngôi nhà thông minh Edge-first'**
   String get onboardingTitle;
 
   /// No description provided for @onboardingSubtitle.
@@ -425,7 +437,7 @@ abstract class AppLocalizations {
   /// No description provided for @sceneAdd.
   ///
   /// In vi, this message translates to:
-  /// **'Thêm ngữ cảnh'**
+  /// **'Thêm kịch bản'**
   String get sceneAdd;
 
   /// No description provided for @locked.
@@ -599,7 +611,7 @@ abstract class AppLocalizations {
   /// No description provided for @lockScenes.
   ///
   /// In vi, this message translates to:
-  /// **'Ngữ cảnh'**
+  /// **'Kịch bản'**
   String get lockScenes;
 
   /// No description provided for @lockHistory.
@@ -725,7 +737,7 @@ abstract class AppLocalizations {
   /// No description provided for @actionScenes.
   ///
   /// In vi, this message translates to:
-  /// **'Ngữ cảnh'**
+  /// **'Kịch bản'**
   String get actionScenes;
 
   /// No description provided for @actionControlDevice.
@@ -749,7 +761,7 @@ abstract class AppLocalizations {
   /// No description provided for @newScene.
   ///
   /// In vi, this message translates to:
-  /// **'Ngữ cảnh mới'**
+  /// **'Kịch bản mới'**
   String get newScene;
 
   /// No description provided for @devicesCount.
@@ -899,7 +911,7 @@ abstract class AppLocalizations {
   /// No description provided for @assistantTitle.
   ///
   /// In vi, this message translates to:
-  /// **'Syna AI'**
+  /// **'Hesta AI'**
   String get assistantTitle;
 
   /// No description provided for @assistantOnline.
@@ -911,13 +923,13 @@ abstract class AppLocalizations {
   /// No description provided for @askAnything.
   ///
   /// In vi, this message translates to:
-  /// **'Hỏi Syna bất cứ điều gì...'**
+  /// **'Hỏi Hesta bất cứ điều gì...'**
   String get askAnything;
 
   /// No description provided for @suggestionEveningScene.
   ///
   /// In vi, this message translates to:
-  /// **'Bật ngữ cảnh buổi tối'**
+  /// **'Bật kịch bản buổi tối'**
   String get suggestionEveningScene;
 
   /// No description provided for @suggestionLowerAc.
@@ -1067,13 +1079,13 @@ abstract class AppLocalizations {
   /// No description provided for @notifArriveHome.
   ///
   /// In vi, this message translates to:
-  /// **'Đã kích hoạt ngữ cảnh Về nhà'**
+  /// **'Đã kích hoạt kịch bản Về nhà'**
   String get notifArriveHome;
 
   /// No description provided for @notifGoodNight.
   ///
   /// In vi, this message translates to:
-  /// **'Đã hoàn tất ngữ cảnh Ngủ ngon'**
+  /// **'Đã hoàn tất kịch bản Ngủ ngon'**
   String get notifGoodNight;
 
   /// No description provided for @edgeFirstTitle.
@@ -1127,7 +1139,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboarding2Subtitle.
   ///
   /// In vi, this message translates to:
-  /// **'Syna học thói quen của bạn để tự điều chỉnh ánh sáng, nhiệt độ và âm thanh.'**
+  /// **'Hesta học thói quen của bạn để tự điều chỉnh ánh sáng, nhiệt độ và âm thanh.'**
   String get onboarding2Subtitle;
 
   /// No description provided for @onboarding3Title.
@@ -1163,7 +1175,7 @@ abstract class AppLocalizations {
   /// No description provided for @termsFooter.
   ///
   /// In vi, this message translates to:
-  /// **'Bằng việc tiếp tục, bạn đồng ý với Điều khoản & Quyền riêng tư của Syna.'**
+  /// **'Bằng việc tiếp tục, bạn đồng ý với Điều khoản & Quyền riêng tư của Hesta.'**
   String get termsFooter;
 
   /// No description provided for @orContinueWith.
@@ -1172,22 +1184,22 @@ abstract class AppLocalizations {
   /// **'Hoặc tiếp tục với'**
   String get orContinueWith;
 
-  /// No description provided for @signInWithFaceId.
+  /// No description provided for @signInWithGoogle.
   ///
   /// In vi, this message translates to:
-  /// **'Đăng nhập bằng FaceID'**
-  String get signInWithFaceId;
+  /// **'Đăng nhập bằng Google'**
+  String get signInWithGoogle;
 
   /// No description provided for @newToApp.
   ///
   /// In vi, this message translates to:
-  /// **'Lần đầu dùng Syna?'**
+  /// **'Lần đầu dùng Hesta?'**
   String get newToApp;
 
   /// No description provided for @joinApp.
   ///
   /// In vi, this message translates to:
-  /// **'Tham gia Syna'**
+  /// **'Tham gia Hesta'**
   String get joinApp;
 
   /// No description provided for @registerSubtitle.
@@ -1223,7 +1235,7 @@ abstract class AppLocalizations {
   /// No description provided for @assistantGreeting.
   ///
   /// In vi, this message translates to:
-  /// **'Xin chào! Mình là Syna AI. Mình có thể bật/tắt thiết bị hoặc hẹn giờ tự động cho bạn — ví dụ: \"hãy tắt tất cả thiết bị phòng khách\" hoặc \"bật đèn lúc 6h tối\".'**
+  /// **'Xin chào! Mình là Hesta AI. Mình có thể bật/tắt thiết bị hoặc hẹn giờ tự động cho bạn — ví dụ: \"hãy tắt tất cả thiết bị phòng khách\" hoặc \"bật đèn lúc 6h tối\".'**
   String get assistantGreeting;
 
   /// No description provided for @assistantError.

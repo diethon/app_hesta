@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
-import '../../../app/theme/app_colors.dart';
-import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
-import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
-import '../../../core/widgets/glass/glass_card.dart';
-import '../../../core/widgets/glass/glass_status_pill.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../../core/widgets/studio.dart';
+import '../../devices/data/device_providers.dart';
+import '../../devices/domain/device.dart';
 import '../data/scene_providers.dart';
 import '../domain/scene.dart';
 
@@ -18,150 +15,192 @@ class SceneHistoryScreen extends ConsumerWidget {
 
   final Scene scene;
 
+  static String _source(String raw) => switch (raw.toUpperCase()) {
+    'MANUAL' || 'USER' || 'APP' => 'Bạn chạy thủ công',
+    'SCHEDULE' || 'SCHEDULED' => 'Theo lịch hẹn giờ',
+    'TIMER' => 'Hẹn giờ chạy một lần',
+    'AUTOMATION' || 'RULE' => 'Do quy tắc tự động',
+    'VOICE' => 'Bằng giọng nói',
+    'RECOMMENDATION' => 'Từ gợi ý AI',
+    _ => 'Tự động',
+  };
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final historyAsync = ref.watch(sceneExecutionsProvider(scene.id));
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    // Steps removed from the scene since a run still need a name, so fall back to the home's devices.
+    final names = {
+      for (final d
+          in ref.watch(devicesControllerProvider).valueOrNull ??
+              const <Device>[])
+        d.id: d.name,
+      for (final a in scene.actions) a.targetDeviceId: a.targetDeviceName,
+    };
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AmbientBackground(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              automaticallyImplyLeading: false,
-              toolbarHeight: 68,
-              flexibleSpace: GlassAppBar(
-                title: 'Lịch sử chạy: ${scene.name}',
-                onBack: () => Navigator.of(context).maybePop(),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.sm,
-                AppSpacing.screen,
-                AppSpacing.navClearance,
-              ),
-              sliver: historyAsync.when(
-                data: (executions) {
-                  if (executions.isEmpty) {
-                    return const SliverFillRemaining(
-                      child: EmptyView(
-                        message:
-                            'Chưa có lịch sử thực thi nào cho kịch bản này.',
-                        icon: Icons.history_rounded,
-                      ),
-                    );
-                  }
-
-                  return SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final item = executions[index];
-                      final formattedDate = DateFormat(
-                        'HH:mm:ss • dd/MM/yyyy',
-                      ).format(item.startedAt);
-
-                      final isSuccess = item.status == 'SUCCESS';
-                      final statusColor = isSuccess
-                          ? (isDark
-                                ? AppColors.auroraMint
-                                : AppColors.auroraMintOnLight)
-                          : AppColors.error;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: GlassCard(
-                          radius: AppRadius.card,
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    formattedDate,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  GlassStatusPill(
-                                    label: item.status,
-                                    color: statusColor,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppSpacing.xs),
-                              Text(
-                                'Nguồn kích hoạt: ${item.triggerSource}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isDark
-                                      ? AppColors.onDarkMuted
-                                      : AppColors.onSurfaceVariant,
-                                ),
-                              ),
-                              if (item.resultDetail.isNotEmpty) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                const Divider(height: 1, color: Colors.white10),
-                                const SizedBox(height: AppSpacing.sm),
-                                ...item.resultDetail.map(
-                                  (d) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 2,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          d.success
-                                              ? Icons.check_circle_rounded
-                                              : Icons.cancel_rounded,
-                                          size: 16,
-                                          color: d.success
-                                              ? (isDark
-                                                    ? AppColors.auroraMint
-                                                    : AppColors
-                                                          .auroraMintOnLight)
-                                              : AppColors.error,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            '${d.deviceId} ➔ ${d.action}',
-                                            style: theme.textTheme.bodySmall,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      );
-                    }, childCount: executions.length),
-                  );
-                },
-                loading: () => const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (e, _) => SliverFillRemaining(
-                  child: ErrorView(
-                    message: 'Không thể tải lịch sử: $e',
-                    onRetry: () {},
+    return StudioBackground(
+      child: Builder(
+        builder: (context) {
+          final c = StudioColors.of(context);
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            body: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  automaticallyImplyLeading: false,
+                  toolbarHeight: 68,
+                  flexibleSpace: GlassAppBar(
+                    title: 'Lịch sử chạy',
+                    subtitle: scene.name,
+                    onBack: () => Navigator.of(context).maybePop(),
+                    // Same width as the back button so the title is centred.
+                    actions: const [SizedBox(width: 44)],
                   ),
                 ),
-              ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    AppSpacing.sm,
+                    AppSpacing.screen,
+                    AppSpacing.navClearance,
+                  ),
+                  sliver: historyAsync.when(
+                    data: (executions) {
+                      if (executions.isEmpty) {
+                        return const SliverFillRemaining(
+                          child: EmptyView(
+                            message: 'Kịch bản này chưa chạy lần nào.',
+                            icon: Icons.history_rounded,
+                          ),
+                        );
+                      }
+                      return SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final item = executions[index];
+                          final ok = item.status.toUpperCase() == 'SUCCESS';
+                          final failed = item.resultDetail
+                              .where((d) => !d.success)
+                              .length;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: StudioCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        ok
+                                            ? Icons.check_circle_rounded
+                                            : Icons.error_rounded,
+                                        size: 20,
+                                        color: ok ? c.on : c.danger,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          ok
+                                              ? 'Chạy thành công'
+                                              : failed > 0
+                                              ? '$failed thiết bị không phản hồi'
+                                              : 'Chạy không thành công',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: c.text,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        describeWhen(item.startedAt),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: c.faint,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 28),
+                                    child: Text(
+                                      _source(item.triggerSource),
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        color: c.muted,
+                                      ),
+                                    ),
+                                  ),
+                                  if (item.resultDetail.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: c.soft,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          for (final d in item.resultDetail)
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 3,
+                                                  ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    d.success
+                                                        ? Icons.check_rounded
+                                                        : Icons.close_rounded,
+                                                    size: 15,
+                                                    color: d.success
+                                                        ? c.on
+                                                        : c.danger,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      '${names[d.deviceId] ?? 'Thiết bị'}: ${describeAction(d.action)}',
+                                                      style: TextStyle(
+                                                        fontSize: 12.5,
+                                                        color: c.text,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }, childCount: executions.length),
+                      );
+                    },
+                    loading: () => const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                    error: (e, _) => SliverFillRemaining(
+                      child: ErrorView(
+                        message: 'Không tải được lịch sử. Thử lại sau nhé.',
+                        onRetry: () =>
+                            ref.invalidate(sceneExecutionsProvider(scene.id)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

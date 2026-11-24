@@ -8,9 +8,9 @@ enum AppEnvironment {
   String get flavorName => name;
 
   String get displayName => switch (this) {
-    AppEnvironment.development => 'Syna Dev',
-    AppEnvironment.staging => 'Syna Staging',
-    AppEnvironment.production => 'Syna',
+    AppEnvironment.development => 'Hesta Dev',
+    AppEnvironment.staging => 'Hesta Staging',
+    AppEnvironment.production => 'Hesta',
   };
 
   String get baseUrl => switch (this) {

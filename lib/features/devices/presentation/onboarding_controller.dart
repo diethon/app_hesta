@@ -109,10 +109,12 @@ class OnboardingController extends StateNotifier<OnboardingState> {
     } catch (e) {
       if (!mounted) return;
       final errorStr = e.toString();
-      String userFriendlyMessage = 'Lỗi khi quét Bluetooth: ${errorStr.replaceFirst("Exception: ", "")}';
+      String userFriendlyMessage =
+          'Lỗi khi quét Bluetooth: ${errorStr.replaceFirst("Exception: ", "")}';
       if (errorStr.toLowerCase().contains('location services are required') ||
           errorStr.toLowerCase().contains('location')) {
-        userFriendlyMessage = 'Vui lòng BẬT Dịch vụ Định vị (GPS / Vị trí) trên điện thoại và cấp quyền Vị trí cho ứng dụng để quét Bluetooth.';
+        userFriendlyMessage =
+            'Vui lòng BẬT Dịch vụ Định vị (GPS / Vị trí) trên điện thoại và cấp quyền Vị trí cho ứng dụng để quét Bluetooth.';
       }
       state = state.copyWith(
         isLoading: false,
@@ -219,7 +221,8 @@ class OnboardingController extends StateNotifier<OnboardingState> {
       return newHomeId;
     } catch (e) {
       state = state.copyWith(
-        errorMessage: 'Không thể tạo nhà: ${e.toString().replaceFirst("Exception: ", "")}',
+        errorMessage:
+            'Không thể tạo nhà: ${e.toString().replaceFirst("Exception: ", "")}',
       );
       return null;
     }
@@ -227,14 +230,18 @@ class OnboardingController extends StateNotifier<OnboardingState> {
 
   Future<String?> createRoom(String homeId, String name) async {
     try {
-      final newRoomId = await _repository.createRoom(homeId: homeId, name: name);
+      final newRoomId = await _repository.createRoom(
+        homeId: homeId,
+        name: name,
+      );
       if (newRoomId.isNotEmpty) {
         state = state.copyWith(selectedRoomId: newRoomId);
       }
       return newRoomId;
     } catch (e) {
       state = state.copyWith(
-        errorMessage: 'Không thể tạo phòng: ${e.toString().replaceFirst("Exception: ", "")}',
+        errorMessage:
+            'Không thể tạo phòng: ${e.toString().replaceFirst("Exception: ", "")}',
       );
       return null;
     }

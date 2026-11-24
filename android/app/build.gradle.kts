@@ -35,7 +35,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["appLabel"] = "Syna"
+        manifestPlaceholders["appLabel"] = "Hesta"
         manifestPlaceholders["usesCleartextTraffic"] = "false"
         manifestPlaceholders["networkSecurityConfig"] = "@xml/network_security_config"
         manifestPlaceholders["appLinkHost"] = "app.syna.local"
@@ -47,7 +47,7 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            manifestPlaceholders["appLabel"] = "Syna Dev"
+            manifestPlaceholders["appLabel"] = "Hesta Dev"
             manifestPlaceholders["usesCleartextTraffic"] = "true"
             manifestPlaceholders["networkSecurityConfig"] = "@xml/network_security_config_dev"
             manifestPlaceholders["appLinkHost"] = "dev.syna.local"
@@ -56,14 +56,14 @@ android {
             dimension = "environment"
             applicationIdSuffix = ".staging"
             versionNameSuffix = "-staging"
-            manifestPlaceholders["appLabel"] = "Syna Staging"
+            manifestPlaceholders["appLabel"] = "Hesta Staging"
             manifestPlaceholders["usesCleartextTraffic"] = "false"
             manifestPlaceholders["networkSecurityConfig"] = "@xml/network_security_config"
             manifestPlaceholders["appLinkHost"] = "staging.syna.local"
         }
         create("production") {
             dimension = "environment"
-            manifestPlaceholders["appLabel"] = "Syna"
+            manifestPlaceholders["appLabel"] = "Hesta"
             manifestPlaceholders["usesCleartextTraffic"] = "false"
             manifestPlaceholders["networkSecurityConfig"] = "@xml/network_security_config"
             manifestPlaceholders["appLinkHost"] = "syna.example.com"

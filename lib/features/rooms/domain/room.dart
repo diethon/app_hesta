@@ -5,6 +5,7 @@ class Room {
     required this.deviceCount,
     required this.activeCount,
     required this.temperature,
+    this.floor,
   });
 
   final String id;
@@ -12,6 +13,9 @@ class Room {
   final int deviceCount;
   final int activeCount;
   final int temperature;
+
+  /// Tầng lấy từ bản vẽ nhà số; null khi phòng chưa được đặt lên bản vẽ.
+  final int? floor;
 
   /// Khoá tra cứu visuals (ảnh/màu/icon) suy từ tên phòng —
   /// id backend là UUID nên không dùng làm khoá được.

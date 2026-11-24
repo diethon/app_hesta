@@ -9,7 +9,7 @@ class AppLocalizationsVi extends AppLocalizations {
   AppLocalizationsVi([String locale = 'vi']) : super(locale);
 
   @override
-  String get appName => 'Syna';
+  String get appName => 'Hesta';
 
   @override
   String get welcomeBack => 'Chào mừng trở lại';
@@ -71,6 +71,16 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String goodAfternoon(String name) {
+    return 'Chào buổi chiều, $name';
+  }
+
+  @override
+  String goodEvening(String name) {
+    return 'Chào buổi tối, $name';
+  }
+
+  @override
   String get everythingSecure => 'Mọi thứ an toàn';
 
   @override
@@ -79,7 +89,7 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get quickScenes => 'Ngữ cảnh nhanh';
+  String get quickScenes => 'Kịch bản nhanh';
 
   @override
   String get favoriteDevices => 'Thiết bị yêu thích';
@@ -118,7 +128,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get deleteAccount => 'Xóa tài khoản';
 
   @override
-  String get onboardingTitle => 'Syna kết nối ngôi nhà thông minh Edge-first';
+  String get onboardingTitle => 'Hesta kết nối ngôi nhà thông minh Edge-first';
 
   @override
   String get onboardingSubtitle =>
@@ -176,7 +186,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get sceneGoodNight => 'Ngủ ngon';
 
   @override
-  String get sceneAdd => 'Thêm ngữ cảnh';
+  String get sceneAdd => 'Thêm kịch bản';
 
   @override
   String get locked => 'Đã khoá';
@@ -267,7 +277,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get lockMembers => 'Thành viên';
 
   @override
-  String get lockScenes => 'Ngữ cảnh';
+  String get lockScenes => 'Kịch bản';
 
   @override
   String get lockHistory => 'Lịch sử mở khoá';
@@ -330,7 +340,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get triggerDeviceState => 'Cảm biến';
 
   @override
-  String get actionScenes => 'Ngữ cảnh';
+  String get actionScenes => 'Kịch bản';
 
   @override
   String get actionControlDevice => 'Điều khiển thiết bị';
@@ -343,7 +353,7 @@ class AppLocalizationsVi extends AppLocalizations {
       'Chưa có quy tắc nào. Tạo quy tắc đầu tiên để ngôi nhà tự vận hành.';
 
   @override
-  String get newScene => 'Ngữ cảnh mới';
+  String get newScene => 'Kịch bản mới';
 
   @override
   String devicesCount(int count) {
@@ -421,16 +431,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String get carbonFootprint => 'Dấu chân carbon';
 
   @override
-  String get assistantTitle => 'Syna AI';
+  String get assistantTitle => 'Hesta AI';
 
   @override
   String get assistantOnline => 'Trực tuyến • Sẵn sàng';
 
   @override
-  String get askAnything => 'Hỏi Syna bất cứ điều gì...';
+  String get askAnything => 'Hỏi Hesta bất cứ điều gì...';
 
   @override
-  String get suggestionEveningScene => 'Bật ngữ cảnh buổi tối';
+  String get suggestionEveningScene => 'Bật kịch bản buổi tối';
 
   @override
   String get suggestionLowerAc => 'Giảm nhiệt độ điều hoà';
@@ -505,10 +515,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get notifMorningRoutine => 'Đã kích hoạt kịch bản buổi sáng';
 
   @override
-  String get notifArriveHome => 'Đã kích hoạt ngữ cảnh Về nhà';
+  String get notifArriveHome => 'Đã kích hoạt kịch bản Về nhà';
 
   @override
-  String get notifGoodNight => 'Đã hoàn tất ngữ cảnh Ngủ ngon';
+  String get notifGoodNight => 'Đã hoàn tất kịch bản Ngủ ngon';
 
   @override
   String get edgeFirstTitle => 'Ưu tiên backend Edge nội bộ';
@@ -539,7 +549,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get onboarding2Subtitle =>
-      'Syna học thói quen của bạn để tự điều chỉnh ánh sáng, nhiệt độ và âm thanh.';
+      'Hesta học thói quen của bạn để tự điều chỉnh ánh sáng, nhiệt độ và âm thanh.';
 
   @override
   String get onboarding3Title => 'An ninh toàn diện.';
@@ -559,19 +569,19 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get termsFooter =>
-      'Bằng việc tiếp tục, bạn đồng ý với Điều khoản & Quyền riêng tư của Syna.';
+      'Bằng việc tiếp tục, bạn đồng ý với Điều khoản & Quyền riêng tư của Hesta.';
 
   @override
   String get orContinueWith => 'Hoặc tiếp tục với';
 
   @override
-  String get signInWithFaceId => 'Đăng nhập bằng FaceID';
+  String get signInWithGoogle => 'Đăng nhập bằng Google';
 
   @override
-  String get newToApp => 'Lần đầu dùng Syna?';
+  String get newToApp => 'Lần đầu dùng Hesta?';
 
   @override
-  String get joinApp => 'Tham gia Syna';
+  String get joinApp => 'Tham gia Hesta';
 
   @override
   String get registerSubtitle =>
@@ -592,7 +602,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get assistantGreeting =>
-      'Xin chào! Mình là Syna AI. Mình có thể bật/tắt thiết bị hoặc hẹn giờ tự động cho bạn — ví dụ: \"hãy tắt tất cả thiết bị phòng khách\" hoặc \"bật đèn lúc 6h tối\".';
+      'Xin chào! Mình là Hesta AI. Mình có thể bật/tắt thiết bị hoặc hẹn giờ tự động cho bạn — ví dụ: \"hãy tắt tất cả thiết bị phòng khách\" hoặc \"bật đèn lúc 6h tối\".';
 
   @override
   String get assistantError =>

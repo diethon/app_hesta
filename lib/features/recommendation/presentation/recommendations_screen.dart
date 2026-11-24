@@ -2,15 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/app_colors.dart';
-import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
-import '../../../app/theme/glass_tokens.dart';
-import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
-import '../../../core/widgets/glass/glass_card.dart';
 import '../../../core/widgets/glass/glass_filter_chip.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../../core/widgets/studio.dart';
 import '../data/recommendation_providers.dart';
 import '../domain/recommendation_models.dart';
 import 'widgets/ml_model_status_card.dart';
@@ -31,10 +27,6 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
   bool _isGenerating = false;
 
   Future<void> _generate() async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
-
     await HapticFeedback.mediumImpact();
     if (!mounted) return;
     setState(() => _isGenerating = true);
@@ -43,48 +35,21 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
         .read(recommendationsListProvider.notifier)
         .generate();
 
-    if (mounted) {
-      setState(() => _isGenerating = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                count > 0
-                    ? Icons.auto_awesome_rounded
-                    : Icons.info_outline_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  count > 0
-                      ? 'BehaviorML đã phát hiện và tạo $count đề xuất mới!'
-                      : 'Chưa có thói quen lặp lại nào đạt ngưỡng tin cậy >= 80% lúc này.',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: count > 0 ? mint : AppColors.auroraWarning,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-        ),
-      );
-    }
+    if (!mounted) return;
+    setState(() => _isGenerating = false);
+    showStudioSnack(
+      context,
+      count > 0
+          ? 'Tìm thấy $count gợi ý mới cho bạn.'
+          : 'Chưa thấy thói quen nào lặp lại đủ rõ. Thử lại sau vài ngày nhé.',
+    );
   }
 
   Widget _buildContent(
     BuildContext context,
     AsyncValue<List<Recommendation>> recsAsync,
-    bool isDark,
-    Color mint,
-    Color accent,
   ) {
-    final theme = Theme.of(context);
+    final c = StudioColors.of(context);
     final allItems = recsAsync.valueOrNull ?? [];
     final pendingCount = allItems.where((r) => r.isPending).length;
     final approvedCount = allItems.where((r) => r.isApproved).length;
@@ -99,91 +64,55 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
         const MlModelStatusCard(),
         const SizedBox(height: AppSpacing.md),
 
-        // Generate AI Recommendations Tactile Button
-        GlassCard(
+        // Nút tìm gợi ý mới
+        StudioCard(
           onTap: _isGenerating ? null : _generate,
-          radius: AppRadius.card,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md + 2,
-          ),
-          fill: (isDark ? AppColors.orbViolet : Colors.purple).withValues(
-            alpha: 0.16,
-          ),
-          borderGradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              (isDark ? AppColors.orbViolet : Colors.purple).withValues(
-                alpha: 0.45,
-              ),
-              Colors.white.withValues(alpha: 0.08),
-            ],
-          ),
-          shadows: GlassTokens.glow(
-            isDark ? AppColors.orbViolet : Colors.purple,
-            intensity: 0.28,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (_isGenerating)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.2,
-                    color: Colors.white,
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: c.accent,
+                    ),
                   ),
                 )
               else
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: (isDark ? AppColors.orbViolet : Colors.purple)
-                        .withValues(alpha: 0.25),
-                  ),
-                  child: Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 18,
-                    color: isDark ? AppColors.orbViolet : Colors.purple,
-                  ),
-                ),
-              const SizedBox(width: AppSpacing.md),
-              Flexible(
+                const StudioIconTile(icon: Icons.auto_awesome_outlined),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       _isGenerating
-                          ? 'Đang phân tích dữ liệu 30 ngày qua...'
-                          : 'Phân tích hành vi & Quét đề xuất mới',
-                      style: theme.textTheme.titleSmall?.copyWith(
+                          ? 'Đang xem lại 30 ngày qua…'
+                          : 'Tìm gợi ý mới',
+                      style: TextStyle(
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                        color: isDark ? AppColors.onDark : AppColors.onSurface,
+                        color: c.text,
                       ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Dựa trên cách bạn bật/tắt thiết bị hằng ngày',
+                      style: TextStyle(fontSize: 12.5, color: c.muted),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (!_isGenerating)
-                      Text(
-                        'Quét chu kỳ bật/tắt thiết bị để tối ưu hóa điện năng và sinh hoạt',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: isDark
-                              ? AppColors.onDarkMuted
-                              : AppColors.onSurfaceVariant,
-                          fontSize: 11,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
                   ],
                 ),
               ),
+              Icon(Icons.chevron_right_rounded, color: c.faint),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: 20),
 
         // Sub-filter tabs
         SingleChildScrollView(
@@ -191,13 +120,13 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
           child: Row(
             children: [
               GlassFilterChip(
-                label: 'Chờ duyệt ($pendingCount)',
+                label: 'Gợi ý mới ($pendingCount)',
                 selected: _selectedTab == 'pending',
                 onTap: () => setState(() => _selectedTab = 'pending'),
               ),
               const SizedBox(width: AppSpacing.sm),
               GlassFilterChip(
-                label: 'Đã duyệt ($approvedCount)',
+                label: 'Đã dùng ($approvedCount)',
                 selected: _selectedTab == 'approved',
                 onTap: () => setState(() => _selectedTab = 'approved'),
               ),
@@ -209,7 +138,7 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
               ),
               const SizedBox(width: AppSpacing.sm),
               GlassFilterChip(
-                label: 'Tất cả lịch sử',
+                label: 'Lịch sử',
                 selected: _selectedTab == 'all_history',
                 onTap: () => setState(() => _selectedTab = 'all_history'),
               ),
@@ -232,20 +161,20 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
 
             if (filtered.isEmpty) {
               String emptyMsg =
-                  'Hiện không có đề xuất nào đang chờ duyệt.\nNhấn nút phân tích ở trên để tìm thói quen mới!';
+                  'Chưa có gợi ý mới.\nNhấn "Tìm gợi ý mới" ở trên để thử.';
               if (_selectedTab == 'approved') {
-                emptyMsg = 'Chưa có đề xuất nào được chấp thuận.';
+                emptyMsg = 'Bạn chưa dùng gợi ý nào.';
               } else if (_selectedTab == 'rejected') {
-                emptyMsg = 'Chưa có đề xuất nào bị từ chối.';
+                emptyMsg = 'Bạn chưa từ chối gợi ý nào.';
               } else if (_selectedTab == 'all_history') {
-                emptyMsg = 'Lịch sử giải quyết đề xuất đang trống.';
+                emptyMsg = 'Chưa có lịch sử.';
               }
 
               return Padding(
                 padding: const EdgeInsets.only(top: 36, bottom: 44),
                 child: EmptyView(
                   message: emptyMsg,
-                  icon: Icons.psychology_rounded,
+                  icon: Icons.auto_awesome_outlined,
                 ),
               );
             }
@@ -262,22 +191,9 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
                               .read(recommendationsListProvider.notifier)
                               .approve(rec.id);
                           if (context.mounted && success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Đã duyệt đề xuất "${rec.deviceName ?? "Thiết bị"}" và tạo quy tắc tự động!',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                backgroundColor: mint,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppRadius.md,
-                                  ),
-                                ),
-                              ),
+                            showStudioSnack(
+                              context,
+                              'Đã tạo quy tắc cho ${rec.deviceName ?? "thiết bị"}.',
                             );
                           }
                         },
@@ -301,7 +217,7 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
           error: (e, _) => Padding(
             padding: const EdgeInsets.only(top: 20),
             child: ErrorView(
-              message: 'Không thể tải danh sách đề xuất: $e',
+              message: 'Không tải được gợi ý. Kiểm tra kết nối rồi thử lại.',
               onRetry: () =>
                   ref.read(recommendationsListProvider.notifier).refresh(),
             ),
@@ -314,18 +230,14 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
   @override
   Widget build(BuildContext context) {
     final recsAsync = ref.watch(recommendationsListProvider);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
-    final accent = theme.colorScheme.primary;
 
     if (widget.isEmbedded) {
-      return _buildContent(context, recsAsync, isDark, mint, accent);
+      return _buildContent(context, recsAsync);
     }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: AmbientBackground(
+      body: StudioBackground(
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
@@ -336,7 +248,7 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
               automaticallyImplyLeading: false,
               toolbarHeight: 68,
               flexibleSpace: GlassAppBar(
-                title: 'Đề xuất AI (Recommendations)',
+                title: 'Gợi ý thông minh',
                 onBack: () => Navigator.of(context).maybePop(),
                 actions: [
                   GlassIconButton(
@@ -359,7 +271,7 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
               ),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  _buildContent(context, recsAsync, isDark, mint, accent),
+                  _buildContent(context, recsAsync),
                 ]),
               ),
             ),

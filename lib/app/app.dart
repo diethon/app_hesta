@@ -18,7 +18,7 @@ class SynaApp extends ConsumerWidget {
     ref.watch(notificationsControllerProvider);
 
     return MaterialApp.router(
-      title: 'Syna',
+      title: 'Hesta',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: ref.watch(scaffoldMessengerKeyProvider),
       theme: AppTheme.light(),

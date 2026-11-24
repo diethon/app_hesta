@@ -41,7 +41,7 @@ final notificationsControllerProvider =
           final webSocket = ref.watch(notificationWebSocketServiceProvider);
           final subs = <StreamSubscription<dynamic>>[];
 
-          // Nhận thông báo từ topic của home: /topic/homes/{homeId}/events
+          // 1. Nhận thông báo từ topic của home: /topic/homes/{homeId}/events
           if (homeId != null) {
             subs.add(
               webSocket.subscribeJson('/topic/homes/$homeId/events').listen((
@@ -56,13 +56,6 @@ final notificationsControllerProvider =
               }),
             );
           }
-
-          // // 2. Kênh fallback theo userId
-          // subs.add(
-          //   webSocket
-          //       .subscribeJson('/topic/users/$userId/notifications')
-          //       .listen(controller.onRealtime),
-          // );
 
           ref.onDispose(() {
             for (final sub in subs) {
@@ -95,7 +88,9 @@ class NotificationsController
   final GlobalKey<ScaffoldMessengerState> _messengerKey;
 
   Future<void> load() async {
-    state = await AsyncValue.guard(_repository.getNotifications);
+    final next = await AsyncValue.guard(_repository.getNotifications);
+    // The provider may be disposed (logout / home switch) while awaiting.
+    if (mounted) state = next;
   }
 
   /// Notification mới từ WebSocket: thêm vào đầu danh sách, hiện notification
