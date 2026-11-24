@@ -81,10 +81,27 @@ class Device {
 
   bool get isGate {
     final raw = (rawType ?? '').toUpperCase();
-    if (raw.contains('GATE') || raw.contains('ROLLING_DOOR')) return true;
+    if (raw == 'DOOR' ||
+        raw.contains('GATE') ||
+        raw.contains('ROLLING_DOOR') ||
+        raw.contains('CURTAIN')) {
+      return true;
+    }
     final n = name.toLowerCase();
     final i = id.toLowerCase();
-    return n.contains('cổng') || n.contains('gate') || i.contains('gate');
+    return n.contains('cổng') ||
+        n.contains('cửa cuốn') ||
+        n.contains('rèm') ||
+        n.contains('gate') ||
+        i.contains('gate');
+  }
+
+  String get apertureLabel {
+    final raw = (rawType ?? '').toUpperCase();
+    if (raw.contains('ROLLING_DOOR')) return 'cửa cuốn';
+    if (raw.contains('CURTAIN')) return 'rèm cửa';
+    if (raw == 'DOOR') return 'cửa';
+    return 'cổng';
   }
 
   // PHO-043: Manual Override (Khóa tự động hóa 30 phút)

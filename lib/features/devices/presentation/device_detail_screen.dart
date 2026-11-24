@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -564,19 +566,23 @@ class _StatusBlock extends StatelessWidget {
     final pills = <Widget>[];
 
     if (device.isGate) {
-      final isClosing = device.gateState == 'CLOSING';
-      final isOpening = device.gateState == 'OPENING';
-      final isStopped = device.gateState == 'STOPPED';
-      final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
-      final isOpen = device.gateState == 'OPEN' || (device.gateState == null && !device.isOn);
+      final gate = device.gateState?.toUpperCase();
+      final isClosing = gate == 'CLOSING';
+      final isOpening = gate == 'OPENING';
+      final isStopped = gate == 'STOPPED' || gate == 'STOP';
+      final isClosed = gate == 'CLOSED' || gate == 'CLOSE' || (gate == null && device.isOn);
+      final isOpen = gate == 'OPEN';
+      final targetName = device.apertureLabel;
 
       final gateLabel = isOpening
-          ? 'Đang mở cổng...'
+          ? 'Đang mở $targetName...'
           : (isClosing
-              ? 'Đang đóng cổng...'
+              ? 'Đang đóng $targetName...'
               : (isStopped
-                  ? 'Đang tạm dừng'
-                  : (isClosed ? 'Cổng đã đóng' : 'Cổng đang mở')));
+                  ? 'Đã tạm dừng'
+                  : (isClosed
+                      ? 'Đã đóng $targetName'
+                      : (isOpen ? 'Đã mở $targetName' : 'Sẵn sàng'))));
 
       final gateColor = (isOpening || isClosing)
           ? AppColors.auroraWarning
@@ -896,26 +902,85 @@ class _LockControls extends ConsumerWidget {
   }
 }
 
-class _GateControls extends ConsumerWidget {
+class _GateControls extends ConsumerStatefulWidget {
   const _GateControls({required this.device, required this.accent});
 
   final Device device;
   final Color accent;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_GateControls> createState() => _GateControlsState();
+}
+
+class _GateControlsState extends ConsumerState<_GateControls> {
+  static const _transitLockDuration = Duration(milliseconds: 4500);
+  bool _transitLocked = false;
+  Timer? _transitTimer;
+
+  @override
+  void didUpdateWidget(covariant _GateControls oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextState = widget.device.gateState?.toUpperCase();
+    if (nextState != oldWidget.device.gateState?.toUpperCase() &&
+        (nextState == 'OPEN' ||
+            nextState == 'CLOSED' ||
+            nextState == 'STOPPED')) {
+      _transitTimer?.cancel();
+      _transitTimer = null;
+      if (_transitLocked) {
+        setState(() => _transitLocked = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _transitTimer?.cancel();
+    super.dispose();
+  }
+
+  void _armTransitLock() {
+    _transitTimer?.cancel();
+    setState(() => _transitLocked = true);
+    _transitTimer = Timer(_transitLockDuration, () {
+      if (mounted) {
+        setState(() => _transitLocked = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final device = widget.device;
     final theme = Theme.of(context);
     final offline = device.status == DeviceStatus.offline;
     final controller = ref.read(devicesControllerProvider.notifier);
 
-    final isClosing = device.gateState == 'CLOSING';
-    final isOpening = device.gateState == 'OPENING';
-    final isStopped = device.gateState == 'STOPPED';
-    final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
-    final isOpen = device.gateState == 'OPEN' || (device.gateState == null && !device.isOn);
+    final gate = device.gateState?.toUpperCase();
+    final isClosing = gate == 'CLOSING';
+    final isOpening = gate == 'OPENING';
+    final isStopped = gate == 'STOPPED' || gate == 'STOP';
+    final isClosed =
+        gate == 'CLOSED' || gate == 'CLOSE' || (gate == null && device.isOn);
+    final isOpen = gate == 'OPEN';
+    final isMoving = isOpening || isClosing || _transitLocked;
+    final disableOpen = offline || isOpen || isMoving;
+    final disableClose = offline || isClosed || isMoving;
+    final disableStop = offline || !isMoving;
+    final targetName = device.apertureLabel;
 
     void sendGate(String action) {
+      if (action == 'OPEN' && disableOpen) return;
+      if (action == 'CLOSE' && disableClose) return;
+      if (action == 'STOP' && disableStop) return;
       HapticFeedback.mediumImpact();
+      if (action == 'STOP') {
+        _transitTimer?.cancel();
+        _transitTimer = null;
+        setState(() => _transitLocked = false);
+      } else {
+        _armTransitLock();
+      }
       controller.updateDevice(
         device.id,
         DeviceCommand(gateAction: action),
@@ -925,7 +990,7 @@ class _GateControls extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Khối trạng thái & điều khiển 3 nút chính
+        // Khối trạng thái & điều khiển 3 nút chính (có khóa liên động hành trình)
         GlassContainer(
           radius: AppRadius.hero,
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -951,18 +1016,26 @@ class _GateControls extends ConsumerWidget {
                           offline
                               ? 'Thiết bị ngoại tuyến'
                               : (isOpening
-                                  ? 'Đang mở cổng...'
+                                  ? 'Đang mở $targetName...'
                                   : (isClosing
-                                      ? 'Đang đóng cổng...'
-                                      : (isStopped
-                                          ? 'Cổng đang dừng'
-                                          : (isClosed ? 'Cổng đã đóng hoàn toàn' : 'Cổng đang mở')))),
+                                      ? 'Đang đóng $targetName...'
+                                      : (_transitLocked
+                                          ? 'Đang vận hành motor...'
+                                          : (isStopped
+                                              ? 'Đã dừng $targetName'
+                                              : (isClosed
+                                                  ? 'Đã đóng $targetName hoàn toàn'
+                                                  : (isOpen
+                                                      ? 'Đã mở $targetName hoàn toàn'
+                                                      : 'Sẵn sàng điều khiển')))))),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: offline
                                 ? AppColors.auroraError
-                                : (isOpening || isClosing
+                                : (isMoving
                                     ? AppColors.auroraWarning
-                                    : (isClosed ? AppColors.auroraMint : AppColors.orbTeal)),
+                                    : (isClosed
+                                        ? AppColors.auroraMint
+                                        : AppColors.orbTeal)),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -974,31 +1047,38 @@ class _GateControls extends ConsumerWidget {
                     height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: (isClosed ? AppColors.auroraMint : AppColors.orbTeal).withValues(alpha: 0.15),
+                      color: (isClosed
+                              ? AppColors.auroraMint
+                              : AppColors.orbTeal)
+                          .withValues(alpha: 0.15),
                       boxShadow: GlassTokens.glow(
                         isClosed ? AppColors.auroraMint : AppColors.orbTeal,
                         intensity: 0.35,
                       ),
                     ),
                     child: Icon(
-                      isClosed ? Icons.door_front_door_rounded : Icons.meeting_room_rounded,
-                      color: isClosed ? AppColors.auroraMint : AppColors.orbTeal,
+                      isClosed
+                          ? Icons.door_front_door_rounded
+                          : Icons.meeting_room_rounded,
+                      color: isClosed
+                          ? AppColors.auroraMint
+                          : AppColors.orbTeal,
                       size: 26,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              // 3 Nút lệnh: Mở cổng (OPEN), Dừng (STOP), Đóng cổng (CLOSE)
+              // 3 Nút lệnh: Mở (OPEN), Dừng (STOP), Đóng (CLOSE)
               Row(
                 children: [
                   Expanded(
                     child: _GateActionButton(
                       icon: Icons.arrow_upward_rounded,
-                      label: 'Mở cổng',
+                      label: 'Mở',
                       active: isOpening || isOpen,
                       accent: AppColors.orbTeal,
-                      enabled: !offline && !isOpening,
+                      enabled: !disableOpen,
                       onTap: () => sendGate('OPEN'),
                     ),
                   ),
@@ -1009,7 +1089,7 @@ class _GateControls extends ConsumerWidget {
                       label: 'Dừng',
                       active: isStopped,
                       accent: Colors.orangeAccent,
-                      enabled: !offline,
+                      enabled: !disableStop,
                       onTap: () => sendGate('STOP'),
                     ),
                   ),
@@ -1017,10 +1097,10 @@ class _GateControls extends ConsumerWidget {
                   Expanded(
                     child: _GateActionButton(
                       icon: Icons.arrow_downward_rounded,
-                      label: 'Đóng cổng',
+                      label: 'Đóng',
                       active: isClosing || isClosed,
                       accent: AppColors.auroraMint,
-                      enabled: !offline && !isClosing,
+                      enabled: !disableClose,
                       onTap: () => sendGate('CLOSE'),
                     ),
                   ),
@@ -1029,28 +1109,32 @@ class _GateControls extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
-        // Thanh trượt xác nhận thao tác mở / đóng an toàn
-        SlideToConfirm(
-          label: isClosed
-              ? 'Kéo để MỞ cổng'
-              : (isOpen ? 'Kéo để ĐÓNG cổng' : 'Kéo để DỪNG cổng'),
-          icon: isClosed
-              ? Icons.lock_open_rounded
-              : (isOpen ? Icons.lock_rounded : Icons.stop_circle_outlined),
-          color: isClosed
-              ? AppColors.orbTeal
-              : (isOpen ? AppColors.auroraMint : Colors.orangeAccent),
-          onConfirmed: () {
-            if (isClosed) {
-              sendGate('OPEN');
-            } else if (isOpen) {
-              sendGate('CLOSE');
-            } else {
-              sendGate('STOP');
-            }
-          },
-        ),
+        if (!offline && (isMoving || isClosed || isOpen)) ...[
+          const SizedBox(height: AppSpacing.md),
+          // Thanh trượt xác nhận thao tác mở / đóng / dừng an toàn
+          SlideToConfirm(
+            label: isMoving
+                ? 'Kéo để DỪNG $targetName'
+                : (isClosed
+                    ? 'Kéo để MỞ $targetName'
+                    : 'Kéo để ĐÓNG $targetName'),
+            icon: isMoving
+                ? Icons.stop_circle_outlined
+                : (isClosed ? Icons.lock_open_rounded : Icons.lock_rounded),
+            color: isMoving
+                ? Colors.orangeAccent
+                : (isClosed ? AppColors.orbTeal : AppColors.auroraMint),
+            onConfirmed: () {
+              if (isMoving) {
+                sendGate('STOP');
+              } else if (isClosed) {
+                sendGate('OPEN');
+              } else if (isOpen) {
+                sendGate('CLOSE');
+              }
+            },
+          ),
+        ],
       ],
     );
   }
