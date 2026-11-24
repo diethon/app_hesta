@@ -17,7 +17,7 @@ import '../data/automation_providers.dart';
 import 'automation_rule_editor_screen.dart';
 import 'automation_rules_screen.dart';
 
-/// Trung tâm Tự động hoá: 3 tab Quy tắc / Ngữ cảnh / Gợi ý.
+/// Trung tâm Tự động hoá: 3 tab Quy tắc / Kịch bản / Gợi ý.
 class AutomationScreen extends ConsumerStatefulWidget {
   const AutomationScreen({this.initialTab = 0, super.key});
 
@@ -69,7 +69,7 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
   }
 
   Future<void> _openEditor(Widget editor, Future<void> Function() refresh) async {
-    await Navigator.of(context).push<bool>(
+    await Navigator.of(context, rootNavigator: true).push<bool>(
       MaterialPageRoute(builder: (_) => editor),
     );
     if (mounted) unawaited(refresh());
@@ -87,7 +87,7 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
       ),
       1 => (
         Icons.add_rounded,
-        'Thêm ngữ cảnh',
+        'Thêm kịch bản',
         () => _openEditor(
           const SceneEditorScreen(),
           ref.read(scenesListProvider.notifier).refresh,
@@ -100,7 +100,8 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
       ),
     };
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      // A nested Scaffold ignores the shell's floating nav bar; its height is in padding.bottom.
+      padding: EdgeInsets.only(bottom: AppSpacing.md + MediaQuery.paddingOf(context).bottom),
       child: FloatingActionButton.extended(
         onPressed: onTap,
         backgroundColor: accent,
@@ -182,7 +183,7 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
                         icon: Icons.alt_route_rounded,
                       ),
                       GlassSegment(
-                        label: 'Ngữ cảnh ($scenesCount)',
+                        label: 'Kịch bản ($scenesCount)',
                         icon: Icons.layers_rounded,
                       ),
                       GlassSegment(

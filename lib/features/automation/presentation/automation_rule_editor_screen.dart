@@ -11,6 +11,7 @@ import '../../../core/widgets/glass/glass_toggle.dart';
 import '../../../core/widgets/studio.dart';
 import '../../devices/data/device_providers.dart';
 import '../../devices/domain/device.dart';
+import '../../groups/domain/device_group.dart';
 import '../../home/data/home_providers.dart';
 import '../../rooms/data/room_providers.dart';
 import '../../scene/data/scene_providers.dart';
@@ -42,6 +43,8 @@ class _AutomationRuleEditorScreenState
   late bool _enabled;
   late List<RuleCondition> _conditions;
   late List<RuleAction> _actions;
+  /// Chỉ chạy khi điều kiện đúng liên tục bấy nhiêu giây (0 = chạy ngay).
+  late int _hold;
   List<RuleSchedule> _schedules = [];
   late String _logicalOp;
   late bool _mixedOps;
@@ -66,6 +69,7 @@ class _AutomationRuleEditorScreenState
     _enabled = r?.enabled ?? true;
     _conditions = [...?r?.conditions]..sort((a, b) => a.order.compareTo(b.order));
     _actions = [...?r?.actions]..sort((a, b) => a.order.compareTo(b.order));
+    _hold = r?.holdSeconds ?? 0;
     // Điều kiện đầu không nối với gì nên lấy toán tử của điều kiện thứ 2 (giống ruleToDraft).
     final ops = _conditions.skip(1).map((c) => c.logicalOperator.toUpperCase()).toSet();
     _logicalOp = ops.length == 1 ? ops.first : 'AND';
@@ -121,8 +125,11 @@ class _AutomationRuleEditorScreenState
     'e': _enabled,
     'c': _payloadConditions.map((c) => c.toJson()).toList(),
     'a': _payloadActions.map((a) => a.toJson()).toList(),
+    'h': _payloadHold,
     's': _trigger == 'SCHEDULE' ? _schedules.map((s) => s.toJson()).toList() : [],
   });
+
+  int get _payloadHold => _trigger == 'SCHEDULE' ? 0 : _hold;
 
   bool get _dirty => !_showTemplates && _draftJson() != _snapshot;
 
@@ -130,10 +137,11 @@ class _AutomationRuleEditorScreenState
     name: _name.text,
     triggerType: _trigger,
     conditions: [
-      for (final c in _conditions) (deviceId: c.deviceId, expectedValue: c.expectedValue),
+      for (final c in _conditions) (deviceId: c.deviceId, groupId: c.groupId, expectedValue: c.expectedValue),
     ],
     actions: [
-      for (final a in _actions) (action: a.action, deviceId: a.deviceId, sceneId: a.sceneId),
+      for (final a in _actions)
+        (action: a.action, deviceId: a.deviceId, sceneId: a.sceneId, groupId: a.groupId, seconds: a.parameters['seconds']),
     ],
     activeScheduleCount: _schedules.where((s) => s.active).length,
   );
@@ -145,6 +153,33 @@ class _AutomationRuleEditorScreenState
   Map<String, String> get _roomNames => {for (final r in ref.read(roomsProvider)) r.id: r.name};
 
   Device? _device(String? id) => _devices.where((d) => d.id == id).firstOrNull;
+  List<DeviceGroup> get _groups => ref.read(automationGroupsProvider).valueOrNull ?? const [];
+
+  Future<DeviceGroup?> _pickGroup(String? selectedId) async {
+    final groups = _groups;
+    if (groups.isEmpty) {
+      showStudioSnack(context, 'Nhà chưa có nhóm thiết bị. Tạo nhóm ở trang Thiết bị.', success: false);
+      return null;
+    }
+    return showGroupPicker(context, groups: groups, selectedId: selectedId);
+  }
+
+  Future<void> _pickConditionGroup(int i) async {
+    final g = await _pickGroup(_conditions[i].groupId);
+    if (g == null || !mounted) return;
+    setState(() => _conditions[i] = _conditions[i].copyWith(clearDevice: true, groupId: g.id, groupName: g.name));
+  }
+
+  Future<void> _pickActionGroup(int i) async {
+    final g = await _pickGroup(_actions[i].groupId);
+    if (g == null || !mounted) return;
+    setState(() => _actions[i] = _actions[i].copyWith(groupId: g.id, groupName: g.name));
+  }
+
+  List<Device> _membersOf(String? groupId) {
+    final ids = _groups.where((g) => g.id == groupId).firstOrNull?.deviceIds ?? const [];
+    return _devices.where((d) => ids.contains(d.id)).toList();
+  }
 
   void _applyTemplate(AutomationTemplate? t) {
     final devices = _devices;
@@ -209,8 +244,9 @@ class _AutomationRuleEditorScreenState
       context,
       devices: _devices,
       roomNames: _roomNames,
-      mode: DevicePickMode.sensorsOnly,
-      title: 'Chọn cảm biến',
+      // Cảm biến, hoặc đèn/ổ cắm… để chạy khi chúng bật / tắt.
+      mode: DevicePickMode.all,
+      title: 'Chọn thiết bị nguồn',
       selectedId: cond.deviceId,
     );
     if (d == null) return;
@@ -220,6 +256,7 @@ class _AutomationRuleEditorScreenState
     setState(() {
       _conditions[i] = cond.copyWith(
         deviceId: d.id,
+        operator: attr?.isBool == true ? 'EQ' : null,
         attribute: attr?.key,
         expectedValue: attr == null
             ? null
@@ -371,6 +408,7 @@ class _AutomationRuleEditorScreenState
           conditions: _payloadConditions,
           actions: _payloadActions,
           schedules: schedules,
+          holdSeconds: _payloadHold,
         );
       } else {
         await repo.createRule(
@@ -382,6 +420,7 @@ class _AutomationRuleEditorScreenState
           conditions: _payloadConditions,
           actions: _payloadActions,
           schedules: schedules,
+          holdSeconds: _payloadHold,
         );
       }
       await ref.read(automationRulesListProvider.notifier).refresh();
@@ -400,10 +439,11 @@ class _AutomationRuleEditorScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Theo dõi để danh sách thiết bị/ngữ cảnh/phòng có dữ liệu khi mở bảng chọn.
+    // Theo dõi để danh sách thiết bị/kịch bản/phòng có dữ liệu khi mở bảng chọn.
     final devices = ref.watch(devicesControllerProvider).valueOrNull ?? const <Device>[];
     final scenes = ref.watch(scenesListProvider).valueOrNull ?? const <Scene>[];
     final rooms = {for (final r in ref.watch(roomsProvider)) r.id: r.name};
+    ref.watch(automationGroupsProvider); // tải sẵn để bảng chọn nhóm có dữ liệu
 
     return PopScope(
       canPop: !_dirty,
@@ -606,6 +646,8 @@ class _AutomationRuleEditorScreenState
               }),
               onPickDevice: () => _pickActionDevice(i),
               onPickScene: () => _pickActionScene(i),
+              onPickGroup: () => _pickActionGroup(i),
+              groupDevices: _membersOf(a.groupId),
             ),
           ),
         Row(
@@ -624,9 +666,38 @@ class _AutomationRuleEditorScreenState
             Expanded(
               child: _AddButton(
                 icon: Icons.auto_awesome_outlined,
-                label: 'Chạy ngữ cảnh',
+                label: 'Chạy kịch bản',
                 onTap: () => setState(() {
                   _actions.add(const RuleAction(action: 'EXECUTE_SCENE'));
+                  _openAct = _actions.length - 1;
+                }),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _AddButton(
+                icon: Icons.grid_view_rounded,
+                label: 'Điều khiển cả nhóm',
+                onTap: () {
+                  setState(() {
+                    _actions.add(const RuleAction(action: 'TURN_ON', groupId: ''));
+                    _openAct = _actions.length - 1;
+                  });
+                  _pickActionGroup(_actions.length - 1);
+                },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _AddButton(
+                icon: Icons.hourglass_bottom_rounded,
+                label: 'Chờ một lúc',
+                onTap: () => setState(() {
+                  _actions.add(const RuleAction(action: kDelayAction, parameters: {'seconds': 30}));
                   _openAct = _actions.length - 1;
                 }),
               ),
@@ -705,19 +776,50 @@ class _AutomationRuleEditorScreenState
               _openCond = null;
             }),
             onPickDevice: () => _pickConditionDevice(i),
+            onPickGroup: () => _pickConditionGroup(i),
           ),
         ),
       ],
       const SizedBox(height: 4),
       _AddButton(
         icon: Icons.add_rounded,
-        label: 'Thêm điều kiện cảm biến',
+        label: 'Thêm điều kiện',
         onTap: () => setState(() {
           _conditions.add(
             RuleCondition(attribute: 'temperature', operator: 'GT', expectedValue: 30, logicalOperator: _logicalOp),
           );
           _openCond = _conditions.length - 1;
         }),
+      ),
+      const SizedBox(height: 10),
+      // Bỏ qua số đo chỉ vượt ngưỡng trong chốc lát.
+      StudioCard(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text('Chỉ chạy khi điều kiện đúng liên tục', style: TextStyle(fontSize: 13.5, color: c.text)),
+              value: _hold > 0,
+              onChanged: (on) => setState(() => _hold = on ? 60 : 0),
+            ),
+            if (_hold > 0) ...[
+              DurationField(
+                label: 'Đúng liên tục trong',
+                seconds: _hold,
+                max: kMaxHoldSeconds,
+                onChanged: (s) => setState(() => _hold = s),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Quy tắc chạy sau ${formatDuration(_hold)} nếu trong lúc đó điều kiện không bị sai.',
+                style: TextStyle(fontSize: 12, color: c.faint),
+              ),
+            ],
+          ],
+        ),
       ),
     ];
   }

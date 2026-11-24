@@ -17,8 +17,9 @@ import '../data/automation_providers.dart';
 import '../domain/automation_models.dart';
 import 'automation_rule_detail_screen.dart';
 import 'automation_rule_editor_screen.dart';
-import '../domain/rule_options.dart' show eventFriendlyNames;
-import 'rule_editor_parts.dart' show actionSentence, conditionSentence, menuItem;
+import '../domain/rule_options.dart' show eventFriendlyNames, formatDuration;
+import '../../groups/domain/device_group.dart';
+import 'rule_editor_parts.dart' show actionSentence, capitalize, conditionSentence, menuItem, scheduleSentence;
 
 class AutomationRulesScreen extends ConsumerStatefulWidget {
   const AutomationRulesScreen({this.isEmbedded = false, super.key});
@@ -34,6 +35,15 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
   String _status = 'all'; // all, enabled, disabled
   String _type = 'all'; // all, SENSOR, EVENT, SCHEDULE
   String _query = '';
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+  /// `d:id` hoặc `g:id`: quy tắc theo dõi hoặc điều khiển thiết bị / nhóm đó.
+  String _target = '';
 
   Widget _buildContent(
     BuildContext context,
@@ -130,7 +140,7 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        'Ngữ cảnh',
+                        'Kịch bản',
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -153,10 +163,11 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
 
         // Tìm kiếm + bộ lọc (giống web)
         TextField(
+          controller: _search,
           decoration: InputDecoration(
             isDense: true,
             prefixIcon: const Icon(Icons.search_rounded),
-            hintText: 'Tìm quy tắc, thiết bị, ngữ cảnh…',
+            hintText: 'Tìm quy tắc, thiết bị, kịch bản…',
             filled: true,
             fillColor: StudioColors.of(context).card,
             border: OutlineInputBorder(
@@ -181,7 +192,11 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
                 ('disabled', 'Đang tắt'),
               ]) ...[
                 GlassFilterChip(
-                  label: key == 'all' ? '$label (${allRules.length})' : label,
+                  label: '$label (${switch (key) {
+                    'enabled' => allRules.where((r) => r.enabled).length,
+                    'disabled' => allRules.where((r) => !r.enabled).length,
+                    _ => allRules.length,
+                  }})',
                   selected: _status == key,
                   onTap: () => setState(() => _status = key),
                 ),
@@ -211,13 +226,15 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.sm),
+        _targetFilter(context, rulesAsync.valueOrNull ?? const []),
         const SizedBox(height: AppSpacing.md),
 
         rulesAsync.when(
           data: (rules) {
             final filtered = rules.where(_matches).toList();
             if (filtered.isEmpty) {
-              final isFiltered = _status != 'all' || _type != 'all' || _query.isNotEmpty;
+              final isFiltered = _status != 'all' || _type != 'all' || _query.isNotEmpty || _target.isNotEmpty;
               return Padding(
                 padding: const EdgeInsets.only(top: 40, bottom: 40),
                 child: Center(
@@ -236,6 +253,9 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
                           onPressed: () => setState(() {
                             _status = 'all';
                             _type = 'all';
+                            _target = '';
+                            _query = '';
+                            _search.clear();
                           }),
                           child: const Text('Xoá bộ lọc'),
                         )
@@ -311,22 +331,62 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
     );
   }
 
+  Widget _targetFilter(BuildContext context, List<AutomationRule> rules) {
+    final c = StudioColors.of(context);
+    final groups = ref.watch(automationGroupsProvider).valueOrNull ?? const <DeviceGroup>[];
+    // Thiết bị lấy từ chính các quy tắc: chỉ những thiết bị có quy tắc dùng tới.
+    final devices = <String, String>{
+      for (final r in rules) ...{
+        for (final c in r.conditions)
+          if (c.deviceId != null) c.deviceId!: c.deviceName ?? 'Thiết bị',
+        for (final a in r.actions)
+          if (a.deviceId != null) a.deviceId!: a.deviceName ?? 'Thiết bị',
+      },
+    };
+    final items = <DropdownMenuItem<String>>[
+      const DropdownMenuItem(value: '', child: Text('Mọi thiết bị và nhóm')),
+      for (final g in groups) DropdownMenuItem(value: 'g:${g.id}', child: Text('Nhóm · ${g.name}')),
+      for (final e in devices.entries) DropdownMenuItem(value: 'd:${e.key}', child: Text(e.value)),
+    ];
+    return DropdownButtonFormField<String>(
+      // Thiết bị / nhóm đã bị xoá: quay về "tất cả".
+      initialValue: items.any((i) => i.value == _target) ? _target : '',
+      isExpanded: true,
+      decoration: InputDecoration(
+        isDense: true,
+        prefixIcon: Icon(Icons.filter_alt_outlined, color: c.muted, size: 20),
+        filled: true,
+        fillColor: c.card,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: c.border),
+        ),
+      ),
+      items: items,
+      onChanged: (v) => setState(() => _target = v ?? ''),
+    );
+  }
+
   bool _matches(AutomationRule r) {
     if (_status == 'enabled' && !r.enabled) return false;
     if (_status == 'disabled' && r.enabled) return false;
     if (_type != 'all' && r.triggerType.toUpperCase() != _type) return false;
+    if (_target.isNotEmpty && !ruleTouches(r, _target, ref.read(automationGroupsProvider).valueOrNull ?? const [])) {
+      return false;
+    }
     if (_query.isEmpty) return true;
     final hay = [
       r.name,
       r.description ?? '',
-      for (final c in r.conditions) c.deviceName ?? '',
-      for (final a in r.actions) ...[a.deviceName ?? '', a.sceneName ?? ''],
+      for (final c in r.conditions) ...[c.deviceName ?? '', c.groupName ?? ''],
+      for (final a in r.actions) ...[a.deviceName ?? '', a.sceneName ?? '', a.groupName ?? ''],
     ].join(' ').toLowerCase();
     return hay.contains(_query);
   }
 
   Future<void> _openEditor(BuildContext context, {AutomationRule? rule, bool history = false}) async {
-    await Navigator.of(context).push<bool>(
+    await Navigator.of(context, rootNavigator: true).push<bool>(
       MaterialPageRoute(
         builder: (_) => AutomationRuleEditorScreen(rule: rule, openHistory: history),
       ),
@@ -335,7 +395,7 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
   }
 
   Future<void> _openDetail(BuildContext context, AutomationRule rule) async {
-    await Navigator.of(context).push(
+    await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(builder: (_) => AutomationRuleDetailScreen(rule: rule)),
     );
     if (mounted) unawaited(ref.read(automationRulesListProvider.notifier).refresh());
@@ -485,16 +545,18 @@ class _RuleListItem extends StatelessWidget {
 
   String get _when {
     final type = rule.triggerType.toUpperCase();
-    if (type == 'SCHEDULE') return 'Tự chạy vào giờ đã hẹn';
+    if (type == 'SCHEDULE') return scheduleSentence(rule.schedules);
     if (type == 'EVENT') {
       final c = rule.conditions.firstOrNull;
       final ev = eventFriendlyNames['${c?.expectedValue}'] ?? 'thiết bị báo có sự kiện';
-      return 'Khi $ev${c?.deviceName != null ? ' từ ${c!.deviceName}' : ''}';
+      return capitalize('$ev${c?.deviceName != null ? ' từ ${c!.deviceName}' : ''}');
     }
     if (rule.conditions.isEmpty) return 'Chưa có điều kiện';
     final ops = rule.conditions.skip(1).map((c) => c.logicalOperator.toUpperCase());
     final join = ops.contains('OR') ? ' hoặc ' : ' và ';
-    return 'Khi ${rule.conditions.map((c) => conditionSentence(c, null)).join(join)}';
+    final hold = rule.holdSeconds > 0 ? ', liên tục ${formatDuration(rule.holdSeconds)}' : '';
+    // Shown after a "Khi" label, so no "Khi" here.
+    return capitalize('${rule.conditions.map((c) => conditionSentence(c, null)).join(join)}$hold');
   }
 
   @override
@@ -522,21 +584,24 @@ class _RuleListItem extends StatelessWidget {
                     Text(
                       rule.name,
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: on ? c.text : c.muted),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
+                      // Trigger type is already shown by the icon and the group header.
                       [
                         on ? 'Đang bật' : 'Đang tắt',
-                        describeTrigger(rule.triggerType),
                         if (rule.triggerType.toUpperCase() == 'SENSOR') '$condCount điều kiện',
                       ].join(' · '),
                       style: TextStyle(fontSize: 12.5, color: c.muted),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Tooltip(
                 message: noActions ? 'Thêm hành động trước khi bật' : '',
                 child: GlassToggle(value: on, onChanged: noActions && !on ? null : (_) => onToggle()),
@@ -615,4 +680,20 @@ class _FlowLine extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Quy tắc có theo dõi / điều khiển thiết bị hoặc nhóm [target] (`d:id` / `g:id`) không.
+/// Thiết bị tính cả qua nhóm chứa nó, nhóm tính cả qua thiết bị trong nhóm (giống web).
+bool ruleTouches(AutomationRule rule, String target, List<DeviceGroup> groups) {
+  final id = target.substring(2);
+  final refs = [
+    for (final c in rule.conditions) (c.deviceId, c.groupId),
+    for (final a in rule.actions) (a.deviceId, a.groupId),
+  ];
+  if (target.startsWith('g:')) {
+    final members = groups.where((g) => g.id == id).firstOrNull?.deviceIds ?? const [];
+    return refs.any((r) => r.$2 == id || (r.$1 != null && members.contains(r.$1)));
+  }
+  final groupsOfDevice = {for (final g in groups) if (g.deviceIds.contains(id)) g.id};
+  return refs.any((r) => r.$1 == id || (r.$2 != null && groupsOfDevice.contains(r.$2)));
 }
