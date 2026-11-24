@@ -567,34 +567,34 @@ class _StatusBlock extends StatelessWidget {
       final isClosing = device.gateState == 'CLOSING';
       final isOpening = device.gateState == 'OPENING';
       final isStopped = device.gateState == 'STOPPED';
-      final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
-      final isOpen = device.gateState == 'OPEN' || (device.gateState == null && !device.isOn);
+      final isClosed =
+          device.gateState == 'CLOSED' ||
+          (device.gateState == null && device.isOn);
+      final isOpen =
+          device.gateState == 'OPEN' ||
+          (device.gateState == null && !device.isOn);
 
       final noun = device.gateNoun;
       final gateLabel = isOpening
           ? 'Đang mở $noun...'
           : (isClosing
-              ? 'Đang đóng $noun...'
-              : (isStopped
-                  ? 'Đang tạm dừng'
-                  : (isClosed ? 'Đã đóng $noun' : 'Đã mở $noun')));
+                ? 'Đang đóng $noun...'
+                : (isStopped
+                      ? 'Đang tạm dừng'
+                      : (isClosed ? 'Đã đóng $noun' : 'Đã mở $noun')));
 
       final gateColor = (isOpening || isClosing)
           ? AppColors.auroraWarning
           : (isStopped
-              ? Colors.orangeAccent
-              : (isClosed ? AppColors.auroraMint : AppColors.orbTeal));
+                ? Colors.orangeAccent
+                : (isClosed ? AppColors.auroraMint : AppColors.orbTeal));
 
       final gateIcon = (isClosed)
           ? Icons.door_front_door_rounded
           : (isOpen ? Icons.meeting_room_rounded : Icons.sync_rounded);
 
       pills.addAll([
-        GlassStatusPill(
-          icon: gateIcon,
-          label: gateLabel,
-          color: gateColor,
-        ),
+        GlassStatusPill(icon: gateIcon, label: gateLabel, color: gateColor),
         GlassStatusPill(
           icon: device.status == DeviceStatus.online
               ? Icons.wifi_rounded
@@ -711,7 +711,10 @@ class _MainControls extends ConsumerWidget {
       ),
       DeviceType.fan => _FanControls(device: device, accent: accent),
       DeviceType.speaker => _SpeakerControls(device: device, accent: accent),
-      DeviceType.waterPump => _WaterPumpControls(device: device, accent: accent),
+      DeviceType.waterPump => _WaterPumpControls(
+        device: device,
+        accent: accent,
+      ),
       DeviceType.tv => _TvControls(device: device, accent: accent),
       DeviceType.sensor ||
       DeviceType.camera => _SensorControls(device: device, accent: accent),
@@ -913,17 +916,18 @@ class _GateControls extends ConsumerWidget {
     final isClosing = device.gateState == 'CLOSING';
     final isOpening = device.gateState == 'OPENING';
     final isStopped = device.gateState == 'STOPPED';
-    final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
-    final isOpen = device.gateState == 'OPEN' || (device.gateState == null && !device.isOn);
+    final isClosed =
+        device.gateState == 'CLOSED' ||
+        (device.gateState == null && device.isOn);
+    final isOpen =
+        device.gateState == 'OPEN' ||
+        (device.gateState == null && !device.isOn);
 
     final noun = device.gateNoun;
 
     void sendGate(String action) {
       HapticFeedback.mediumImpact();
-      controller.updateDevice(
-        device.id,
-        DeviceCommand(gateAction: action),
-      );
+      controller.updateDevice(device.id, DeviceCommand(gateAction: action));
     }
 
     return Column(
@@ -955,18 +959,22 @@ class _GateControls extends ConsumerWidget {
                           offline
                               ? 'Thiết bị ngoại tuyến'
                               : (isOpening
-                                  ? 'Đang mở $noun...'
-                                  : (isClosing
-                                      ? 'Đang đóng $noun...'
-                                      : (isStopped
-                                          ? 'Đã dừng'
-                                          : (isClosed ? 'Đã đóng hoàn toàn' : 'Đã mở')))),
+                                    ? 'Đang mở $noun...'
+                                    : (isClosing
+                                          ? 'Đang đóng $noun...'
+                                          : (isStopped
+                                                ? 'Đã dừng'
+                                                : (isClosed
+                                                      ? 'Đã đóng hoàn toàn'
+                                                      : 'Đã mở')))),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: offline
                                 ? AppColors.auroraError
                                 : (isOpening || isClosing
-                                    ? AppColors.auroraWarning
-                                    : (isClosed ? AppColors.auroraMint : AppColors.orbTeal)),
+                                      ? AppColors.auroraWarning
+                                      : (isClosed
+                                            ? AppColors.auroraMint
+                                            : AppColors.orbTeal)),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -978,15 +986,21 @@ class _GateControls extends ConsumerWidget {
                     height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: (isClosed ? AppColors.auroraMint : AppColors.orbTeal).withValues(alpha: 0.15),
+                      color:
+                          (isClosed ? AppColors.auroraMint : AppColors.orbTeal)
+                              .withValues(alpha: 0.15),
                       boxShadow: GlassTokens.glow(
                         isClosed ? AppColors.auroraMint : AppColors.orbTeal,
                         intensity: 0.35,
                       ),
                     ),
                     child: Icon(
-                      isClosed ? Icons.door_front_door_rounded : Icons.meeting_room_rounded,
-                      color: isClosed ? AppColors.auroraMint : AppColors.orbTeal,
+                      isClosed
+                          ? Icons.door_front_door_rounded
+                          : Icons.meeting_room_rounded,
+                      color: isClosed
+                          ? AppColors.auroraMint
+                          : AppColors.orbTeal,
                       size: 26,
                     ),
                   ),
@@ -1122,7 +1136,9 @@ class _GateActionButton extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                   color: enabled
-                      ? (active ? Colors.white : Colors.white.withValues(alpha: 0.75))
+                      ? (active
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.75))
                       : Colors.white.withValues(alpha: 0.3),
                 ),
                 maxLines: 1,
@@ -1174,17 +1190,21 @@ class _FanControls extends ConsumerWidget {
             onChanged: (index) {
               if (offline) return;
               HapticFeedback.selectionClick();
-              ref.read(devicesControllerProvider.notifier).updateDevice(
-                device.id,
-                DeviceCommand(
-                  customAction: 'SET_SPEED',
-                  customParams: {'speed': index},
-                ),
-              );
+              ref
+                  .read(devicesControllerProvider.notifier)
+                  .updateDevice(
+                    device.id,
+                    DeviceCommand(
+                      customAction: 'SET_SPEED',
+                      customParams: {'speed': index},
+                    ),
+                  );
             },
           ),
           const SizedBox(height: AppSpacing.md),
-          Center(child: _PowerButton(device: device, accent: accent)),
+          Center(
+            child: _PowerButton(device: device, accent: accent),
+          ),
         ],
       ),
     );
@@ -1230,40 +1250,54 @@ class _TvControls extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(child: _PowerButton(device: device, accent: accent)),
+          Center(
+            child: _PowerButton(device: device, accent: accent),
+          ),
           const SizedBox(height: AppSpacing.md),
-          Row(children: [
-            key(Icons.volume_down_rounded, 'Âm lượng -', 'VOL_DOWN'),
-            key(Icons.volume_off_rounded, 'Tắt tiếng', 'MUTE'),
-            key(Icons.volume_up_rounded, 'Âm lượng +', 'VOL_UP'),
-          ]),
-          Row(children: [
-            key(Icons.keyboard_arrow_down_rounded, 'Kênh -', 'CH_DOWN'),
-            key(Icons.input_rounded, 'Nguồn vào', 'INPUT'),
-            key(Icons.keyboard_arrow_up_rounded, 'Kênh +', 'CH_UP'),
-          ]),
+          Row(
+            children: [
+              key(Icons.volume_down_rounded, 'Âm lượng -', 'VOL_DOWN'),
+              key(Icons.volume_off_rounded, 'Tắt tiếng', 'MUTE'),
+              key(Icons.volume_up_rounded, 'Âm lượng +', 'VOL_UP'),
+            ],
+          ),
+          Row(
+            children: [
+              key(Icons.keyboard_arrow_down_rounded, 'Kênh -', 'CH_DOWN'),
+              key(Icons.input_rounded, 'Nguồn vào', 'INPUT'),
+              key(Icons.keyboard_arrow_up_rounded, 'Kênh +', 'CH_UP'),
+            ],
+          ),
           const SizedBox(height: AppSpacing.sm),
-          Row(children: [
-            const Spacer(),
-            key(Icons.arrow_drop_up_rounded, 'Lên', 'UP'),
-            const Spacer(),
-          ]),
-          Row(children: [
-            key(Icons.arrow_left_rounded, 'Trái', 'LEFT'),
-            key(Icons.radio_button_checked_rounded, 'OK', 'OK'),
-            key(Icons.arrow_right_rounded, 'Phải', 'RIGHT'),
-          ]),
-          Row(children: [
-            const Spacer(),
-            key(Icons.arrow_drop_down_rounded, 'Xuống', 'DOWN'),
-            const Spacer(),
-          ]),
+          Row(
+            children: [
+              const Spacer(),
+              key(Icons.arrow_drop_up_rounded, 'Lên', 'UP'),
+              const Spacer(),
+            ],
+          ),
+          Row(
+            children: [
+              key(Icons.arrow_left_rounded, 'Trái', 'LEFT'),
+              key(Icons.radio_button_checked_rounded, 'OK', 'OK'),
+              key(Icons.arrow_right_rounded, 'Phải', 'RIGHT'),
+            ],
+          ),
+          Row(
+            children: [
+              const Spacer(),
+              key(Icons.arrow_drop_down_rounded, 'Xuống', 'DOWN'),
+              const Spacer(),
+            ],
+          ),
           const SizedBox(height: AppSpacing.sm),
-          Row(children: [
-            key(Icons.arrow_back_rounded, 'Quay lại', 'BACK'),
-            key(Icons.home_rounded, 'Home', 'HOME'),
-            key(Icons.menu_rounded, 'Menu', 'MENU'),
-          ]),
+          Row(
+            children: [
+              key(Icons.arrow_back_rounded, 'Quay lại', 'BACK'),
+              key(Icons.home_rounded, 'Home', 'HOME'),
+              key(Icons.menu_rounded, 'Menu', 'MENU'),
+            ],
+          ),
         ],
       ),
     );
@@ -1380,7 +1414,9 @@ class _WaterPumpControls extends ConsumerWidget {
               children: [
                 Icon(
                   Icons.water_drop_rounded,
-                  color: device.isOn ? accent : Colors.white.withValues(alpha: 0.4),
+                  color: device.isOn
+                      ? accent
+                      : Colors.white.withValues(alpha: 0.4),
                   size: 22,
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -1502,7 +1538,11 @@ class _GateInfoCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline_rounded, color: AppColors.auroraMint, size: 20),
+              Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.auroraMint,
+                size: 20,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 'Hướng dẫn điều khiển cổng',
