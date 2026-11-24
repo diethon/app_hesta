@@ -745,7 +745,12 @@ class _EnergyChartCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: timeSeries
+            children: (timeSeries.length <= 7
+                    ? timeSeries
+                    : [
+                        for (int i = 0; i < 6; i++)
+                          timeSeries[((i * (timeSeries.length - 1)) / 5).round()],
+                      ])
                 .map(
                   (pt) => Text(
                     pt.label,
