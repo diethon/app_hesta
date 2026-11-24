@@ -49,9 +49,10 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
   }
 
   Future<void> _openEditor() async {
-    await Navigator.of(context, rootNavigator: true).push<bool>(
-      MaterialPageRoute(builder: (_) => const SceneEditorScreen()),
-    );
+    await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const SceneEditorScreen()));
     if (mounted) unawaited(ref.read(scenesListProvider.notifier).refresh());
   }
 
@@ -234,7 +235,9 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
             backgroundColor: Colors.transparent,
             floatingActionButton: Padding(
               // A nested Scaffold ignores the shell's floating nav bar; its height is in padding.bottom.
-              padding: EdgeInsets.only(bottom: AppSpacing.md + MediaQuery.paddingOf(context).bottom),
+              padding: EdgeInsets.only(
+                bottom: AppSpacing.md + MediaQuery.paddingOf(context).bottom,
+              ),
               child: FloatingActionButton.extended(
                 onPressed: _openEditor,
                 backgroundColor: c.accent,
@@ -381,12 +384,18 @@ class _SceneListItem extends StatelessWidget {
   static IconData deviceIcon(String? type, String name) {
     final n = name.toLowerCase();
     final t = (type ?? '').toLowerCase();
-    if (n.contains('đèn') || t.contains('light')) return Icons.lightbulb_outline_rounded;
-    if (n.contains('lạnh') || n.contains('điều hòa') || t.contains('climate') || t.contains('ac')) {
+    if (n.contains('đèn') || t.contains('light'))
+      return Icons.lightbulb_outline_rounded;
+    if (n.contains('lạnh') ||
+        n.contains('điều hòa') ||
+        t.contains('climate') ||
+        t.contains('ac')) {
       return Icons.ac_unit_rounded;
     }
-    if (n.contains('rèm') || t.contains('curtain')) return Icons.curtains_rounded;
-    if (n.contains('khóa') || t.contains('lock')) return Icons.lock_outline_rounded;
+    if (n.contains('rèm') || t.contains('curtain'))
+      return Icons.curtains_rounded;
+    if (n.contains('khóa') || t.contains('lock'))
+      return Icons.lock_outline_rounded;
     if (n.contains('quạt') || t.contains('fan')) return Icons.air_rounded;
     return Icons.devices_other_rounded;
   }
@@ -465,7 +474,10 @@ class _SceneListItem extends StatelessWidget {
               children: [
                 for (final act in scene.actions.take(3))
                   _DeviceChip(
-                    icon: deviceIcon(act.targetDeviceType, act.targetDeviceName),
+                    icon: deviceIcon(
+                      act.targetDeviceType,
+                      act.targetDeviceName,
+                    ),
                     label:
                         '${act.targetDeviceName}: ${describeAction(act.action, value: act.value)}',
                   ),
@@ -493,7 +505,9 @@ class _SceneListItem extends StatelessWidget {
               label: Text(isExecuting ? 'Đang chạy…' : 'Chạy'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: c.accent,
-                side: BorderSide(color: on ? c.accent.withValues(alpha: 0.4) : c.border),
+                side: BorderSide(
+                  color: on ? c.accent.withValues(alpha: 0.4) : c.border,
+                ),
                 shape: const StadiumBorder(),
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
