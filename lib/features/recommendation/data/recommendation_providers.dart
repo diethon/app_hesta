@@ -32,7 +32,9 @@ class RecommendationsListNotifier extends AsyncNotifier<List<Recommendation>> {
     }
 
     // Errors reach the screen's ErrorView with a retry button; an empty list would look like "no data".
-    return ref.read(recommendationRepositoryProvider).getRecommendations(homeId);
+    return ref
+        .read(recommendationRepositoryProvider)
+        .getRecommendations(homeId);
   }
 
   Future<void> refresh() async {

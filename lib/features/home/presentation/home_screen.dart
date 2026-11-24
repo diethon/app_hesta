@@ -752,12 +752,14 @@ class DeviceCard extends ConsumerWidget {
                 Text(
                   device.isGate
                       ? (device.gateState == 'OPENING'
-                          ? 'Đang mở'
-                          : (device.gateState == 'CLOSING'
-                              ? 'Đang đóng'
-                              : (device.gateState == 'CLOSED' || (device.gateState == null && device.isOn)
-                                  ? 'Đã đóng'
-                                  : 'Đang mở')))
+                            ? 'Đang mở'
+                            : (device.gateState == 'CLOSING'
+                                  ? 'Đang đóng'
+                                  : (device.gateState == 'CLOSED' ||
+                                            (device.gateState == null &&
+                                                device.isOn)
+                                        ? 'Đã đóng'
+                                        : 'Đang mở')))
                       : (device.isOn ? l10n.locked : l10n.unlocked),
                   style: theme.textTheme.labelSmall?.copyWith(color: accent),
                 )
@@ -978,15 +980,23 @@ class _DeviceCardFooter extends ConsumerWidget {
 
     if (device.type == DeviceType.lock) {
       if (device.isGate) {
-        final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
+        final isClosed =
+            device.gateState == 'CLOSED' ||
+            (device.gateState == null && device.isOn);
         final isOpening = device.gateState == 'OPENING';
         final isClosing = device.gateState == 'CLOSING';
         return GlassStatusPill(
-          icon: isClosed ? Icons.door_front_door_rounded : Icons.meeting_room_rounded,
+          icon: isClosed
+              ? Icons.door_front_door_rounded
+              : Icons.meeting_room_rounded,
           label: isOpening
               ? 'Đang mở'
               : (isClosing ? 'Đang đóng' : (isClosed ? 'Đã đóng' : 'Đang mở')),
-          color: isClosed ? AppColors.auroraMint : (isOpening || isClosing ? AppColors.auroraWarning : AppColors.orbTeal),
+          color: isClosed
+              ? AppColors.auroraMint
+              : (isOpening || isClosing
+                    ? AppColors.auroraWarning
+                    : AppColors.orbTeal),
         );
       }
       return GlassStatusPill(

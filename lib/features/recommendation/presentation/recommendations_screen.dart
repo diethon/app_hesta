@@ -90,7 +90,9 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _isGenerating ? 'Đang xem lại 30 ngày qua…' : 'Tìm gợi ý mới',
+                      _isGenerating
+                          ? 'Đang xem lại 30 ngày qua…'
+                          : 'Tìm gợi ý mới',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
