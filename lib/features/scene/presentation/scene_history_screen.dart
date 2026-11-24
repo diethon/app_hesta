@@ -30,7 +30,10 @@ class SceneHistoryScreen extends ConsumerWidget {
     final historyAsync = ref.watch(sceneExecutionsProvider(scene.id));
     // Steps removed from the scene since a run still need a name, so fall back to the home's devices.
     final names = {
-      for (final d in ref.watch(devicesControllerProvider).valueOrNull ?? const <Device>[]) d.id: d.name,
+      for (final d
+          in ref.watch(devicesControllerProvider).valueOrNull ??
+              const <Device>[])
+        d.id: d.name,
       for (final a in scene.actions) a.targetDeviceId: a.targetDeviceName,
     };
 

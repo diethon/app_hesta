@@ -67,11 +67,7 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
         .read(scenesListProvider.notifier)
         .cancelRunLater(_scene.id);
     if (!mounted) return;
-    showStudioSnack(
-      context,
-      error ?? 'Đã huỷ hẹn giờ',
-      success: error == null,
-    );
+    showStudioSnack(context, error ?? 'Đã huỷ hẹn giờ', success: error == null);
   }
 
   Future<void> _confirmDelete() async {
@@ -83,22 +79,22 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
       builder: (ctx) => Theme(
         data: studioTheme(context),
         child: AlertDialog(
-        title: const Text('Xoá kịch bản?'),
-        content: Text('"${_scene.name}" sẽ bị xoá cùng lịch hẹn giờ của nó.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Huỷ'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: StudioColors.of(ctx).danger,
+          title: const Text('Xoá kịch bản?'),
+          content: Text('"${_scene.name}" sẽ bị xoá cùng lịch hẹn giờ của nó.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Huỷ'),
             ),
-            child: const Text('Xoá'),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: StudioColors.of(ctx).danger,
+              ),
+              child: const Text('Xoá'),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -144,7 +140,9 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                       children: [
                         GlassIconButton(
                           icon: Icons.arrow_back_rounded,
-                          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                          tooltip: MaterialLocalizations.of(
+                            context,
+                          ).backButtonTooltip,
                           onTap: () => Navigator.of(context).maybePop(),
                         ),
                         const SizedBox(width: 52),
@@ -232,7 +230,9 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton.icon(
-                                onPressed: _isExecuting || !canRun ? null : _execute,
+                                onPressed: _isExecuting || !canRun
+                                    ? null
+                                    : _execute,
                                 icon: _isExecuting
                                     ? const SizedBox(
                                         width: 16,
@@ -308,7 +308,10 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                                       ? 'Thêm hành động để có thể chạy kịch bản.'
                                       : 'Kịch bản đang tắt. Bật nó (nút gạt ở danh sách hoặc khi chỉnh sửa) để chạy.',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 13, color: c.muted),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: c.muted,
+                                  ),
                                 ),
                               ),
                           ],
@@ -336,7 +339,8 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                               )
                             : Column(
                                 children: [
-                                  for (final (i, act) in _scene.actions.indexed) ...[
+                                  for (final (i, act)
+                                      in _scene.actions.indexed) ...[
                                     if (i > 0)
                                       Divider(height: 1, color: c.border),
                                     Padding(
@@ -431,8 +435,12 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                                             Expanded(
                                               child: Text(
                                                 [
-                                                  describeDays(sched.repeatDays),
-                                                  if (sched.enabled && _scene.enabled && sched.nextRunAt != null)
+                                                  describeDays(
+                                                    sched.repeatDays,
+                                                  ),
+                                                  if (sched.enabled &&
+                                                      _scene.enabled &&
+                                                      sched.nextRunAt != null)
                                                     'lần tới ${formatNextRun(sched.nextRunAt!)}',
                                                 ].join(' · '),
                                                 style: TextStyle(
@@ -492,12 +500,15 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
   IconData _getDeviceIcon(String? type, String name) {
     final n = name.toLowerCase();
     final t = (type ?? '').toLowerCase();
-    if (n.contains('đèn') || t.contains('light')) return Icons.lightbulb_outline_rounded;
+    if (n.contains('đèn') || t.contains('light'))
+      return Icons.lightbulb_outline_rounded;
     if (n.contains('lạnh') || n.contains('điều hòa') || t.contains('climate')) {
       return Icons.ac_unit_rounded;
     }
-    if (n.contains('rèm') || t.contains('curtain')) return Icons.curtains_rounded;
-    if (n.contains('khóa') || t.contains('lock')) return Icons.lock_outline_rounded;
+    if (n.contains('rèm') || t.contains('curtain'))
+      return Icons.curtains_rounded;
+    if (n.contains('khóa') || t.contains('lock'))
+      return Icons.lock_outline_rounded;
     if (n.contains('quạt') || t.contains('fan')) return Icons.air_rounded;
     return Icons.devices_other_rounded;
   }
