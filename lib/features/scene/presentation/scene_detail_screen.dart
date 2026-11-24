@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_spacing.dart';
+import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
 import '../../../core/widgets/studio.dart';
 import '../data/scene_providers.dart';
@@ -10,6 +11,7 @@ import '../domain/scene.dart';
 import 'scene_editor_screen.dart';
 import 'scene_history_screen.dart';
 import 'scene_icons.dart';
+import 'scene_timer.dart';
 
 class SceneDetailScreen extends ConsumerStatefulWidget {
   const SceneDetailScreen({required this.scene, super.key});
@@ -46,19 +48,47 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
     );
   }
 
+  Future<void> _runLater() async {
+    final seconds = await showRunLaterSheet(context);
+    if (seconds == null || !mounted) return;
+    final error = await ref
+        .read(scenesListProvider.notifier)
+        .runLater(_scene.id, seconds);
+    if (!mounted) return;
+    showStudioSnack(
+      context,
+      error ?? 'Đã hẹn giờ "${_scene.name}"',
+      success: error == null,
+    );
+  }
+
+  Future<void> _cancelRunLater() async {
+    final error = await ref
+        .read(scenesListProvider.notifier)
+        .cancelRunLater(_scene.id);
+    if (!mounted) return;
+    showStudioSnack(
+      context,
+      error ?? 'Đã huỷ hẹn giờ',
+      success: error == null,
+    );
+  }
+
   Future<void> _confirmDelete() async {
     await HapticFeedback.selectionClick();
     if (!mounted) return;
     final nav = Navigator.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xoá ngữ cảnh?'),
+      builder: (ctx) => Theme(
+        data: studioTheme(context),
+        child: AlertDialog(
+        title: const Text('Xoá kịch bản?'),
         content: Text('"${_scene.name}" sẽ bị xoá cùng lịch hẹn giờ của nó.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy'),
+            child: const Text('Huỷ'),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -68,6 +98,7 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
             child: const Text('Xoá'),
           ),
         ],
+      ),
       ),
     );
 
@@ -80,6 +111,14 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final schedulesAsync = ref.watch(sceneSchedulesProvider(_scene.id));
+    // The list provider follows realtime, so a timer set on the web shows up here too.
+    final live = ref
+        .watch(scenesListProvider)
+        .valueOrNull
+        ?.where((s) => s.id == _scene.id)
+        .firstOrNull;
+    final pendingRunAt = (live ?? _scene).pendingRunAt;
+    final canRun = _scene.enabled && _scene.actions.isNotEmpty;
 
     return StudioBackground(
       child: Builder(
@@ -99,7 +138,18 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                   toolbarHeight: 68,
                   flexibleSpace: GlassAppBar(
                     title: _scene.name,
-                    onBack: () => Navigator.of(context).maybePop(),
+                    // Back + a spacer as wide as the second action, so the title is centred.
+                    leading: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GlassIconButton(
+                          icon: Icons.arrow_back_rounded,
+                          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                          onTap: () => Navigator.of(context).maybePop(),
+                        ),
+                        const SizedBox(width: 52),
+                      ],
+                    ),
                     actions: [
                       GlassIconButton(
                         icon: Icons.history_rounded,
@@ -182,7 +232,7 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton.icon(
-                                onPressed: _isExecuting ? null : _execute,
+                                onPressed: _isExecuting || !canRun ? null : _execute,
                                 icon: _isExecuting
                                     ? const SizedBox(
                                         width: 16,
@@ -209,6 +259,58 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            if (pendingRunAt != null)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.timer_outlined,
+                                    size: 18,
+                                    color: c.accent,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  SceneCountdown(
+                                    runAt: pendingRunAt,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: c.accent,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: _runLater,
+                                    child: const Text('Đổi'),
+                                  ),
+                                  TextButton(
+                                    onPressed: _cancelRunLater,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: c.danger,
+                                    ),
+                                    child: const Text('Huỷ'),
+                                  ),
+                                ],
+                              )
+                            else if (canRun)
+                              TextButton.icon(
+                                onPressed: _runLater,
+                                icon: const Icon(Icons.timer_outlined),
+                                label: const Text('Chạy sau…'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: c.accent,
+                                ),
+                              )
+                            else
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  _scene.actions.isEmpty
+                                      ? 'Thêm hành động để có thể chạy kịch bản.'
+                                      : 'Kịch bản đang tắt. Bật nó (nút gạt ở danh sách hoặc khi chỉnh sửa) để chạy.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 13, color: c.muted),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -318,9 +420,7 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                                             ),
                                             const SizedBox(width: 12),
                                             Text(
-                                              sched.time.length >= 5
-                                                  ? sched.time.substring(0, 5)
-                                                  : sched.time,
+                                              displayTime(sched.time),
                                               style: TextStyle(
                                                 fontSize: 17,
                                                 fontWeight: FontWeight.w700,
@@ -330,7 +430,11 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                                             const SizedBox(width: 10),
                                             Expanded(
                                               child: Text(
-                                                describeDays(sched.repeatDays),
+                                                [
+                                                  describeDays(sched.repeatDays),
+                                                  if (sched.enabled && _scene.enabled && sched.nextRunAt != null)
+                                                    'lần tới ${formatNextRun(sched.nextRunAt!)}',
+                                                ].join(' · '),
                                                 style: TextStyle(
                                                   fontSize: 13,
                                                   color: c.muted,
@@ -368,7 +472,7 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                           ),
                           icon: const Icon(Icons.delete_outline_rounded),
                           label: const Text(
-                            'Xoá ngữ cảnh',
+                            'Xoá kịch bản',
                             style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                           onPressed: _confirmDelete,
@@ -394,7 +498,7 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
     }
     if (n.contains('rèm') || t.contains('curtain')) return Icons.curtains_rounded;
     if (n.contains('khóa') || t.contains('lock')) return Icons.lock_outline_rounded;
-    if (n.contains('quạt') || t.contains('fan')) return Icons.mode_fan_off_outlined;
+    if (n.contains('quạt') || t.contains('fan')) return Icons.air_rounded;
     return Icons.devices_other_rounded;
   }
 }
