@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/utils/time_format.dart';
 
 @immutable
 class RuleCondition {
@@ -6,6 +7,8 @@ class RuleCondition {
     this.id,
     this.deviceId,
     this.deviceName,
+    this.groupId,
+    this.groupName,
     required this.attribute,
     required this.operator,
     required this.expectedValue,
@@ -16,6 +19,9 @@ class RuleCondition {
   final String? id;
   final String? deviceId;
   final String? deviceName;
+  /// Set instead of [deviceId]: true when ANY device of the group matches. '' = not picked yet.
+  final String? groupId;
+  final String? groupName;
   final String attribute;
   final String operator; // EQ, NE, GT, GTE, LT, LTE
   final dynamic expectedValue;
@@ -27,6 +33,8 @@ class RuleCondition {
       id: json['id']?.toString(),
       deviceId: json['deviceId']?.toString(),
       deviceName: json['deviceName']?.toString(),
+      groupId: json['groupId']?.toString(),
+      groupName: json['groupName']?.toString(),
       attribute: (json['attribute'] ?? '').toString(),
       operator: (json['operator'] ?? 'EQ').toString(),
       expectedValue: json['expectedValue'],
@@ -38,6 +46,7 @@ class RuleCondition {
   Map<String, dynamic> toJson() {
     return {
       if (deviceId != null) 'deviceId': deviceId,
+      if (groupId != null) 'groupId': groupId,
       'attribute': attribute,
       'operator': operator,
       'expectedValue': expectedValue,
@@ -49,6 +58,9 @@ class RuleCondition {
   RuleCondition copyWith({
     String? deviceId,
     bool clearDevice = false,
+    String? groupId,
+    String? groupName,
+    bool clearGroup = false,
     String? attribute,
     String? operator,
     Object? expectedValue,
@@ -59,6 +71,8 @@ class RuleCondition {
       id: id,
       deviceId: clearDevice ? null : (deviceId ?? this.deviceId),
       deviceName: clearDevice ? null : deviceName,
+      groupId: clearGroup ? null : (groupId ?? this.groupId),
+      groupName: clearGroup ? null : (groupName ?? this.groupName),
       attribute: attribute ?? this.attribute,
       operator: operator ?? this.operator,
       expectedValue: expectedValue ?? this.expectedValue,
@@ -94,6 +108,8 @@ class RuleAction {
     this.deviceName,
     this.sceneId,
     this.sceneName,
+    this.groupId,
+    this.groupName,
     required this.action,
     this.parameters = const {},
     this.order = 0,
@@ -104,6 +120,9 @@ class RuleAction {
   final String? deviceName;
   final String? sceneId;
   final String? sceneName;
+  /// Group step: every member that supports [action]. '' = not picked yet.
+  final String? groupId;
+  final String? groupName;
   final String action;
   final Map<String, dynamic> parameters;
   final int order;
@@ -116,6 +135,8 @@ class RuleAction {
       deviceName: json['deviceName']?.toString(),
       sceneId: json['sceneId']?.toString(),
       sceneName: json['sceneName']?.toString(),
+      groupId: json['groupId']?.toString(),
+      groupName: json['groupName']?.toString(),
       action: (json['action'] ?? '').toString(),
       parameters: params is Map ? Map<String, dynamic>.from(params) : const {},
       order: (json['order'] as num?)?.toInt() ?? 0,
@@ -127,6 +148,8 @@ class RuleAction {
     String? deviceName,
     String? sceneId,
     String? sceneName,
+    String? groupId,
+    String? groupName,
     String? action,
     Map<String, dynamic>? parameters,
     int? order,
@@ -137,6 +160,8 @@ class RuleAction {
       deviceName: deviceName ?? this.deviceName,
       sceneId: sceneId ?? this.sceneId,
       sceneName: sceneName ?? this.sceneName,
+      groupId: groupId ?? this.groupId,
+      groupName: groupName ?? this.groupName,
       action: action ?? this.action,
       parameters: parameters ?? this.parameters,
       order: order ?? this.order,
@@ -147,6 +172,7 @@ class RuleAction {
     return {
       if (deviceId != null) 'deviceId': deviceId,
       if (sceneId != null) 'sceneId': sceneId,
+      if (groupId != null) 'groupId': groupId,
       'action': action,
       'parameters': parameters,
       'order': order,
@@ -165,6 +191,8 @@ class AutomationRule {
     this.enabled = true,
     this.conditions = const [],
     this.actions = const [],
+    this.holdSeconds = 0,
+    this.schedules = const [],
     this.createdAt,
     this.updatedAt,
   });
@@ -177,6 +205,10 @@ class AutomationRule {
   final bool enabled;
   final List<RuleCondition> conditions;
   final List<RuleAction> actions;
+  /// Run only when the conditions stay true this long (0 = at once).
+  final int holdSeconds;
+  /// Giờ chạy của quy tắc SCHEDULE (server gửi kèm để danh sách hiện "18:00 hằng ngày").
+  final List<RuleSchedule> schedules;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -206,6 +238,10 @@ class AutomationRule {
       enabled: json['enabled'] as bool? ?? true,
       conditions: condList,
       actions: actList,
+      holdSeconds: (json['holdSeconds'] as num?)?.toInt() ?? 0,
+      schedules: json['schedules'] is List
+          ? (json['schedules'] as List).whereType<Map>().map((m) => RuleSchedule.fromJson(Map<String, dynamic>.from(m))).toList()
+          : const [],
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
@@ -223,6 +259,7 @@ class AutomationRule {
       'enabled': enabled,
       'conditions': conditions.map((c) => c.toJson()).toList(),
       'actions': actions.map((a) => a.toJson()).toList(),
+      'holdSeconds': holdSeconds,
     };
   }
 
@@ -235,6 +272,7 @@ class AutomationRule {
     bool? enabled,
     List<RuleCondition>? conditions,
     List<RuleAction>? actions,
+    int? holdSeconds,
   }) {
     return AutomationRule(
       id: id ?? this.id,
@@ -245,6 +283,8 @@ class AutomationRule {
       enabled: enabled ?? this.enabled,
       conditions: conditions ?? this.conditions,
       actions: actions ?? this.actions,
+      holdSeconds: holdSeconds ?? this.holdSeconds,
+      schedules: schedules,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
@@ -315,7 +355,7 @@ class RuleSchedule {
   /// null = chưa lưu.
   final String? id;
 
-  /// "HH:mm".
+  /// "HH:mm:ss".
   final String time;
 
   /// ISO 1=T2 … 7=CN; rỗng = hằng ngày.
@@ -323,11 +363,10 @@ class RuleSchedule {
   final bool active;
 
   factory RuleSchedule.fromJson(Map<String, dynamic> json) {
-    final t = (json['scheduledTime'] ?? json['time'] ?? '00:00').toString();
     final days = json['repeatDays'];
     return RuleSchedule(
       id: json['id']?.toString(),
-      time: t.length >= 5 ? t.substring(0, 5) : t,
+      time: formatHms((json['scheduledTime'] ?? json['time'])?.toString()),
       repeatDays: days is List
           ? days.whereType<num>().map((n) => n.toInt()).toList()
           : const [],

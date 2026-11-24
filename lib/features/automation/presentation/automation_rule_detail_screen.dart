@@ -8,6 +8,8 @@ import '../../../core/widgets/studio.dart';
 import '../data/automation_providers.dart';
 import '../domain/automation_models.dart';
 import 'automation_rule_editor_screen.dart';
+import '../domain/rule_options.dart' show formatDuration, kDelayAction;
+import 'rule_editor_parts.dart' show actionSentence, capitalize, conditionSentence, scheduleSentence;
 
 class AutomationRuleDetailScreen extends ConsumerStatefulWidget {
   const AutomationRuleDetailScreen({required this.rule, super.key});
@@ -188,7 +190,7 @@ class _AutomationRuleDetailScreenState
                                 icon: Icons.schedule_rounded,
                                 text: _rule.triggerType.toUpperCase() ==
                                         'SCHEDULE'
-                                    ? 'Theo giờ đã hẹn'
+                                    ? scheduleSentence(_rule.schedules)
                                     : 'Mỗi khi có sự kiện xảy ra',
                               )
                             : Column(
@@ -212,14 +214,14 @@ class _AutomationRuleDetailScreenState
                                       ),
                                     _Line(
                                       icon: Icons.sensors_rounded,
-                                      text: describeCondition(
-                                        cond.attribute,
-                                        cond.operator,
-                                        cond.expectedValue,
-                                        deviceName: cond.deviceName,
-                                      ),
+                                      text: capitalize(conditionSentence(cond, null)),
                                     ),
                                   ],
+                                  if (_rule.holdSeconds > 0)
+                                    _Line(
+                                      icon: Icons.timer_outlined,
+                                      text: 'Chỉ chạy khi đúng liên tục ${formatDuration(_rule.holdSeconds)}',
+                                    ),
                                 ],
                               ),
                       ),
@@ -236,14 +238,14 @@ class _AutomationRuleDetailScreenState
                                 children: [
                                   for (final a in _rule.actions)
                                     _Line(
-                                      icon: a.sceneName != null &&
-                                              a.deviceName == null
+                                      icon: a.action == kDelayAction
+                                          ? Icons.hourglass_bottom_rounded
+                                          : a.groupId != null
+                                          ? Icons.grid_view_rounded
+                                          : a.sceneName != null && a.deviceName == null
                                           ? Icons.layers_outlined
                                           : Icons.arrow_forward_rounded,
-                                      text: a.sceneName != null &&
-                                              a.deviceName == null
-                                          ? 'Chạy ngữ cảnh "${a.sceneName}"'
-                                          : '${a.deviceName ?? 'Thiết bị'}: ${describeAction(a.action, params: a.parameters)}',
+                                      text: actionSentence(a, null, null),
                                     ),
                                 ],
                               ),

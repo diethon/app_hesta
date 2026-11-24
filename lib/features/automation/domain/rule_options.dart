@@ -42,6 +42,8 @@ const _actionsByType = <String, List<String>>{
   'SOCKET': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
   'SMART_PLUG': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
   'WATER_PUMP': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
+  'TV': ['TURN_ON', 'TURN_OFF', 'TOGGLE'],
+  'DOOR': ['OPEN', 'CLOSE', 'STOP'],
   'GATE': ['OPEN', 'CLOSE', 'STOP'],
   'ROLLING_DOOR': ['OPEN', 'CLOSE', 'STOP'],
   'CURTAIN': ['OPEN', 'CLOSE', 'STOP', 'TURN_ON', 'TURN_OFF', 'TOGGLE'],
@@ -65,6 +67,7 @@ String deviceTypeCode(Device d) {
     DeviceType.sensor => 'SENSOR',
     DeviceType.camera => 'CAMERA',
     DeviceType.waterPump => 'WATER_PUMP',
+    DeviceType.tv => 'TV',
   };
 }
 
@@ -101,6 +104,12 @@ const sensorAttributes = <SensorAttribute>[
   SensorAttribute('state', 'Trạng thái', '', isBool: true),
 ];
 
+const kPowerOnOff = SensorAttribute('power', 'Bật / tắt', '', isBool: true);
+
+/// [attributeFor], nhưng 'power' của thiết bị điều khiển là bật/tắt chứ không phải công suất W.
+SensorAttribute? attributeOf(Device? d, String key) =>
+    attributesFor(d).where((a) => a.key == key.toLowerCase()).firstOrNull ?? attributeFor(key);
+
 SensorAttribute? attributeFor(String key) {
   for (final a in sensorAttributes) {
     if (a.key == key.toLowerCase()) return a;
@@ -112,6 +121,8 @@ SensorAttribute? attributeFor(String key) {
 List<SensorAttribute> attributesFor(Device? d) {
   if (d == null) return sensorAttributes;
   final t = deviceTypeCode(d);
+  // Đèn, quạt, ổ cắm…: "khi bật / tắt" (power ON/OFF nó báo về), giống web.
+  if (isControllableDevice(d) && !t.contains('SENSOR')) return const [kPowerOnOff];
   List<SensorAttribute> only(List<String> keys) =>
       sensorAttributes.where((a) => keys.contains(a.key)).toList();
   if (t.contains('TEMP') || t.contains('DHT')) return only(['temperature', 'humidity']);
@@ -293,23 +304,56 @@ const automationTemplates = <AutomationTemplate>[
 String? validateRuleDraft({
   required String name,
   required String triggerType,
-  required List<({String? deviceId, Object? expectedValue})> conditions,
-  required List<({String action, String? deviceId, String? sceneId})> actions,
+  required List<({String? deviceId, String? groupId, Object? expectedValue})> conditions,
+  required List<({String action, String? deviceId, String? sceneId, String? groupId, Object? seconds})> actions,
   required int activeScheduleCount,
 }) {
   if (name.trim().isEmpty) return 'Nhập tên quy tắc (tối đa 40 ký tự)';
   if (triggerType == 'SCHEDULE' && activeScheduleCount == 0) return 'Thêm ít nhất 1 giờ chạy';
   if (triggerType == 'SENSOR') {
     if (conditions.isEmpty) return 'Thêm ít nhất 1 điều kiện cho cảm biến';
-    if (conditions.any((c) => c.deviceId == null)) return 'Chọn cảm biến nguồn cho điều kiện';
+    if (conditions.any((c) => c.groupId != null ? c.groupId!.isEmpty : c.deviceId == null)) {
+      return 'Chọn thiết bị hoặc nhóm cho điều kiện';
+    }
   }
   if (triggerType == 'EVENT' &&
       (conditions.isEmpty || '${conditions.first.expectedValue ?? ''}'.isEmpty)) {
     return 'Chọn sự kiện kích hoạt';
   }
   if (actions.isEmpty) return 'Thêm ít nhất 1 hành động thực thi';
-  if (actions.any((a) => a.action == 'EXECUTE_SCENE' ? a.sceneId == null : a.deviceId == null)) {
-    return 'Chọn thiết bị hoặc kịch bản cho hành động';
-  }
+  if (actions.every((a) => a.action == kDelayAction)) return 'Thêm ít nhất 1 hành động ngoài bước chờ';
+  final incomplete = actions.any((a) {
+    if (a.action == kDelayAction) return !((num.tryParse('${a.seconds}') ?? 0) >= 1);
+    if (a.action == 'EXECUTE_SCENE') return a.sceneId == null;
+    return a.groupId != null ? a.groupId!.isEmpty : a.deviceId == null;
+  });
+  if (incomplete) return 'Chọn thiết bị, nhóm hoặc kịch bản cho hành động';
+  return null;
+}
+
+// ── Thời gian: bước chờ, tự tắt, đúng liên tục (giống web ruleTiming.ts) ──
+
+const kDelayAction = 'DELAY';
+const kAutoOffKey = 'autoOffSeconds';
+const kMaxDelaySeconds = 3600;
+const kMaxAutoOffSeconds = 24 * 3600;
+const kMaxHoldSeconds = 3600;
+
+/// "45 giây", "2 phút", "1 giờ 30 phút".
+String formatDuration(num totalSeconds) {
+  final s = totalSeconds.round().clamp(0, 1 << 31);
+  final parts = [
+    if (s ~/ 3600 > 0) '${s ~/ 3600} giờ',
+    if (s % 3600 ~/ 60 > 0) '${s % 3600 ~/ 60} phút',
+    if (s % 60 > 0) '${s % 60} giây',
+  ];
+  return parts.isEmpty ? '0 giây' : parts.join(' ');
+}
+
+/// Lệnh tự hoàn tác được và từ để gọi việc đó; null = không có.
+String? autoOffVerb(String action, [Map<String, dynamic> params = const {}]) {
+  if (action == 'TURN_ON' || action == 'POWER_ON') return 'Tự tắt';
+  if (action == 'SET_POWER' && params['power'] != false && params['power'] != 'OFF') return 'Tự tắt';
+  if (action == 'OPEN' || action == 'GATE_OPEN') return 'Tự đóng';
   return null;
 }
