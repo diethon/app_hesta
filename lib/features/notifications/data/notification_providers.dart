@@ -88,7 +88,9 @@ class NotificationsController
   final GlobalKey<ScaffoldMessengerState> _messengerKey;
 
   Future<void> load() async {
-    state = await AsyncValue.guard(_repository.getNotifications);
+    final next = await AsyncValue.guard(_repository.getNotifications);
+    // The provider may be disposed (logout / home switch) while awaiting.
+    if (mounted) state = next;
   }
 
   /// Notification mới từ WebSocket: thêm vào đầu danh sách, hiện notification

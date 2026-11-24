@@ -17,6 +17,7 @@ abstract final class DeviceVisuals {
     DeviceType.fan => Icons.air_rounded,
     DeviceType.sensor => Icons.sensors_rounded,
     DeviceType.waterPump => Icons.water_drop_rounded,
+    DeviceType.tv => Icons.tv_rounded,
   };
 
   /// Màu accent/glow theo loại thiết bị (dark-first).
@@ -33,6 +34,7 @@ abstract final class DeviceVisuals {
       DeviceType.camera => isDark ? AppColors.auroraAccent : AppColors.primary,
       DeviceType.fan => AppColors.orbTeal,
       DeviceType.waterPump => AppColors.orbTeal,
+      DeviceType.tv => AppColors.orbViolet,
       DeviceType.sensor =>
         isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight,
     };
@@ -76,8 +78,8 @@ abstract final class DeviceVisuals {
     }
 
     // Nhận diện điều hoà
-    if (idLower.contains('ac') ||
-        nameLower.contains('ac') ||
+    // Không so 'ac' trong id: id là UUID hex nên hầu như thiết bị nào cũng khớp.
+    if (device.type == DeviceType.thermostat ||
         nameLower.contains('conditioner') ||
         nameLower.contains('điều hòa') ||
         nameLower.contains('dieu hoa')) {
@@ -91,6 +93,11 @@ abstract final class DeviceVisuals {
       return 'assets/images/room_devices/bedroom_devices/led rgb.png';
     }
 
+    // Ảnh cổng trượt chỉ hợp với cổng; cửa / cửa cuốn / rèm dùng icon.
+    if (device.type == DeviceType.lock &&
+        !(device.rawType ?? '').toUpperCase().contains('GATE')) {
+      return null;
+    }
     return _typeProductImage(device.type);
   }
 

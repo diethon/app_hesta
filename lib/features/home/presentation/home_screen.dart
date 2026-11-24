@@ -171,7 +171,12 @@ class _GreetingHeader extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                l10n.goodMorning(name),
+                // Same 12h / 18h split as the web dashboard.
+                switch (DateTime.now().hour) {
+                  < 12 => l10n.goodMorning(name),
+                  < 18 => l10n.goodAfternoon(name),
+                  _ => l10n.goodEvening(name),
+                },
                 style: theme.textTheme.headlineSmall?.copyWith(fontSize: 26),
               ),
             ],
@@ -277,7 +282,7 @@ class _DashboardContent extends ConsumerWidget {
                   width: tileWidth,
                   child: GlassIconTile(
                     icon: Icons.layers_rounded,
-                    label: 'Ngữ cảnh',
+                    label: 'Kịch bản',
                     subtitle: 'Kịch bản thiết bị',
                     color: theme.colorScheme.primary,
                     onTap: () => context.push('/scenes'),
@@ -601,7 +606,7 @@ class _QuickScenesState extends ConsumerState<_QuickScenes> {
           children: [
             _AddSceneButton(
               onTap: () => context.push('/scenes'),
-              label: 'Mở Ngữ cảnh',
+              label: 'Mở Kịch bản',
             ),
           ],
         ),
