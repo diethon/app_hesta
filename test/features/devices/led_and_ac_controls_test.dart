@@ -219,5 +219,25 @@ void main() {
         });
       },
     );
+
+    test(
+      'DeviceDto parses FAN and SMART_FAN speed from currentState.speed',
+      () {
+        for (final type in ['FAN', 'SMART_FAN']) {
+          final dto = DeviceDto.fromJson({
+            'id': 'fan-1',
+            'name': 'Quạt đứng',
+            'roomId': 'room-1',
+            'deviceType': type,
+            'status': 'ONLINE',
+            'currentState': {'power': 'ON', 'speed': 2},
+          });
+          final domain = dto.toDomain();
+          expect(domain.type, DeviceType.fan);
+          expect(domain.isOn, isTrue);
+          expect(domain.acFan, '2');
+        }
+      },
+    );
   });
 }
