@@ -4,22 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/app_colors.dart';
-import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
-import '../../../app/theme/glass_tokens.dart';
-import '../../../core/widgets/glass/ambient_background.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
-import '../../../core/widgets/glass/glass_card.dart';
 import '../../../core/widgets/glass/glass_filter_chip.dart';
-import '../../../core/widgets/glass/glass_status_pill.dart';
 import '../../../core/widgets/glass/glass_toggle.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../../core/widgets/studio.dart';
 import '../data/scene_providers.dart';
 import '../domain/scene.dart';
 import 'scene_detail_screen.dart';
 import 'scene_editor_screen.dart';
 import 'scene_icons.dart';
+import 'scene_timer.dart';
 
 class ScenesScreen extends ConsumerStatefulWidget {
   const ScenesScreen({this.isEmbedded = false, super.key});
@@ -34,7 +30,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
   String _selectedFilter = 'all'; // all, enabled, disabled
   String? _executingSceneId;
 
-  Future<void> _executeScene(Scene scene, Color mint) async {
+  Future<void> _executeScene(Scene scene) async {
     await HapticFeedback.mediumImpact();
     if (!mounted) return;
     setState(() => _executingSceneId = scene.id);
@@ -45,44 +41,26 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
 
     if (!mounted) return;
     setState(() => _executingSceneId = null);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              error == null
-                  ? Icons.check_circle_rounded
-                  : Icons.error_outline_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                error ?? 'Đã kích hoạt kịch bản: ${scene.name}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: error == null ? mint : AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-      ),
+    showStudioSnack(
+      context,
+      error ?? 'Đã chạy "${scene.name}"',
+      success: error == null,
     );
+  }
+
+  Future<void> _openEditor() async {
+    await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const SceneEditorScreen()));
+    if (mounted) unawaited(ref.read(scenesListProvider.notifier).refresh());
   }
 
   Widget _buildContent(
     BuildContext context,
     AsyncValue<List<Scene>> scenesAsync,
-    bool isDark,
-    Color accent,
-    Color mint,
   ) {
-    final theme = Theme.of(context);
+    final c = StudioColors.of(context);
     final allScenes = scenesAsync.valueOrNull ?? [];
     final enabledCount = allScenes.where((s) => s.enabled).length;
     final disabledCount = allScenes.where((s) => !s.enabled).length;
@@ -94,38 +72,18 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
         // Quick 1-Tap Scene Spotlight Carousel
         if (quickScenes.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.touch_app_rounded, size: 16, color: accent),
-                    const SizedBox(width: 6),
-                    Text(
-                      'KÍCH HOẠT NHANH 1-CHẠM',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: isDark
-                            ? AppColors.onDarkMuted
-                            : AppColors.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '${quickScenes.length} sẵn sàng',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: isDark ? AppColors.onDarkFaint : Colors.grey,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              'Chạy nhanh',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: c.text,
+              ),
             ),
           ),
           SizedBox(
-            height: 124,
+            height: 128,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,
@@ -133,19 +91,15 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
               separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
               itemBuilder: (context, idx) {
                 final sc = quickScenes[idx];
-                final atmosphere = SceneIcons.getAtmosphere(sc.icon);
-                final isRunning = _executingSceneId == sc.id;
-
                 return _QuickSceneCard(
                   scene: sc,
-                  atmosphere: atmosphere,
-                  isRunning: isRunning,
-                  onTap: () => _executeScene(sc, mint),
+                  isRunning: _executingSceneId == sc.id,
+                  onTap: () => _executeScene(sc),
                 );
               },
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: 20),
         ],
 
         // Filter Chips
@@ -194,39 +148,22 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                     children: [
                       EmptyView(
                         message: isFiltered
-                            ? 'Không tìm thấy ngữ cảnh nào theo bộ lọc "$_selectedFilter".'
-                            : 'Chưa có ngữ cảnh nào được tạo.\nHãy tạo ngữ cảnh đầu tiên để kích hoạt đồng loạt thiết bị!',
+                            ? (_selectedFilter == 'enabled'
+                                  ? 'Không có kịch bản nào đang bật.'
+                                  : 'Không có kịch bản nào đang tắt.')
+                            : 'Chưa có kịch bản nào.\nTạo một kịch bản để điều khiển nhiều thiết bị chỉ với một chạm.',
                         icon: Icons.layers_outlined,
                       ),
                       if (!isFiltered) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(
-                                builder: (_) => const SceneEditorScreen(),
-                              ),
-                            );
-                            if (context.mounted) {
-                              unawaited(
-                                ref.read(scenesListProvider.notifier).refresh(),
-                              );
-                            }
-                          },
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _openEditor,
                           icon: const Icon(Icons.add_rounded, size: 18),
-                          label: const Text('Tạo ngữ cảnh mới'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: accent,
+                          label: const Text('Tạo kịch bản'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: c.accent,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.pill,
-                              ),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.lg,
-                              vertical: AppSpacing.sm + 2,
-                            ),
+                            shape: const StadiumBorder(),
                           ),
                         ),
                       ],
@@ -240,12 +177,12 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
               children: filtered
                   .map(
                     (scene) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      padding: const EdgeInsets.only(bottom: 12),
                       child: _SceneListItem(
                         scene: scene,
                         isExecuting: _executingSceneId == scene.id,
                         onTap: () async {
-                          await Navigator.of(context).push(
+                          await Navigator.of(context, rootNavigator: true).push(
                             MaterialPageRoute(
                               builder: (_) => SceneDetailScreen(scene: scene),
                             ),
@@ -264,7 +201,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                                 .toggleScene(scene.id),
                           );
                         },
-                        onExecute: () => _executeScene(scene, mint),
+                        onExecute: () => _executeScene(scene),
                       ),
                     ),
                   )
@@ -275,7 +212,7 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
           error: (e, _) => Padding(
             padding: const EdgeInsets.only(top: 30),
             child: ErrorView(
-              message: 'Không thể tải danh sách ngữ cảnh: $e',
+              message: 'Không tải được kịch bản. Kiểm tra kết nối rồi thử lại.',
               onRetry: () =>
                   unawaited(ref.read(scenesListProvider.notifier).refresh()),
             ),
@@ -288,130 +225,97 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
   @override
   Widget build(BuildContext context) {
     final scenesAsync = ref.watch(scenesListProvider);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = theme.colorScheme.primary;
-    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    if (widget.isEmbedded) return _buildContent(context, scenesAsync);
 
-    if (widget.isEmbedded) {
-      return _buildContent(context, scenesAsync, isDark, accent, mint);
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-        child: GlassCard(
-          onTap: () async {
-            await Navigator.of(context).push<bool>(
-              MaterialPageRoute(builder: (_) => const SceneEditorScreen()),
-            );
-            if (mounted) {
-              unawaited(ref.read(scenesListProvider.notifier).refresh());
-            }
-          },
-          radius: AppRadius.pill,
-          fill: accent,
-          shadows: GlassTokens.glow(accent, intensity: 0.8),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add_rounded, color: Colors.white, size: 20),
-              SizedBox(width: AppSpacing.sm),
-              Text(
-                'Thêm ngữ cảnh',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
+    return StudioBackground(
+      child: Builder(
+        builder: (context) {
+          final c = StudioColors.of(context);
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            floatingActionButton: Padding(
+              // A nested Scaffold ignores the shell's floating nav bar; its height is in padding.bottom.
+              padding: EdgeInsets.only(
+                bottom: AppSpacing.md + MediaQuery.paddingOf(context).bottom,
+              ),
+              child: FloatingActionButton.extended(
+                onPressed: _openEditor,
+                backgroundColor: c.accent,
+                foregroundColor: Colors.white,
+                elevation: 2,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text(
+                  'Thêm kịch bản',
+                  style: TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-      body: AmbientBackground(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              automaticallyImplyLeading: false,
-              toolbarHeight: 68,
-              flexibleSpace: GlassAppBar(
-                title: 'Ngữ cảnh (Scenes)',
-                onBack: () => Navigator.of(context).maybePop(),
-                actions: [
-                  GlassIconButton(
-                    icon: Icons.refresh_rounded,
-                    tooltip: 'Làm mới',
-                    onTap: () => unawaited(
-                      ref.read(scenesListProvider.notifier).refresh(),
-                    ),
+            ),
+            body: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  automaticallyImplyLeading: false,
+                  toolbarHeight: 68,
+                  flexibleSpace: GlassAppBar(
+                    title: 'Kịch bản',
+                    onBack: () => Navigator.of(context).maybePop(),
+                    actions: [
+                      GlassIconButton(
+                        icon: Icons.refresh_rounded,
+                        tooltip: 'Làm mới',
+                        onTap: () => unawaited(
+                          ref.read(scenesListProvider.notifier).refresh(),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    AppSpacing.sm,
+                    AppSpacing.screen,
+                    AppSpacing.navClearance * 1.5,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _buildContent(context, scenesAsync),
+                    ]),
+                  ),
+                ),
+              ],
             ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.sm,
-                AppSpacing.screen,
-                AppSpacing.navClearance * 1.5,
-              ),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  _buildContent(context, scenesAsync, isDark, accent, mint),
-                ]),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 }
 
-/// Thẻ Kích hoạt nhanh 1-chạm (Quick Scene Tile)
+/// Ô "Chạy nhanh": chạm là chạy ngay.
 class _QuickSceneCard extends StatelessWidget {
   const _QuickSceneCard({
     required this.scene,
-    required this.atmosphere,
     required this.isRunning,
     required this.onTap,
   });
 
   final Scene scene;
-  final SceneAtmosphere atmosphere;
   final bool isRunning;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
+    final c = StudioColors.of(context);
     return SizedBox(
-      width: 145,
-      child: GlassCard(
+      width: 140,
+      child: StudioCard(
         onTap: isRunning ? null : onTap,
-        radius: AppRadius.lg,
-        padding: const EdgeInsets.all(AppSpacing.md),
-        borderGradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            atmosphere.accentColor.withValues(alpha: 0.5),
-            Colors.white.withValues(alpha: 0.08),
-          ],
-        ),
-        shadows: GlassTokens.glow(atmosphere.accentColor, intensity: 0.25),
+        radius: 18,
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -419,49 +323,20 @@ class _QuickSceneCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: atmosphere.gradient
-                          .map((c) => c.withValues(alpha: 0.35))
-                          .toList(),
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    border: Border.all(
-                      color: atmosphere.accentColor.withValues(alpha: 0.45),
-                    ),
-                  ),
-                  child: Icon(
-                    atmosphere.icon,
-                    size: 20,
-                    color: atmosphere.accentColor,
-                  ),
+                StudioIconTile(
+                  icon: SceneIcons.getAtmosphere(scene.icon).icon,
+                  size: 38,
                 ),
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: atmosphere.accentColor.withValues(alpha: 0.2),
-                  ),
-                  child: isRunning
-                      ? Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: atmosphere.accentColor,
-                          ),
-                        )
-                      : Icon(
-                          Icons.play_arrow_rounded,
-                          size: 18,
-                          color: atmosphere.accentColor,
+                isRunning
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: c.accent,
                         ),
-                ),
+                      )
+                    : Icon(Icons.play_circle_fill_rounded, color: c.accent),
               ],
             ),
             Column(
@@ -469,10 +344,10 @@ class _QuickSceneCard extends StatelessWidget {
               children: [
                 Text(
                   scene.name,
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  style: TextStyle(
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                    color: isDark ? AppColors.onDark : AppColors.onSurface,
+                    color: c.text,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -480,12 +355,7 @@ class _QuickSceneCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${scene.actions.length} thiết bị',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 11,
-                    color: isDark
-                        ? AppColors.onDarkMuted
-                        : AppColors.onSurfaceVariant,
-                  ),
+                  style: TextStyle(fontSize: 12, color: c.muted),
                 ),
               ],
             ),
@@ -511,294 +381,171 @@ class _SceneListItem extends StatelessWidget {
   final VoidCallback onExecute;
   final bool isExecuting;
 
-  IconData _getDeviceIcon(String? type, String name) {
-    final lowerName = name.toLowerCase();
-    final lowerType = (type ?? '').toLowerCase();
-    if (lowerName.contains('đèn') || lowerType.contains('light')) {
-      return Icons.lightbulb_rounded;
-    }
-    if (lowerName.contains('lạnh') ||
-        lowerName.contains('ac') ||
-        lowerType.contains('climate')) {
+  static IconData deviceIcon(String? type, String name) {
+    final n = name.toLowerCase();
+    final t = (type ?? '').toLowerCase();
+    if (n.contains('đèn') || t.contains('light'))
+      return Icons.lightbulb_outline_rounded;
+    if (n.contains('lạnh') ||
+        n.contains('điều hòa') ||
+        t.contains('climate') ||
+        t.contains('ac')) {
       return Icons.ac_unit_rounded;
     }
-    if (lowerName.contains('rèm') || lowerType.contains('curtain')) {
+    if (n.contains('rèm') || t.contains('curtain'))
       return Icons.curtains_rounded;
-    }
-    if (lowerName.contains('khóa') || lowerType.contains('lock')) {
-      return Icons.lock_rounded;
-    }
-    if (lowerName.contains('quạt') || lowerType.contains('fan')) {
-      return Icons.mode_fan_off_rounded;
-    }
-    return Icons.devices_rounded;
+    if (n.contains('khóa') || t.contains('lock'))
+      return Icons.lock_outline_rounded;
+    if (n.contains('quạt') || t.contains('fan')) return Icons.air_rounded;
+    return Icons.devices_other_rounded;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = theme.colorScheme.primary;
-    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
-    final atmosphere = SceneIcons.getAtmosphere(scene.icon);
+    final c = StudioColors.of(context);
+    final on = scene.enabled;
+    final devices = scene.actions.length;
 
-    return GlassCard(
+    return StudioCard(
       onTap: onTap,
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      borderGradient: scene.enabled
-          ? LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                atmosphere.accentColor.withValues(alpha: 0.45),
-                Colors.white.withValues(alpha: 0.06),
-              ],
-            )
-          : null,
-      shadows: scene.enabled
-          ? GlassTokens.glow(atmosphere.accentColor, intensity: 0.15)
-          : null,
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: scene.enabled
-                        ? atmosphere.gradient
-                              .map((c) => c.withValues(alpha: 0.35))
-                              .toList()
-                        : [
-                            Colors.grey.withValues(alpha: 0.15),
-                            Colors.grey.withValues(alpha: 0.05),
-                          ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(
-                    color: scene.enabled
-                        ? atmosphere.accentColor.withValues(alpha: 0.45)
-                        : Colors.white.withValues(alpha: 0.1),
-                  ),
-                  boxShadow: scene.enabled
-                      ? GlassTokens.glow(
-                          atmosphere.accentColor,
-                          intensity: 0.25,
-                        )
-                      : null,
-                ),
-                child: Icon(
-                  atmosphere.icon,
-                  color: scene.enabled
-                      ? atmosphere.accentColor
-                      : (isDark ? AppColors.onDarkFaint : Colors.grey),
-                  size: 24,
-                ),
+              StudioIconTile(
+                icon: SceneIcons.getAtmosphere(scene.icon).icon,
+                active: on,
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       scene.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      style: TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                        color: scene.enabled
-                            ? (isDark ? AppColors.onDark : AppColors.onSurface)
-                            : (isDark
-                                  ? AppColors.onDarkMuted
-                                  : Colors.grey.shade600),
+                        color: on ? c.text : c.muted,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        GlassStatusPill(
-                          label: '${scene.actions.length} hành động',
-                          color: atmosphere.accentColor,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        GlassStatusPill(
-                          label: scene.enabled ? 'Đang bật' : 'Đã tắt',
-                          color: scene.enabled ? mint : Colors.grey,
-                        ),
-                      ],
+                    const SizedBox(height: 2),
+                    Text(
+                      '$devices thiết bị · ${on ? 'Đang bật' : 'Đã tắt'}',
+                      style: TextStyle(fontSize: 12.5, color: c.muted),
                     ),
+                    if (scene.pendingRunAt != null)
+                      SceneCountdown(
+                        runAt: scene.pendingRunAt!,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: c.accent,
+                        ),
+                      ),
                   ],
                 ),
               ),
-              GlassToggle(value: scene.enabled, onChanged: (_) => onToggle()),
+              Semantics(
+                label: on ? 'Tắt kịch bản' : 'Bật kịch bản',
+                child: GlassToggle(value: on, onChanged: (_) => onToggle()),
+              ),
             ],
           ),
           if (scene.description != null && scene.description!.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: 10),
             Text(
               scene.description!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: isDark
-                    ? AppColors.onDarkMuted
-                    : AppColors.onSurfaceVariant,
-                height: 1.4,
-              ),
+              style: TextStyle(fontSize: 13, height: 1.4, color: c.muted),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ],
-
-          // Device Chips with Micro-Icons
-          if (scene.actions.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm + 2),
+          if (devices > 0) ...[
+            const SizedBox(height: 12),
             Wrap(
               spacing: 6,
-              runSpacing: 5,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                ...scene.actions.take(3).map((act) {
-                  final devIcon = _getDeviceIcon(
-                    act.targetDeviceType,
-                    act.targetDeviceName,
-                  );
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
+                for (final act in scene.actions.take(3))
+                  _DeviceChip(
+                    icon: deviceIcon(
+                      act.targetDeviceType,
+                      act.targetDeviceName,
                     ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.black.withValues(alpha: 0.22)
-                          : Colors.white.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.06)
-                            : Colors.black.withValues(alpha: 0.05),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          devIcon,
-                          size: 12,
-                          color: isDark
-                              ? AppColors.onDarkMuted
-                              : AppColors.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          act.targetDeviceName,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? AppColors.onDarkMuted
-                                : AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-                if (scene.actions.length > 3)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '+${scene.actions.length - 3}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: accent,
-                      ),
-                    ),
+                    label:
+                        '${act.targetDeviceName}: ${describeAction(act.action, value: act.value)}',
                   ),
+                if (devices > 3)
+                  StudioTag(label: '+${devices - 3} khác', color: c.accent),
               ],
             ),
           ],
-
-          const SizedBox(height: AppSpacing.md),
-          Divider(
-            height: 1,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Bottom Quick Execution Bar
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Chạm để xem chi tiết',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: isDark ? AppColors.onDarkFaint : Colors.grey.shade600,
-                  fontSize: 11,
-                ),
-              ),
-              InkWell(
-                onTap: isExecuting ? null : onExecute,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: atmosphere.accentColor.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                    border: Border.all(
-                      color: atmosphere.accentColor.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isExecuting)
-                        SizedBox(
-                          width: 13,
-                          height: 13,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: atmosphere.accentColor,
-                          ),
-                        )
-                      else
-                        Icon(
-                          Icons.play_arrow_rounded,
-                          size: 16,
-                          color: atmosphere.accentColor,
-                        ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isExecuting ? 'Đang chạy...' : 'Chạy ngay',
-                        style: TextStyle(
-                          color: atmosphere.accentColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12.5,
-                        ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              // The backend refuses to run a switched-off scene, so do not offer it.
+              onPressed: isExecuting || !on || devices == 0 ? null : onExecute,
+              icon: isExecuting
+                  ? SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: c.accent,
                       ),
-                    ],
-                  ),
+                    )
+                  : const Icon(Icons.play_arrow_rounded, size: 18),
+              label: Text(isExecuting ? 'Đang chạy…' : 'Chạy'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: c.accent,
+                side: BorderSide(
+                  color: on ? c.accent.withValues(alpha: 0.4) : c.border,
                 ),
+                shape: const StadiumBorder(),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeviceChip extends StatelessWidget {
+  const _DeviceChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StudioColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: c.soft,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: c.muted),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12, color: c.text),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

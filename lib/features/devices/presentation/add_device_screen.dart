@@ -693,7 +693,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
-                'Đang tìm kiếm thiết bị SYNA...',
+                'Đang tìm kiếm thiết bị HESTA...',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -778,7 +778,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   const CircularProgressIndicator(),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    'Đang quét Bluetooth tìm thiết bị SYNA...',
+                    'Đang quét Bluetooth tìm thiết bị HESTA...',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
@@ -1098,17 +1098,26 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 children: [
                   Text(
                     'Ngôi nhà:',
-                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   InkWell(
                     onTap: () => _showCreateHomeDialog(notifier),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.add_rounded, size: 16, color: theme.colorScheme.primary),
+                          Icon(
+                            Icons.add_rounded,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
                           const SizedBox(width: 2),
                           Text(
                             'Tạo nhà mới',
@@ -1135,9 +1144,13 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: selectedHomeId,
-                    hint: Text(isHomesLoading
-                        ? 'Đang tải danh sách nhà...'
-                        : (homes.isEmpty ? 'Chưa có nhà (hãy tạo nhà mới)' : 'Chọn nhà')),
+                    hint: Text(
+                      isHomesLoading
+                          ? 'Đang tải danh sách nhà...'
+                          : (homes.isEmpty
+                                ? 'Chưa có nhà (hãy tạo nhà mới)'
+                                : 'Chọn nhà'),
+                    ),
                     items: homes.map((h) {
                       return DropdownMenuItem<String>(
                         value: h.id,
@@ -1146,7 +1159,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) {
-                        notifier.updateSelectedHomeAndRoom(homeId: val, clearRoom: true);
+                        notifier.updateSelectedHomeAndRoom(
+                          homeId: val,
+                          clearRoom: true,
+                        );
                       }
                     },
                   ),
@@ -1160,18 +1176,28 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 children: [
                   Text(
                     'Phòng:',
-                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   if (selectedHomeId != null)
                     InkWell(
-                      onTap: () => _showCreateRoomDialog(notifier, selectedHomeId),
+                      onTap: () =>
+                          _showCreateRoomDialog(notifier, selectedHomeId),
                       borderRadius: BorderRadius.circular(AppRadius.sm),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.add_rounded, size: 16, color: theme.colorScheme.primary),
+                            Icon(
+                              Icons.add_rounded,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
                             const SizedBox(width: 2),
                             Text(
                               'Thêm phòng mới',
@@ -1198,11 +1224,15 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   child: DropdownButton<String>(
                     isExpanded: true,
                     value: selectedRoomId,
-                    hint: Text(isRoomsLoading
-                        ? 'Đang tải danh sách phòng...'
-                        : (selectedHomeId == null
-                            ? 'Vui lòng chọn nhà trước'
-                            : (rooms.isEmpty ? 'Chưa có phòng (hãy thêm phòng)' : 'Chọn phòng'))),
+                    hint: Text(
+                      isRoomsLoading
+                          ? 'Đang tải danh sách phòng...'
+                          : (selectedHomeId == null
+                                ? 'Vui lòng chọn nhà trước'
+                                : (rooms.isEmpty
+                                      ? 'Chưa có phòng (hãy thêm phòng)'
+                                      : 'Chọn phòng')),
+                    ),
                     items: rooms.map((r) {
                       return DropdownMenuItem<String>(
                         value: r.id,
@@ -1338,15 +1368,15 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
     final theme = Theme.of(context);
     final homeId = state.selectedHomeId ?? '';
     final rooms = homeId.isNotEmpty
-        ? (ref.watch(roomsForHomeProvider(homeId)).valueOrNull ?? const <Room>[])
+        ? (ref.watch(roomsForHomeProvider(homeId)).valueOrNull ??
+              const <Room>[])
         : const <Room>[];
-    final roomName = rooms
-        .cast<dynamic>()
-        .firstWhere(
-          (r) => r.id == state.selectedRoomId,
-          orElse: () => null,
-        )
-        ?.name ?? 'Phòng khách';
+    final roomName =
+        rooms
+            .cast<dynamic>()
+            .firstWhere((r) => r.id == state.selectedRoomId, orElse: () => null)
+            ?.name ??
+        'Phòng khách';
 
     return Column(
       children: [

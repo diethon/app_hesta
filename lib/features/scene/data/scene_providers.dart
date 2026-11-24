@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/network_client.dart';
+import '../../../core/services/websocket_service.dart';
 import '../../authentication/data/auth_providers.dart' show kUseMockData;
 import '../../home/data/home_providers.dart';
 import '../domain/scene.dart';
+import '../presentation/scene_timer.dart' show sceneClockSkew;
 import 'scene_repository.dart';
 
 final sceneRepositoryProvider = Provider<SceneRepository>((ref) {
@@ -28,12 +30,17 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
       return _mockScenes();
     }
 
-    try {
-      final repo = ref.read(sceneRepositoryProvider);
-      return await repo.getScenes(homeId);
-    } catch (_) {
-      return const [];
-    }
+    // Changes from the web or another phone (edits, runs, "run after X" timers) arrive as SCENE_CHANGED.
+    final sub = ref
+        .watch(webSocketServiceProvider)
+        .subscribeJson('/topic/homes/$homeId/events')
+        .listen((event) {
+          if (event['type'] == 'SCENE_CHANGED') _reloadQuietly(homeId);
+        });
+    ref.onDispose(sub.cancel);
+
+    // Errors reach the screen's ErrorView with a retry button; an empty list would look like "no data".
+    return ref.read(sceneRepositoryProvider).getScenes(homeId);
   }
 
   Future<void> refresh() async {
@@ -44,6 +51,52 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
       final repo = ref.read(sceneRepositoryProvider);
       return repo.getScenes(homeId);
     });
+  }
+
+  Future<void> _reloadQuietly(String homeId) async {
+    try {
+      final scenes = await ref.read(sceneRepositoryProvider).getScenes(homeId);
+      state = AsyncValue.data(scenes);
+    } catch (_) {
+      // keep what is shown; the next event or pull-to-refresh retries
+    }
+  }
+
+  void _setPendingRun(String sceneId, DateTime? runAt) {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    state = AsyncValue.data([
+      for (final s in current) s.id == sceneId ? s.withPendingRunAt(runAt) : s,
+    ]);
+  }
+
+  /// Runs the scene once after [seconds]. Returns null on success, otherwise the message to show.
+  Future<String?> runLater(String sceneId, int seconds) async {
+    final homeId = ref.read(currentHomeIdProvider);
+    if (homeId == null) return 'Vui lòng chọn ngôi nhà trước';
+    try {
+      final sentAt = DateTime.now();
+      final runAt = await ref
+          .read(sceneRepositoryProvider)
+          .runLater(homeId, sceneId, seconds);
+      sceneClockSkew = runAt.difference(sentAt.add(Duration(seconds: seconds)));
+      _setPendingRun(sceneId, runAt);
+      return null;
+    } catch (_) {
+      return 'Không hẹn giờ được kịch bản';
+    }
+  }
+
+  Future<String?> cancelRunLater(String sceneId) async {
+    final homeId = ref.read(currentHomeIdProvider);
+    if (homeId == null) return 'Vui lòng chọn ngôi nhà trước';
+    try {
+      await ref.read(sceneRepositoryProvider).cancelRunLater(homeId, sceneId);
+      _setPendingRun(sceneId, null);
+      return null;
+    } catch (_) {
+      return 'Không huỷ được hẹn giờ';
+    }
   }
 
   /// Runs a scene like the web does. Returns null on success, otherwise the message to show:
@@ -61,11 +114,7 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
     try {
       final repo = ref.read(sceneRepositoryProvider);
       final run = await repo.executeScene(homeId, sceneId);
-      final ok =
-          run.status == 'SUCCESS' ||
-          (run.resultDetail.isNotEmpty &&
-              run.resultDetail.every((r) => r.success));
-      return ok ? null : 'Kịch bản chạy với một số lỗi';
+      return sceneRunMessage(scene, run);
     } catch (e) {
       if (kUseMockData) return null;
       return 'Lỗi khi kích hoạt kịch bản';

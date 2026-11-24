@@ -31,12 +31,10 @@ class RecommendationsListNotifier extends AsyncNotifier<List<Recommendation>> {
       return _mockRecommendations();
     }
 
-    try {
-      final repo = ref.read(recommendationRepositoryProvider);
-      return await repo.getRecommendations(homeId);
-    } catch (_) {
-      return const [];
-    }
+    // Errors reach the screen's ErrorView with a retry button; an empty list would look like "no data".
+    return ref
+        .read(recommendationRepositoryProvider)
+        .getRecommendations(homeId);
   }
 
   Future<void> refresh() async {

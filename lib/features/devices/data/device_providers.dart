@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/network_client.dart';
 import '../../../core/services/websocket_service.dart';
 import '../../authentication/data/auth_providers.dart' show kUseMockData;
 import '../../home/data/home_providers.dart';
+import '../../notifications/data/notification_providers.dart';
 import '../domain/device.dart';
 import '../domain/device_repository.dart';
 import 'api_device_repository.dart';
@@ -33,34 +35,32 @@ final deviceStateStreamProvider = StreamProvider.family<Device, String>((
   final homeId = ref.watch(currentHomeIdProvider);
   final webSocketService = ref.watch(webSocketServiceProvider);
 
-  if (homeId != null) {
-    return webSocketService
-        .subscribeJson('/topic/homes/$homeId/events')
-        .where((event) {
-          final type = event['type']?.toString();
-          if (type != 'DEVICE_STATE_CHANGED' &&
-              type != 'SENSOR_READING_UPDATED') {
-            return false;
-          }
-          final evDevId = event['deviceId']?.toString();
-          final data = event['data'];
-          final dataDevId = data is Map<String, dynamic>
-              ? (data['id'] ?? data['deviceId'])?.toString()
-              : null;
-          return evDevId == deviceId || dataDevId == deviceId;
-        })
-        .map((event) {
-          final data = event['data'];
-          if (data is Map<String, dynamic>) {
-            return DeviceDto.fromJson(data).toDomain();
-          }
-          return DeviceDto.fromJson(event).toDomain();
-        });
+  // Backend chỉ phát qua topic của home; subscribe topic lạ bị từ chối và làm rớt cả kết nối STOMP.
+  if (homeId == null) {
+    return const Stream<Device>.empty();
   }
-  // return webSocketService
-  //     .subscribeJson('/topic/devices/$deviceId/state')
-  //     .map((json) => DeviceDto.fromJson(json).toDomain());
-  return const Stream<Device>.empty();
+  return webSocketService
+      .subscribeJson('/topic/homes/$homeId/events')
+      .where((event) {
+        final type = event['type']?.toString();
+        if (type != 'DEVICE_STATE_CHANGED' &&
+            type != 'SENSOR_READING_UPDATED') {
+          return false;
+        }
+        final evDevId = event['deviceId']?.toString();
+        final data = event['data'];
+        final dataDevId = data is Map<String, dynamic>
+            ? (data['id'] ?? data['deviceId'])?.toString()
+            : null;
+        return evDevId == deviceId || dataDevId == deviceId;
+      })
+      .map((event) {
+        final data = event['data'];
+        if (data is Map<String, dynamic>) {
+          return DeviceDto.fromJson(data).toDomain();
+        }
+        return DeviceDto.fromJson(event).toDomain();
+      });
 });
 
 final devicesControllerProvider =
@@ -70,14 +70,25 @@ final devicesControllerProvider =
         ref.watch(deviceRepositoryProvider),
         homeId: homeId,
         realtime: kUseMockData ? null : ref.watch(webSocketServiceProvider),
+        onCommandError: (message) => ref
+            .read(scaffoldMessengerKeyProvider)
+            .currentState
+            ?.showSnackBar(SnackBar(content: Text(message))),
       )..load();
       return controller;
     });
 
 class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
-  DevicesController(this._repository, {this.homeId, WebSocketService? realtime})
-    : _realtime = realtime,
-      super(const AsyncValue.loading());
+  DevicesController(
+    this._repository, {
+    this.homeId,
+    WebSocketService? realtime,
+    this.onCommandError,
+  }) : _realtime = realtime,
+       super(const AsyncValue.loading());
+
+  /// Báo lỗi lệnh cho người dùng (vd: thiết bị ngoại tuyến) — các nút gọi updateDevice không await.
+  final void Function(String message)? onCommandError;
 
   final DeviceRepository _repository;
   final String? homeId;
@@ -86,40 +97,37 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
 
   Future<void> load() async {
     state = const AsyncValue.loading();
-    try {
-      final devices = await _repository.getDevices();
-      if (devices.isNotEmpty) {
-        state = AsyncValue.data(devices);
-      } else {
-        final mockDevices = await MockDeviceRepository().getDevices();
-        state = AsyncValue.data(mockDevices);
-      }
-    } catch (_) {
-      final mockDevices = await MockDeviceRepository().getDevices();
-      state = AsyncValue.data(mockDevices);
-    }
-    _subscribeRealtime();
+    await refresh();
   }
 
   Future<void> refresh() async {
+    List<Device> devices;
     try {
-      final devices = await _repository.getDevices();
-      if (devices.isNotEmpty) {
-        state = AsyncValue.data(devices);
-      } else {
-        final mockDevices = await MockDeviceRepository().getDevices();
-        state = AsyncValue.data(mockDevices);
-      }
+      devices = await _repository.getDevices();
     } catch (_) {
-      final mockDevices = await MockDeviceRepository().getDevices();
-      state = AsyncValue.data(mockDevices);
+      devices = const [];
     }
+    if (devices.isEmpty) {
+      devices = await MockDeviceRepository().getDevices();
+    }
+    // The provider may be disposed (logout / home switch) while awaiting.
+    if (!mounted) return;
+    state = AsyncValue.data(devices);
     _subscribeRealtime();
   }
 
   Future<void> updateDevice(String id, DeviceCommand command) async {
     final previous = state.valueOrNull ?? const <Device>[];
-    final updated = await _repository.updateDeviceState(id, command);
+    final Device updated;
+    try {
+      updated = await _repository.updateDeviceState(id, command);
+    } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      onCommandError?.call(
+        msg.isEmpty ? 'Không gửi được lệnh tới thiết bị' : msg,
+      );
+      return;
+    }
     state = AsyncValue.data([
       for (final device in previous) device.id == id ? updated : device,
     ]);
@@ -171,8 +179,7 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
 
   void _subscribeRealtime() {
     final realtime = _realtime;
-    final devices = state.valueOrNull;
-    if (realtime == null || devices == null) {
+    if (realtime == null || state.valueOrNull == null) {
       return;
     }
     for (final subscription in _realtimeSubs) {
@@ -180,7 +187,7 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
     }
     _realtimeSubs.clear();
 
-    // Topic chuẩn theo kiến trúc backend_hesta: /topic/homes/{homeId}/events
+    // 1. Topic chuẩn theo kiến trúc backend_hesta: /topic/homes/{homeId}/events
     if (homeId != null) {
       _realtimeSubs.add(
         realtime.subscribeJson('/topic/homes/$homeId/events').listen((event) {
@@ -196,15 +203,6 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
         }),
       );
     }
-
-    // 2. Kênh fallback
-    // for (final device in devices) {
-    //   _realtimeSubs.add(
-    //     realtime
-    //         .subscribeJson('/topic/devices/${device.id}/state')
-    //         .listen(_applyRealtimeUpdate),
-    //   );
-    // }
   }
 
   void _applySensorReadingUpdate(Map<String, dynamic> data) {
@@ -262,6 +260,7 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
             timerEnabled: updated.timerEnabled ?? device.timerEnabled,
             timerHour: updated.timerHour ?? device.timerHour,
             timerHalfHour: updated.timerHalfHour ?? device.timerHalfHour,
+            gateState: updated.gateState ?? device.gateState,
           )
         else
           device,

@@ -10,6 +10,7 @@ enum DeviceType {
   fan,
   sensor,
   waterPump,
+  tv,
 }
 
 enum DeviceStatus { online, offline }
@@ -81,9 +82,9 @@ class Device {
 
   bool get isGate {
     final raw = (rawType ?? '').toUpperCase();
-    if (raw == 'DOOR' ||
-        raw.contains('GATE') ||
+    if (raw.contains('GATE') ||
         raw.contains('ROLLING_DOOR') ||
+        raw.contains('DOOR') ||
         raw.contains('CURTAIN')) {
       return true;
     }
@@ -101,6 +102,15 @@ class Device {
     if (raw.contains('ROLLING_DOOR')) return 'cửa cuốn';
     if (raw.contains('CURTAIN')) return 'rèm cửa';
     if (raw == 'DOOR') return 'cửa';
+    return 'cổng';
+  }
+
+  /// Tên gọi tiếng Việt cho cổng / cửa / cửa cuốn / rèm (dùng trong nhãn nút).
+  String get gateNoun {
+    final raw = (rawType ?? '').toUpperCase();
+    if (raw.contains('ROLLING')) return 'cửa cuốn';
+    if (raw.contains('CURTAIN')) return 'rèm';
+    if (raw.contains('DOOR')) return 'cửa';
     return 'cổng';
   }
 

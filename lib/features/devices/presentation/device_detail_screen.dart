@@ -570,7 +570,8 @@ class _StatusBlock extends StatelessWidget {
       final isClosing = gate == 'CLOSING';
       final isOpening = gate == 'OPENING';
       final isStopped = gate == 'STOPPED' || gate == 'STOP';
-      final isClosed = gate == 'CLOSED' || gate == 'CLOSE' || (gate == null && device.isOn);
+      final isClosed =
+          gate == 'CLOSED' || gate == 'CLOSE' || (gate == null && device.isOn);
       final isOpen = gate == 'OPEN';
       final targetName = device.apertureLabel;
 
@@ -587,19 +588,15 @@ class _StatusBlock extends StatelessWidget {
       final gateColor = (isOpening || isClosing)
           ? AppColors.auroraWarning
           : (isStopped
-              ? Colors.orangeAccent
-              : (isClosed ? AppColors.auroraMint : AppColors.orbTeal));
+                ? Colors.orangeAccent
+                : (isClosed ? AppColors.auroraMint : AppColors.orbTeal));
 
       final gateIcon = (isClosed)
           ? Icons.door_front_door_rounded
           : (isOpen ? Icons.meeting_room_rounded : Icons.sync_rounded);
 
       pills.addAll([
-        GlassStatusPill(
-          icon: gateIcon,
-          label: gateLabel,
-          color: gateColor,
-        ),
+        GlassStatusPill(icon: gateIcon, label: gateLabel, color: gateColor),
         GlassStatusPill(
           icon: device.status == DeviceStatus.online
               ? Icons.wifi_rounded
@@ -716,7 +713,11 @@ class _MainControls extends ConsumerWidget {
       ),
       DeviceType.fan => _FanControls(device: device, accent: accent),
       DeviceType.speaker => _SpeakerControls(device: device, accent: accent),
-      DeviceType.waterPump => _WaterPumpControls(device: device, accent: accent),
+      DeviceType.waterPump => _WaterPumpControls(
+        device: device,
+        accent: accent,
+      ),
+      DeviceType.tv => _TvControls(device: device, accent: accent),
       DeviceType.sensor ||
       DeviceType.camera => _SensorControls(device: device, accent: accent),
     };
@@ -1202,7 +1203,9 @@ class _GateActionButton extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                   color: enabled
-                      ? (active ? Colors.white : Colors.white.withValues(alpha: 0.75))
+                      ? (active
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.75))
                       : Colors.white.withValues(alpha: 0.3),
                 ),
                 maxLines: 1,
@@ -1216,22 +1219,27 @@ class _GateActionButton extends StatelessWidget {
   }
 }
 
-class _FanControls extends ConsumerStatefulWidget {
+class _FanControls extends ConsumerWidget {
   const _FanControls({required this.device, required this.accent});
 
   final Device device;
   final Color accent;
 
-  @override
-  ConsumerState<_FanControls> createState() => _FanControlsState();
-}
+  /// Mức hiện tại 0..3 từ currentState.fan (OFF/LOW/MED/HIGH).
+  int get _speed {
+    if (!device.isOn) return 0;
+    return switch ((device.acFan ?? '').toUpperCase()) {
+      'LOW' || '1' => 1,
+      'MED' || 'MEDIUM' || '2' => 2,
+      'HIGH' || '3' => 3,
+      _ => 0,
+    };
+  }
 
-class _FanControlsState extends ConsumerState<_FanControls> {
-  int _speed = 0;
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final offline = device.status == DeviceStatus.offline;
     return GlassContainer(
       radius: AppRadius.hero,
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -1240,17 +1248,122 @@ class _FanControlsState extends ConsumerState<_FanControls> {
         children: [
           GlassSegmentedControl(
             segments: [
-              GlassSegment(label: l10n.fanAuto),
+              GlassSegment(label: l10n.deviceOff),
               GlassSegment(label: l10n.fanLow),
               GlassSegment(label: l10n.fanMedium),
               GlassSegment(label: l10n.fanHigh),
             ],
             selectedIndex: _speed,
-            onChanged: (index) => setState(() => _speed = index),
+            onChanged: (index) {
+              if (offline) return;
+              HapticFeedback.selectionClick();
+              ref
+                  .read(devicesControllerProvider.notifier)
+                  .updateDevice(
+                    device.id,
+                    DeviceCommand(
+                      customAction: 'SET_SPEED',
+                      customParams: {'speed': index},
+                    ),
+                  );
+            },
           ),
           const SizedBox(height: AppSpacing.md),
           Center(
-            child: _PowerButton(device: widget.device, accent: widget.accent),
+            child: _PowerButton(device: device, accent: accent),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Remote TV theo iot-tv.http: nguồn, âm lượng, kênh, D-pad, phím hệ thống.
+class _TvControls extends ConsumerWidget {
+  const _TvControls({required this.device, required this.accent});
+
+  final Device device;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final offline = device.status == DeviceStatus.offline;
+
+    void press(String action) {
+      if (offline) return;
+      HapticFeedback.lightImpact();
+      ref
+          .read(devicesControllerProvider.notifier)
+          .updateDevice(device.id, DeviceCommand(customAction: action));
+    }
+
+    Widget key(IconData icon, String label, String action) => Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xs / 2),
+        child: _GateActionButton(
+          icon: icon,
+          label: label,
+          active: false,
+          accent: accent,
+          enabled: !offline,
+          onTap: () => press(action),
+        ),
+      ),
+    );
+
+    return GlassContainer(
+      radius: AppRadius.hero,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: _PowerButton(device: device, accent: accent),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              key(Icons.volume_down_rounded, 'Âm lượng -', 'VOL_DOWN'),
+              key(Icons.volume_off_rounded, 'Tắt tiếng', 'MUTE'),
+              key(Icons.volume_up_rounded, 'Âm lượng +', 'VOL_UP'),
+            ],
+          ),
+          Row(
+            children: [
+              key(Icons.keyboard_arrow_down_rounded, 'Kênh -', 'CH_DOWN'),
+              key(Icons.input_rounded, 'Nguồn vào', 'INPUT'),
+              key(Icons.keyboard_arrow_up_rounded, 'Kênh +', 'CH_UP'),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              const Spacer(),
+              key(Icons.arrow_drop_up_rounded, 'Lên', 'UP'),
+              const Spacer(),
+            ],
+          ),
+          Row(
+            children: [
+              key(Icons.arrow_left_rounded, 'Trái', 'LEFT'),
+              key(Icons.radio_button_checked_rounded, 'OK', 'OK'),
+              key(Icons.arrow_right_rounded, 'Phải', 'RIGHT'),
+            ],
+          ),
+          Row(
+            children: [
+              const Spacer(),
+              key(Icons.arrow_drop_down_rounded, 'Xuống', 'DOWN'),
+              const Spacer(),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              key(Icons.arrow_back_rounded, 'Quay lại', 'BACK'),
+              key(Icons.home_rounded, 'Home', 'HOME'),
+              key(Icons.menu_rounded, 'Menu', 'MENU'),
+            ],
           ),
         ],
       ),
@@ -1368,7 +1481,9 @@ class _WaterPumpControls extends ConsumerWidget {
               children: [
                 Icon(
                   Icons.water_drop_rounded,
-                  color: device.isOn ? accent : Colors.white.withValues(alpha: 0.4),
+                  color: device.isOn
+                      ? accent
+                      : Colors.white.withValues(alpha: 0.4),
                   size: 22,
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -1490,7 +1605,11 @@ class _GateInfoCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline_rounded, color: AppColors.auroraMint, size: 20),
+              Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.auroraMint,
+                size: 20,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 'Hướng dẫn điều khiển cổng',
@@ -1765,29 +1884,36 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.auroraWarning.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.auroraWarning.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: const Icon(
+                        Icons.lock_clock_rounded,
+                        color: AppColors.auroraWarning,
+                        size: 18,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.lock_clock_rounded,
-                      color: AppColors.auroraWarning,
-                      size: 18,
+                    const SizedBox(width: AppSpacing.sm),
+                    Flexible(
+                      child: Text(
+                        'Khóa Ưu Tiên Thủ Công',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'Khóa Ưu Tiên Thủ Công',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: AppSpacing.sm),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,

@@ -99,7 +99,10 @@ class ApiDeviceOnboardingRepository implements DeviceOnboardingRepository {
   }
 
   @override
-  Future<String> createRoom({required String homeId, required String name}) async {
+  Future<String> createRoom({
+    required String homeId,
+    required String name,
+  }) async {
     try {
       final response = await _client.post<Map<String, dynamic>>(
         '/api/v1/homes/$homeId/rooms',

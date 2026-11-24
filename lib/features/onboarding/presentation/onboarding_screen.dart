@@ -56,11 +56,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       setState(() => _currentStep++);
       await _animController.forward();
     } else {
-      await ref.read(appPreferencesProvider).setOnboardingCompleted(true);
-      ref.invalidate(appPreferencesProvider);
-      ref.invalidate(routerProvider);
-      if (mounted) context.go('/login');
+      await _finishOnboarding();
     }
+  }
+
+  // The router sends every route back to /onboarding until this flag is set.
+  Future<void> _finishOnboarding() async {
+    await ref.read(appPreferencesProvider).setOnboardingCompleted(true);
+    ref.invalidate(appPreferencesProvider);
+    ref.invalidate(routerProvider);
+    if (mounted) context.go('/login');
   }
 
   @override
@@ -191,7 +196,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       TextButton(
-                        onPressed: () => context.go('/login'),
+                        onPressed: _finishOnboarding,
                         child: Text(
                           l10n.alreadyHaveAccount,
                           style: theme.textTheme.bodySmall?.copyWith(

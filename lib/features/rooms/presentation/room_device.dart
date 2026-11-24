@@ -27,6 +27,7 @@ extension _DeviceFilterX on _DeviceFilter {
       type == DeviceType.thermostat ||
           type == DeviceType.fan ||
           type == DeviceType.speaker ||
+          type == DeviceType.tv ||
           type == DeviceType.waterPump,
     _DeviceFilter.sensors =>
       type == DeviceType.sensor || type == DeviceType.camera,
@@ -434,6 +435,7 @@ class _RoomDeviceCard extends ConsumerWidget {
         DeviceType.thermostat ||
         DeviceType.fan ||
         DeviceType.speaker ||
+        DeviceType.tv ||
         DeviceType.waterPump => l10n.filterElectric,
         DeviceType.sensor || DeviceType.camera => l10n.filterSensors,
         DeviceType.lock => l10n.filterOther,
@@ -464,6 +466,7 @@ class _CardControl extends ConsumerWidget {
       case DeviceType.fan:
       case DeviceType.speaker:
       case DeviceType.waterPump:
+      case DeviceType.tv:
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -501,20 +504,26 @@ class _CardControl extends ConsumerWidget {
           final isClosing = device.gateState == 'CLOSING';
           final isOpening = device.gateState == 'OPENING';
           final isStopped = device.gateState == 'STOPPED';
-          final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
+          final isClosed =
+              device.gateState == 'CLOSED' ||
+              (device.gateState == null && device.isOn);
 
           final gateLabel = isOpening
               ? 'Đang mở'
               : (isClosing
-                  ? 'Đang đóng'
-                  : (isStopped ? 'Tạm dừng' : (isClosed ? 'Đã đóng' : 'Đang mở')));
+                    ? 'Đang đóng'
+                    : (isStopped
+                          ? 'Tạm dừng'
+                          : (isClosed ? 'Đã đóng' : 'Đã mở')));
 
           final gateColor = (isOpening || isClosing)
               ? AppColors.auroraWarning
               : (isClosed ? AppColors.auroraMint : AppColors.orbTeal);
 
           return GlassStatusPill(
-            icon: isClosed ? Icons.door_front_door_rounded : Icons.meeting_room_rounded,
+            icon: isClosed
+                ? Icons.door_front_door_rounded
+                : Icons.meeting_room_rounded,
             label: gateLabel,
             color: gateColor,
           );

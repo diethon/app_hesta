@@ -178,7 +178,7 @@ abstract final class SceneIcons {
           icon: getIcon(iconName),
           accentColor: const Color(0xFF4C9EFF),
           gradient: const [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-          vietnameseLabel: 'Ngữ cảnh',
+          vietnameseLabel: 'Kịch bản',
         );
   }
 }

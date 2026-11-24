@@ -2,21 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/app_colors.dart';
-import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
-import '../../../app/theme/glass_tokens.dart';
-import '../../../core/widgets/app_button.dart';
-import '../../../core/widgets/glass/ambient_background.dart';
+import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/glass/glass_app_bar.dart';
-import '../../../core/widgets/glass/glass_card.dart';
-import '../../../core/widgets/glass/glass_status_pill.dart';
-import '../../../core/widgets/glass/glass_toggle.dart';
+import '../../../core/widgets/studio.dart';
 import '../data/scene_providers.dart';
 import '../domain/scene.dart';
 import 'scene_editor_screen.dart';
 import 'scene_history_screen.dart';
 import 'scene_icons.dart';
+import 'scene_timer.dart';
 
 class SceneDetailScreen extends ConsumerStatefulWidget {
   const SceneDetailScreen({required this.scene, super.key});
@@ -38,47 +33,41 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
   }
 
   Future<void> _execute() async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     await HapticFeedback.mediumImpact();
     if (!mounted) return;
     setState(() => _isExecuting = true);
     final error = await ref
         .read(scenesListProvider.notifier)
         .executeScene(_scene.id);
+    if (!mounted) return;
+    setState(() => _isExecuting = false);
+    showStudioSnack(
+      context,
+      error ?? 'Đã chạy "${_scene.name}"',
+      success: error == null,
+    );
+  }
 
-    if (mounted) {
-      setState(() => _isExecuting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                error == null
-                    ? Icons.check_circle_rounded
-                    : Icons.error_outline_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  error ?? 'Đã kích hoạt kịch bản: ${_scene.name}',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: error == null
-              ? (isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight)
-              : AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-        ),
-      );
-    }
+  Future<void> _runLater() async {
+    final seconds = await showRunLaterSheet(context);
+    if (seconds == null || !mounted) return;
+    final error = await ref
+        .read(scenesListProvider.notifier)
+        .runLater(_scene.id, seconds);
+    if (!mounted) return;
+    showStudioSnack(
+      context,
+      error ?? 'Đã hẹn giờ "${_scene.name}"',
+      success: error == null,
+    );
+  }
+
+  Future<void> _cancelRunLater() async {
+    final error = await ref
+        .read(scenesListProvider.notifier)
+        .cancelRunLater(_scene.id);
+    if (!mounted) return;
+    showStudioSnack(context, error ?? 'Đã huỷ hẹn giờ', success: error == null);
   }
 
   Future<void> _confirmDelete() async {
@@ -87,20 +76,25 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
     final nav = Navigator.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận xóa'),
-        content: Text('Bạn có chắc muốn xóa kịch bản "${_scene.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Hủy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Xóa'),
-          ),
-        ],
+      builder: (ctx) => Theme(
+        data: studioTheme(context),
+        child: AlertDialog(
+          title: const Text('Xoá kịch bản?'),
+          content: Text('"${_scene.name}" sẽ bị xoá cùng lịch hẹn giờ của nó.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Huỷ'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: StudioColors.of(ctx).danger,
+              ),
+              child: const Text('Xoá'),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -110,415 +104,431 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
     }
   }
 
-  IconData _getDeviceIcon(String? type, String name) {
-    final lowerName = name.toLowerCase();
-    final lowerType = (type ?? '').toLowerCase();
-    if (lowerName.contains('đèn') || lowerType.contains('light')) {
-      return Icons.lightbulb_rounded;
-    }
-    if (lowerName.contains('lạnh') ||
-        lowerName.contains('ac') ||
-        lowerType.contains('climate')) {
-      return Icons.ac_unit_rounded;
-    }
-    if (lowerName.contains('rèm') || lowerType.contains('curtain')) {
-      return Icons.curtains_rounded;
-    }
-    if (lowerName.contains('khóa') || lowerType.contains('lock')) {
-      return Icons.lock_rounded;
-    }
-    if (lowerName.contains('quạt') || lowerType.contains('fan')) {
-      return Icons.mode_fan_off_rounded;
-    }
-    return Icons.devices_rounded;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final accent = theme.colorScheme.primary;
     final schedulesAsync = ref.watch(sceneSchedulesProvider(_scene.id));
-    final atmosphere = SceneIcons.getAtmosphere(_scene.icon);
+    // The list provider follows realtime, so a timer set on the web shows up here too.
+    final live = ref
+        .watch(scenesListProvider)
+        .valueOrNull
+        ?.where((s) => s.id == _scene.id)
+        .firstOrNull;
+    final pendingRunAt = (live ?? _scene).pendingRunAt;
+    final canRun = _scene.enabled && _scene.actions.isNotEmpty;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AmbientBackground(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              automaticallyImplyLeading: false,
-              toolbarHeight: 68,
-              flexibleSpace: GlassAppBar(
-                title: 'Chi tiết ngữ cảnh',
-                onBack: () => Navigator.of(context).maybePop(),
-                actions: [
-                  GlassIconButton(
-                    icon: Icons.history_rounded,
-                    tooltip: 'Lịch sử chạy',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SceneHistoryScreen(scene: _scene),
-                      ),
-                    ),
-                  ),
-                  GlassIconButton(
-                    icon: Icons.edit_outlined,
-                    tooltip: 'Chỉnh sửa',
-                    onTap: () async {
-                      final updated = await Navigator.of(context).push<bool>(
-                        MaterialPageRoute(
-                          builder: (_) => SceneEditorScreen(scene: _scene),
-                        ),
-                      );
-                      if (updated == true && context.mounted) {
-                        await ref.read(scenesListProvider.notifier).refresh();
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                        }
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.sm,
-                AppSpacing.screen,
-                AppSpacing.navClearance * 1.5,
-              ),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Scene Hero Header Card
-                  GlassCard(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    radius: AppRadius.hero,
-                    borderGradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        atmosphere.accentColor.withValues(alpha: 0.5),
-                        Colors.white.withValues(alpha: 0.08),
-                      ],
-                    ),
-                    shadows: GlassTokens.glow(
-                      atmosphere.accentColor,
-                      intensity: 0.35,
-                    ),
-                    child: Column(
+    return StudioBackground(
+      child: Builder(
+        builder: (context) {
+          final c = StudioColors.of(context);
+          final desc = _scene.description;
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            body: CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  automaticallyImplyLeading: false,
+                  toolbarHeight: 68,
+                  flexibleSpace: GlassAppBar(
+                    title: _scene.name,
+                    // Back + a spacer as wide as the second action, so the title is centred.
+                    leading: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: atmosphere.gradient
-                                  .map((c) => c.withValues(alpha: 0.4))
-                                  .toList(),
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            border: Border.all(
-                              color: atmosphere.accentColor.withValues(
-                                alpha: 0.5,
-                              ),
-                              width: 2,
-                            ),
-                            boxShadow: GlassTokens.glow(
-                              atmosphere.accentColor,
-                              intensity: 0.5,
-                            ),
-                          ),
-                          child: Icon(
-                            atmosphere.icon,
-                            color: atmosphere.accentColor,
-                            size: 34,
-                          ),
+                        GlassIconButton(
+                          icon: Icons.arrow_back_rounded,
+                          tooltip: MaterialLocalizations.of(
+                            context,
+                          ).backButtonTooltip,
+                          onTap: () => Navigator.of(context).maybePop(),
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          _scene.name,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        if (_scene.description != null &&
-                            _scene.description!.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            _scene.description!,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: isDark
-                                  ? AppColors.onDarkMuted
-                                  : AppColors.onSurfaceVariant,
-                              height: 1.4,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                        const SizedBox(height: AppSpacing.md),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            GlassStatusPill(
-                              label: '${_scene.actions.length} hành động',
-                              color: atmosphere.accentColor,
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            GlassStatusPill(
-                              label: _scene.enabled
-                                  ? 'Đang kích hoạt'
-                                  : 'Đã tắt',
-                              color: _scene.enabled
-                                  ? (isDark
-                                        ? AppColors.auroraMint
-                                        : AppColors.auroraMintOnLight)
-                                  : Colors.grey,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Execute Action Button
-                        AppButton(
-                          label: 'Chạy ngữ cảnh ngay',
-                          icon: Icons.play_arrow_rounded,
-                          isLoading: _isExecuting,
-                          onPressed: _execute,
-                        ),
+                        const SizedBox(width: 52),
                       ],
                     ),
+                    actions: [
+                      GlassIconButton(
+                        icon: Icons.history_rounded,
+                        tooltip: 'Lịch sử chạy',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SceneHistoryScreen(scene: _scene),
+                          ),
+                        ),
+                      ),
+                      GlassIconButton(
+                        icon: Icons.edit_outlined,
+                        tooltip: 'Chỉnh sửa',
+                        onTap: () async {
+                          final updated = await Navigator.of(context)
+                              .push<bool>(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      SceneEditorScreen(scene: _scene),
+                                ),
+                              );
+                          if (updated == true && context.mounted) {
+                            await ref
+                                .read(scenesListProvider.notifier)
+                                .refresh();
+                            if (context.mounted) Navigator.of(context).pop();
+                          }
+                        },
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Actions List Section
-                  Text(
-                    'HÀNH ĐỘNG ĐÃ THIẾT LẬP',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                    ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    AppSpacing.sm,
+                    AppSpacing.screen,
+                    AppSpacing.navClearance * 1.5,
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  GlassCard(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    radius: AppRadius.card,
-                    child: _scene.actions.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            child: Center(
-                              child: Text(
-                                'Kịch bản này chưa có hành động nào.',
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // Thẻ đầu: icon, tên, trạng thái, nút chạy
+                      StudioCard(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            StudioIconTile(
+                              icon: SceneIcons.getAtmosphere(_scene.icon).icon,
+                              size: 64,
+                              active: _scene.enabled,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _scene.name,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: c.text,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${_scene.actions.length} thiết bị · ${_scene.enabled ? 'Đang bật' : 'Đã tắt'}',
+                              style: TextStyle(fontSize: 13, color: c.muted),
+                            ),
+                            if (desc != null && desc.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                desc,
                                 style: TextStyle(
-                                  color: isDark
-                                      ? AppColors.onDarkFaint
-                                      : Colors.grey,
+                                  fontSize: 14,
+                                  height: 1.4,
+                                  color: c.muted,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                            const SizedBox(height: 18),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: _isExecuting || !canRun
+                                    ? null
+                                    : _execute,
+                                icon: _isExecuting
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.play_arrow_rounded),
+                                label: Text(
+                                  _isExecuting ? 'Đang chạy…' : 'Chạy ngay',
+                                ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: c.accent,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: const StadiumBorder(),
+                                  textStyle: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ),
-                          )
-                        : ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _scene.actions.length,
-                            separatorBuilder: (_, __) => Divider(
-                              height: 20,
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.08)
-                                  : Colors.black.withValues(alpha: 0.06),
-                            ),
-                            itemBuilder: (context, index) {
-                              final act = _scene.actions[index];
-                              final devIcon = _getDeviceIcon(
-                                act.targetDeviceType,
-                                act.targetDeviceName,
-                              );
-
-                              return Row(
+                            const SizedBox(height: 8),
+                            if (pendingRunAt != null)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Container(
-                                    width: 36,
-                                    height: 36,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: accent.withValues(alpha: 0.15),
-                                      border: Border.all(
-                                        color: accent.withValues(alpha: 0.3),
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      devIcon,
-                                      size: 18,
-                                      color: accent,
+                                  Icon(
+                                    Icons.timer_outlined,
+                                    size: 18,
+                                    color: c.accent,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  SceneCountdown(
+                                    runAt: pendingRunAt,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: c.accent,
                                     ),
                                   ),
-                                  const SizedBox(width: AppSpacing.md),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          act.targetDeviceName,
-                                          style: theme.textTheme.bodyMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Hành động: ${act.action}${act.value != null ? ' (${act.value})' : ''}',
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: isDark
-                                                    ? AppColors.onDarkMuted
-                                                    : AppColors
-                                                          .onSurfaceVariant,
-                                                fontSize: 12,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
+                                  TextButton(
+                                    onPressed: _runLater,
+                                    child: const Text('Đổi'),
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
+                                  TextButton(
+                                    onPressed: _cancelRunLater,
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: c.danger,
                                     ),
-                                    decoration: BoxDecoration(
-                                      color: isDark
-                                          ? Colors.white.withValues(alpha: 0.06)
-                                          : Colors.black.withValues(
-                                              alpha: 0.05,
-                                            ),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      '#${index + 1}',
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? AppColors.onDarkFaint
-                                            : Colors.grey,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    child: const Text('Huỷ'),
                                   ),
                                 ],
-                              );
-                            },
-                          ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Schedules Section
-                  Text(
-                    'LỊCH TỰ ĐỘNG CHẠY',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: accent,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  schedulesAsync.when(
-                    data: (schedules) => GlassCard(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      radius: AppRadius.card,
-                      child: schedules.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
+                              )
+                            else if (canRun)
+                              TextButton.icon(
+                                onPressed: _runLater,
+                                icon: const Icon(Icons.timer_outlined),
+                                label: const Text('Chạy sau…'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: c.accent,
                                 ),
+                              )
+                            else
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
                                 child: Text(
-                                  'Chưa có lịch hẹn giờ nào.',
+                                  _scene.actions.isEmpty
+                                      ? 'Thêm hành động để có thể chạy kịch bản.'
+                                      : 'Kịch bản đang tắt. Bật nó (nút gạt ở danh sách hoặc khi chỉnh sửa) để chạy.',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: isDark
-                                        ? AppColors.onDarkFaint
-                                        : Colors.grey,
+                                    fontSize: 13,
+                                    color: c.muted,
                                   ),
                                 ),
                               ),
-                            )
-                          : Column(
-                              children: schedules
-                                  .map(
-                                    (sched) => Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      _SectionTitle('Thiết bị sẽ được điều khiển'),
+                      StudioCard(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        child: _scene.actions.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 20,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Chưa có thiết bị nào.',
+                                    style: TextStyle(color: c.faint),
+                                  ),
+                                ),
+                              )
+                            : Column(
+                                children: [
+                                  for (final (i, act)
+                                      in _scene.actions.indexed) ...[
+                                    if (i > 0)
+                                      Divider(height: 1, color: c.border),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 10,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          StudioIconTile(
+                                            icon: _getDeviceIcon(
+                                              act.targetDeviceType,
+                                              act.targetDeviceName,
+                                            ),
+                                            size: 36,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              act.targetDeviceName,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: c.text,
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            describeAction(
+                                              act.action,
+                                              value: act.value,
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: c.accent,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      _SectionTitle('Lịch tự động chạy'),
+                      schedulesAsync.when(
+                        data: (schedules) => StudioCard(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          child: schedules.isEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 18,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'Chưa hẹn giờ. Bạn có thể thêm khi chỉnh sửa.',
+                                      style: TextStyle(color: c.faint),
+                                    ),
+                                  ),
+                                )
+                              : Column(
+                                  children: [
+                                    for (final sched in schedules)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 10,
+                                        ),
+                                        child: Row(
                                           children: [
                                             Icon(
                                               Icons.alarm_rounded,
                                               size: 20,
-                                              color: accent,
+                                              color: sched.enabled
+                                                  ? c.accent
+                                                  : c.off,
                                             ),
-                                            const SizedBox(
-                                              width: AppSpacing.sm,
-                                            ),
+                                            const SizedBox(width: 12),
                                             Text(
-                                              sched.time,
-                                              style: theme.textTheme.titleMedium
-                                                  ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
+                                              displayTime(sched.time),
+                                              style: TextStyle(
+                                                fontSize: 17,
+                                                fontWeight: FontWeight.w700,
+                                                color: c.text,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                [
+                                                  describeDays(
+                                                    sched.repeatDays,
                                                   ),
+                                                  if (sched.enabled &&
+                                                      _scene.enabled &&
+                                                      sched.nextRunAt != null)
+                                                    'lần tới ${formatNextRun(sched.nextRunAt!)}',
+                                                ].join(' · '),
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: c.muted,
+                                                ),
+                                              ),
+                                            ),
+                                            StudioTag(
+                                              label: sched.enabled
+                                                  ? 'Bật'
+                                                  : 'Tắt',
+                                              color: sched.enabled
+                                                  ? c.on
+                                                  : null,
                                             ),
                                           ],
                                         ),
-                                        GlassToggle(
-                                          value: sched.enabled,
-                                          onChanged: (_) {},
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                    ),
-                    loading: () => const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: CircularProgressIndicator(),
+                                      ),
+                                  ],
+                                ),
+                        ),
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        error: (_, __) => const SizedBox(),
                       ),
-                    ),
-                    error: (_, __) => const SizedBox(),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: 28),
 
-                  // Delete Scene Button
-                  Center(
-                    child: TextButton.icon(
-                      icon: const Icon(
-                        Icons.delete_outline_rounded,
-                        color: AppColors.error,
-                      ),
-                      label: const Text(
-                        'Xóa ngữ cảnh này',
-                        style: TextStyle(
-                          color: AppColors.error,
-                          fontWeight: FontWeight.w600,
+                      Center(
+                        child: TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: c.danger,
+                          ),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text(
+                            'Xoá kịch bản',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          onPressed: _confirmDelete,
                         ),
                       ),
-                      onPressed: _confirmDelete,
-                    ),
+                    ]),
                   ),
-                ]),
-              ),
+                ),
+              ],
             ),
-          ],
+          );
+        },
+      ),
+    );
+  }
+
+  IconData _getDeviceIcon(String? type, String name) {
+    final n = name.toLowerCase();
+    final t = (type ?? '').toLowerCase();
+    if (n.contains('đèn') || t.contains('light'))
+      return Icons.lightbulb_outline_rounded;
+    if (n.contains('lạnh') || n.contains('điều hòa') || t.contains('climate')) {
+      return Icons.ac_unit_rounded;
+    }
+    if (n.contains('rèm') || t.contains('curtain'))
+      return Icons.curtains_rounded;
+    if (n.contains('khóa') || t.contains('lock'))
+      return Icons.lock_outline_rounded;
+    if (n.contains('quạt') || t.contains('fan')) return Icons.air_rounded;
+    return Icons.devices_other_rounded;
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 10),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: StudioColors.of(context).text,
         ),
       ),
     );

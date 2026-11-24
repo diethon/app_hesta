@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/utils/time_format.dart';
 
 @immutable
 class SceneAction {
@@ -84,6 +85,7 @@ class Scene {
     this.description,
     this.enabled = true,
     this.actions = const [],
+    this.pendingRunAt,
     this.createdAt,
     this.updatedAt,
   });
@@ -95,6 +97,9 @@ class Scene {
   final String? description;
   final bool enabled;
   final List<SceneAction> actions;
+
+  /// When a one-off "run after X" fires (shared with the web); null if none is pending.
+  final DateTime? pendingRunAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -117,6 +122,9 @@ class Scene {
       description: json['description']?.toString(),
       enabled: json['enabled'] as bool? ?? true,
       actions: actionsList,
+      pendingRunAt: json['pendingRunAt'] != null
+          ? DateTime.tryParse(json['pendingRunAt'].toString())
+          : null,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
@@ -165,10 +173,25 @@ class Scene {
       description: description ?? this.description,
       enabled: enabled ?? this.enabled,
       actions: actions ?? this.actions,
+      pendingRunAt: pendingRunAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+
+  /// copyWith cannot clear a field, so the timer gets its own setter.
+  Scene withPendingRunAt(DateTime? runAt) => Scene(
+    id: id,
+    homeId: homeId,
+    name: name,
+    icon: icon,
+    description: description,
+    enabled: enabled,
+    actions: actions,
+    pendingRunAt: runAt,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+  );
 }
 
 @immutable
@@ -179,6 +202,7 @@ class SceneExecutionDetail {
     required this.success,
     required this.status,
     this.message,
+    this.errorCode,
   });
 
   final String deviceId;
@@ -186,6 +210,7 @@ class SceneExecutionDetail {
   final bool success;
   final String status;
   final String? message;
+  final String? errorCode;
 
   factory SceneExecutionDetail.fromJson(Map<String, dynamic> json) {
     return SceneExecutionDetail(
@@ -194,8 +219,38 @@ class SceneExecutionDetail {
       success: json['success'] as bool? ?? false,
       status: (json['status'] ?? '').toString(),
       message: json['message']?.toString(),
+      errorCode: json['errorCode']?.toString(),
     );
   }
+}
+
+/// null when every device ran; otherwise which devices failed and why (same wording as web sceneRunMessage.ts).
+String? sceneRunMessage(Scene? scene, SceneExecution run) {
+  final failed = run.resultDetail.where((r) => !r.success).toList();
+  if (run.status == 'SUCCESS' ||
+      (run.resultDetail.isNotEmpty && failed.isEmpty))
+    return null;
+  final name = scene?.name ?? 'Kịch bản';
+  if (failed.isEmpty) return 'Không chạy được "$name"';
+  String nameOf(String id) =>
+      scene?.actions
+          .where((a) => a.targetDeviceId == id)
+          .firstOrNull
+          ?.targetDeviceName ??
+      'Một thiết bị';
+  final names = {for (final r in failed) nameOf(r.deviceId)}.toList();
+  final list = names.length > 2
+      ? '${names.take(2).join(', ')} và ${names.length - 2} thiết bị khác'
+      : names.join(', ');
+  final reason = failed.every((r) => r.errorCode == 'DEVICE_OFFLINE')
+      ? 'đang ngoại tuyến'
+      : failed.first.message != null
+      ? 'lỗi: ${failed.first.message}'
+      : 'không phản hồi';
+  final total = run.resultDetail.length;
+  return failed.length == total
+      ? 'Không chạy được "$name": $list $reason'
+      : '"$name" chạy được ${total - failed.length}/$total thiết bị. $list $reason';
 }
 
 @immutable
@@ -254,6 +309,7 @@ class SceneSchedule {
     required this.time,
     required this.repeatDays,
     required this.enabled,
+    this.nextRunAt,
   });
 
   final String id;
@@ -261,6 +317,7 @@ class SceneSchedule {
   final String time;
   final List<int> repeatDays;
   final bool enabled;
+  final DateTime? nextRunAt;
 
   factory SceneSchedule.fromJson(Map<String, dynamic> json) {
     final daysRaw = json['repeatDays'];
@@ -272,9 +329,10 @@ class SceneSchedule {
       id: (json['id'] ?? '').toString(),
       sceneId: (json['sceneId'] ?? '').toString(),
       // Backend ScheduleResponse: scheduledTime is "HH:mm:ss", active is the on/off flag.
-      time: (json['scheduledTime'] ?? '07:00').toString().substring(0, 5),
+      time: formatHms(json['scheduledTime']?.toString(), fallback: '07:00:00'),
       repeatDays: days,
       enabled: json['active'] as bool? ?? true,
+      nextRunAt: DateTime.tryParse('${json['nextRunAt'] ?? ''}')?.toLocal(),
     );
   }
 
