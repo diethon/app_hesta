@@ -504,20 +504,26 @@ class _CardControl extends ConsumerWidget {
           final isClosing = device.gateState == 'CLOSING';
           final isOpening = device.gateState == 'OPENING';
           final isStopped = device.gateState == 'STOPPED';
-          final isClosed = device.gateState == 'CLOSED' || (device.gateState == null && device.isOn);
+          final isClosed =
+              device.gateState == 'CLOSED' ||
+              (device.gateState == null && device.isOn);
 
           final gateLabel = isOpening
               ? 'Đang mở'
               : (isClosing
-                  ? 'Đang đóng'
-                  : (isStopped ? 'Tạm dừng' : (isClosed ? 'Đã đóng' : 'Đã mở')));
+                    ? 'Đang đóng'
+                    : (isStopped
+                          ? 'Tạm dừng'
+                          : (isClosed ? 'Đã đóng' : 'Đã mở')));
 
           final gateColor = (isOpening || isClosing)
               ? AppColors.auroraWarning
               : (isClosed ? AppColors.auroraMint : AppColors.orbTeal);
 
           return GlassStatusPill(
-            icon: isClosed ? Icons.door_front_door_rounded : Icons.meeting_room_rounded,
+            icon: isClosed
+                ? Icons.door_front_door_rounded
+                : Icons.meeting_room_rounded,
             label: gateLabel,
             color: gateColor,
           );

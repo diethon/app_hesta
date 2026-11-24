@@ -39,7 +39,9 @@ class SceneRepository {
       if (description != null) 'description': description,
       'enabled': enabled,
       // Backend needs contiguous orders from 0; list position is the source of truth.
-      'actions': [for (final (i, a) in actions.indexed) {...a.toJson(), 'order': i}],
+      'actions': [
+        for (final (i, a) in actions.indexed) {...a.toJson(), 'order': i},
+      ],
     };
 
     final response = await client.post<dynamic>(
@@ -65,7 +67,9 @@ class SceneRepository {
       'description': description,
       'enabled': enabled,
       if (actions != null)
-        'actions': [for (final (i, a) in actions.indexed) {...a.toJson(), 'order': i}],
+        'actions': [
+          for (final (i, a) in actions.indexed) {...a.toJson(), 'order': i},
+        ],
     };
 
     final response = await client.put<dynamic>(

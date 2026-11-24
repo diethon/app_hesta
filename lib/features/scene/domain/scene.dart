@@ -227,13 +227,21 @@ class SceneExecutionDetail {
 /// null when every device ran; otherwise which devices failed and why (same wording as web sceneRunMessage.ts).
 String? sceneRunMessage(Scene? scene, SceneExecution run) {
   final failed = run.resultDetail.where((r) => !r.success).toList();
-  if (run.status == 'SUCCESS' || (run.resultDetail.isNotEmpty && failed.isEmpty)) return null;
+  if (run.status == 'SUCCESS' ||
+      (run.resultDetail.isNotEmpty && failed.isEmpty))
+    return null;
   final name = scene?.name ?? 'Kịch bản';
   if (failed.isEmpty) return 'Không chạy được "$name"';
   String nameOf(String id) =>
-      scene?.actions.where((a) => a.targetDeviceId == id).firstOrNull?.targetDeviceName ?? 'Một thiết bị';
+      scene?.actions
+          .where((a) => a.targetDeviceId == id)
+          .firstOrNull
+          ?.targetDeviceName ??
+      'Một thiết bị';
   final names = {for (final r in failed) nameOf(r.deviceId)}.toList();
-  final list = names.length > 2 ? '${names.take(2).join(', ')} và ${names.length - 2} thiết bị khác' : names.join(', ');
+  final list = names.length > 2
+      ? '${names.take(2).join(', ')} và ${names.length - 2} thiết bị khác'
+      : names.join(', ');
   final reason = failed.every((r) => r.errorCode == 'DEVICE_OFFLINE')
       ? 'đang ngoại tuyến'
       : failed.first.message != null
