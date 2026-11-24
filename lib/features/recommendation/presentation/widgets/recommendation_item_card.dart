@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/utils/time_format.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/widgets/studio.dart';
@@ -33,7 +34,7 @@ class RecommendationItemCard extends StatelessWidget {
       return Icons.lock_outline_rounded;
     }
     if (name.contains('quạt') || name.contains('fan')) {
-      return Icons.mode_fan_off_outlined;
+      return Icons.air_rounded;
     }
     if (name.contains('tivi') || name.contains('tv')) {
       return Icons.tv_rounded;
@@ -52,8 +53,7 @@ class RecommendationItemCard extends StatelessWidget {
     final t = recommendation.triggerCondition;
     final time = t.time;
     if (time == null || time.isEmpty) return 'Khi có hoạt động tương tự';
-    final hm = time.length >= 5 ? time.substring(0, 5) : time;
-    return 'Lúc $hm · ${describeDays(t.repeatDays)}';
+    return 'Lúc ${formatHms(time)} · ${describeDays(t.repeatDays)}';
   }
 
   @override

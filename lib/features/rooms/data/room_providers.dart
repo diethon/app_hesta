@@ -46,6 +46,7 @@ final roomsForHomeProvider =
             deviceCount: (json['deviceCount'] as num?)?.toInt() ?? 0,
             activeCount: (json['activeCount'] as num?)?.toInt() ?? 0,
             temperature: (json['temperature'] as num?)?.toInt() ?? 22,
+            floor: (json['floor'] as num?)?.toInt(),
           ),
         )
         .toList();
@@ -90,6 +91,7 @@ final roomsProvider = Provider.autoDispose<List<Room>>((ref) {
         deviceCount: devices.where((d) => d.roomId == room.id).length,
         activeCount: devices.where((d) => d.roomId == room.id && d.isOn).length,
         temperature: room.temperature,
+        floor: room.floor,
       ),
   ];
 });
