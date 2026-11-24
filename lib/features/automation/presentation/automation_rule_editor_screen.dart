@@ -22,7 +22,11 @@ import '../domain/rule_options.dart';
 import 'rule_editor_parts.dart';
 
 class AutomationRuleEditorScreen extends ConsumerStatefulWidget {
-  const AutomationRuleEditorScreen({this.rule, this.openHistory = false, super.key});
+  const AutomationRuleEditorScreen({
+    this.rule,
+    this.openHistory = false,
+    super.key,
+  });
 
   final AutomationRule? rule;
 
@@ -43,6 +47,7 @@ class _AutomationRuleEditorScreenState
   late bool _enabled;
   late List<RuleCondition> _conditions;
   late List<RuleAction> _actions;
+
   /// Chỉ chạy khi điều kiện đúng liên tục bấy nhiêu giây (0 = chạy ngay).
   late int _hold;
   List<RuleSchedule> _schedules = [];
@@ -67,11 +72,15 @@ class _AutomationRuleEditorScreenState
     _showDesc = (r?.description ?? '').isNotEmpty;
     _trigger = r?.triggerType.toUpperCase() ?? 'SENSOR';
     _enabled = r?.enabled ?? true;
-    _conditions = [...?r?.conditions]..sort((a, b) => a.order.compareTo(b.order));
+    _conditions = [...?r?.conditions]
+      ..sort((a, b) => a.order.compareTo(b.order));
     _actions = [...?r?.actions]..sort((a, b) => a.order.compareTo(b.order));
     _hold = r?.holdSeconds ?? 0;
     // Điều kiện đầu không nối với gì nên lấy toán tử của điều kiện thứ 2 (giống ruleToDraft).
-    final ops = _conditions.skip(1).map((c) => c.logicalOperator.toUpperCase()).toSet();
+    final ops = _conditions
+        .skip(1)
+        .map((c) => c.logicalOperator.toUpperCase())
+        .toSet();
     _logicalOp = ops.length == 1 ? ops.first : 'AND';
     _mixedOps = ops.length > 1;
     _showTemplates = r == null;
@@ -94,7 +103,9 @@ class _AutomationRuleEditorScreenState
     if (homeId == null) return;
     setState(() => _loadingSchedules = true);
     try {
-      final list = await ref.read(automationRepositoryProvider).getSchedules(homeId, ruleId);
+      final list = await ref
+          .read(automationRepositoryProvider)
+          .getSchedules(homeId, ruleId);
       if (!mounted) return;
       setState(() => _schedules = list);
       _snapshot = _draftJson();
@@ -126,7 +137,9 @@ class _AutomationRuleEditorScreenState
     'c': _payloadConditions.map((c) => c.toJson()).toList(),
     'a': _payloadActions.map((a) => a.toJson()).toList(),
     'h': _payloadHold,
-    's': _trigger == 'SCHEDULE' ? _schedules.map((s) => s.toJson()).toList() : [],
+    's': _trigger == 'SCHEDULE'
+        ? _schedules.map((s) => s.toJson()).toList()
+        : [],
   });
 
   int get _payloadHold => _trigger == 'SCHEDULE' ? 0 : _hold;
@@ -137,28 +150,48 @@ class _AutomationRuleEditorScreenState
     name: _name.text,
     triggerType: _trigger,
     conditions: [
-      for (final c in _conditions) (deviceId: c.deviceId, groupId: c.groupId, expectedValue: c.expectedValue),
+      for (final c in _conditions)
+        (
+          deviceId: c.deviceId,
+          groupId: c.groupId,
+          expectedValue: c.expectedValue,
+        ),
     ],
     actions: [
       for (final a in _actions)
-        (action: a.action, deviceId: a.deviceId, sceneId: a.sceneId, groupId: a.groupId, seconds: a.parameters['seconds']),
+        (
+          action: a.action,
+          deviceId: a.deviceId,
+          sceneId: a.sceneId,
+          groupId: a.groupId,
+          seconds: a.parameters['seconds'],
+        ),
     ],
     activeScheduleCount: _schedules.where((s) => s.active).length,
   );
 
   // ── Thao tác ──
 
-  List<Device> get _devices => ref.read(devicesControllerProvider).valueOrNull ?? const [];
-  List<Scene> get _scenes => ref.read(scenesListProvider).valueOrNull ?? const [];
-  Map<String, String> get _roomNames => {for (final r in ref.read(roomsProvider)) r.id: r.name};
+  List<Device> get _devices =>
+      ref.read(devicesControllerProvider).valueOrNull ?? const [];
+  List<Scene> get _scenes =>
+      ref.read(scenesListProvider).valueOrNull ?? const [];
+  Map<String, String> get _roomNames => {
+    for (final r in ref.read(roomsProvider)) r.id: r.name,
+  };
 
   Device? _device(String? id) => _devices.where((d) => d.id == id).firstOrNull;
-  List<DeviceGroup> get _groups => ref.read(automationGroupsProvider).valueOrNull ?? const [];
+  List<DeviceGroup> get _groups =>
+      ref.read(automationGroupsProvider).valueOrNull ?? const [];
 
   Future<DeviceGroup?> _pickGroup(String? selectedId) async {
     final groups = _groups;
     if (groups.isEmpty) {
-      showStudioSnack(context, 'Nhà chưa có nhóm thiết bị. Tạo nhóm ở trang Thiết bị.', success: false);
+      showStudioSnack(
+        context,
+        'Nhà chưa có nhóm thiết bị. Tạo nhóm ở trang Thiết bị.',
+        success: false,
+      );
       return null;
     }
     return showGroupPicker(context, groups: groups, selectedId: selectedId);
@@ -167,23 +200,35 @@ class _AutomationRuleEditorScreenState
   Future<void> _pickConditionGroup(int i) async {
     final g = await _pickGroup(_conditions[i].groupId);
     if (g == null || !mounted) return;
-    setState(() => _conditions[i] = _conditions[i].copyWith(clearDevice: true, groupId: g.id, groupName: g.name));
+    setState(
+      () => _conditions[i] = _conditions[i].copyWith(
+        clearDevice: true,
+        groupId: g.id,
+        groupName: g.name,
+      ),
+    );
   }
 
   Future<void> _pickActionGroup(int i) async {
     final g = await _pickGroup(_actions[i].groupId);
     if (g == null || !mounted) return;
-    setState(() => _actions[i] = _actions[i].copyWith(groupId: g.id, groupName: g.name));
+    setState(
+      () =>
+          _actions[i] = _actions[i].copyWith(groupId: g.id, groupName: g.name),
+    );
   }
 
   List<Device> _membersOf(String? groupId) {
-    final ids = _groups.where((g) => g.id == groupId).firstOrNull?.deviceIds ?? const [];
+    final ids =
+        _groups.where((g) => g.id == groupId).firstOrNull?.deviceIds ??
+        const [];
     return _devices.where((d) => ids.contains(d.id)).toList();
   }
 
   void _applyTemplate(AutomationTemplate? t) {
     final devices = _devices;
-    Device? firstOf(String type) => devices.where((d) => deviceTypeCode(d).contains(type)).firstOrNull;
+    Device? firstOf(String type) =>
+        devices.where((d) => deviceTypeCode(d).contains(type)).firstOrNull;
     setState(() {
       _showTemplates = false;
       _schedules = [];
@@ -200,13 +245,28 @@ class _AutomationRuleEditorScreenState
       _trigger = t.triggerType;
       switch (t.id) {
         case 'motion-light':
-          final sensor = devices.where((d) => isSensorDevice(d) && attributesFor(d).any((a) => a.key == 'motion')).firstOrNull;
+          final sensor = devices
+              .where(
+                (d) =>
+                    isSensorDevice(d) &&
+                    attributesFor(d).any((a) => a.key == 'motion'),
+              )
+              .firstOrNull;
           _conditions = [
-            RuleCondition(deviceId: sensor?.id, attribute: 'motion', operator: 'EQ', expectedValue: true),
+            RuleCondition(
+              deviceId: sensor?.id,
+              attribute: 'motion',
+              operator: 'EQ',
+              expectedValue: true,
+            ),
           ];
         case 'door-ac':
           _conditions = [
-            const RuleCondition(attribute: 'eventType', operator: 'EQ', expectedValue: 'EVENT'),
+            const RuleCondition(
+              attribute: 'eventType',
+              operator: 'EQ',
+              expectedValue: 'EVENT',
+            ),
           ];
         default:
           _conditions = [];
@@ -214,10 +274,16 @@ class _AutomationRuleEditorScreenState
       }
       final target = t.id == 'door-ac' ? firstOf('AC') : firstOf('LIGHT');
       _actions = [
-        RuleAction(deviceId: target?.id, deviceName: target?.name, action: t.action),
+        RuleAction(
+          deviceId: target?.id,
+          deviceName: target?.name,
+          action: t.action,
+        ),
       ];
       _openAct = target == null ? 0 : null;
-      _openCond = _trigger == 'SENSOR' && _conditions.first.deviceId == null ? 0 : null;
+      _openCond = _trigger == 'SENSOR' && _conditions.first.deviceId == null
+          ? 0
+          : null;
       // Mẫu chưa lưu cũng tính là thay đổi, để "Đóng" hỏi lại.
       _snapshot = '';
     });
@@ -230,7 +296,11 @@ class _AutomationRuleEditorScreenState
       _openCond = null;
       if (t == 'EVENT') {
         _conditions = [
-          const RuleCondition(attribute: 'eventType', operator: 'EQ', expectedValue: 'MOTION_DETECTED'),
+          const RuleCondition(
+            attribute: 'eventType',
+            operator: 'EQ',
+            expectedValue: 'MOTION_DETECTED',
+          ),
         ];
       } else {
         _conditions = [];
@@ -296,19 +366,37 @@ class _AutomationRuleEditorScreenState
 
   Future<void> _pickActionScene(int i) async {
     final act = _actions[i];
-    final s = await showScenePicker(context, scenes: _scenes, selectedId: act.sceneId);
+    final s = await showScenePicker(
+      context,
+      scenes: _scenes,
+      selectedId: act.sceneId,
+    );
     if (s == null) return;
-    setState(() => _actions[i] = act.copyWith(sceneId: s.id, sceneName: s.name));
+    setState(
+      () => _actions[i] = act.copyWith(sceneId: s.id, sceneName: s.name),
+    );
   }
 
   Future<void> _pickEvent() async {
     final current = _conditions.firstOrNull;
-    final code = await showEventPicker(context, selected: '${current?.expectedValue ?? ''}');
+    final code = await showEventPicker(
+      context,
+      selected: '${current?.expectedValue ?? ''}',
+    );
     if (code == null) return;
     setState(() {
       _conditions = [
-        (current ?? const RuleCondition(attribute: 'eventType', operator: 'EQ', expectedValue: ''))
-            .copyWith(attribute: 'eventType', operator: 'EQ', expectedValue: code),
+        (current ??
+                const RuleCondition(
+                  attribute: 'eventType',
+                  operator: 'EQ',
+                  expectedValue: '',
+                ))
+            .copyWith(
+              attribute: 'eventType',
+              operator: 'EQ',
+              expectedValue: code,
+            ),
       ];
     });
   }
@@ -324,7 +412,8 @@ class _AutomationRuleEditorScreenState
       title: 'Chỉ khi từ thiết bị',
       selectedId: current.deviceId,
     );
-    if (d != null) setState(() => _conditions[0] = current.copyWith(deviceId: d.id));
+    if (d != null)
+      setState(() => _conditions[0] = current.copyWith(deviceId: d.id));
   }
 
   void _moveAction(int from, int to) => setState(() {
@@ -333,17 +422,29 @@ class _AutomationRuleEditorScreenState
     if (_openAct == from) _openAct = to;
   });
 
-  Future<bool> _confirm(String title, String body, String ok, {bool danger = false}) async {
+  Future<bool> _confirm(
+    String title,
+    String body,
+    String ok, {
+    bool danger = false,
+  }) async {
     final res = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title),
         content: Text(body),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Huỷ'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: danger ? TextButton.styleFrom(foregroundColor: StudioColors.of(context).danger) : null,
+            style: danger
+                ? TextButton.styleFrom(
+                    foregroundColor: StudioColors.of(context).danger,
+                  )
+                : null,
             child: Text(ok),
           ),
         ],
@@ -354,7 +455,12 @@ class _AutomationRuleEditorScreenState
 
   Future<void> _close() async {
     if (_dirty &&
-        !await _confirm('Bỏ thay đổi?', 'Những thay đổi chưa lưu sẽ bị mất.', 'Bỏ thay đổi', danger: true)) {
+        !await _confirm(
+          'Bỏ thay đổi?',
+          'Những thay đổi chưa lưu sẽ bị mất.',
+          'Bỏ thay đổi',
+          danger: true,
+        )) {
       return;
     }
     if (mounted) Navigator.of(context).pop();
@@ -362,7 +468,12 @@ class _AutomationRuleEditorScreenState
 
   Future<void> _delete() async {
     final rule = widget.rule!;
-    if (!await _confirm('Xoá quy tắc?', '"${rule.name}" sẽ ngừng chạy và bị xoá vĩnh viễn.', 'Xoá', danger: true)) {
+    if (!await _confirm(
+      'Xoá quy tắc?',
+      '"${rule.name}" sẽ ngừng chạy và bị xoá vĩnh viễn.',
+      'Xoá',
+      danger: true,
+    )) {
       return;
     }
     await ref.read(automationRulesListProvider.notifier).deleteRule(rule.id);
@@ -371,13 +482,20 @@ class _AutomationRuleEditorScreenState
 
   Future<void> _duplicate() async {
     try {
-      await ref.read(automationRulesListProvider.notifier).duplicateRule(widget.rule!);
+      await ref
+          .read(automationRulesListProvider.notifier)
+          .duplicateRule(widget.rule!);
       if (mounted) {
         showStudioSnack(context, 'Đã tạo bản sao (đang tắt)');
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      if (mounted) showStudioSnack(context, 'Không nhân bản được: ${_reason(e)}', success: false);
+      if (mounted)
+        showStudioSnack(
+          context,
+          'Không nhân bản được: ${_reason(e)}',
+          success: false,
+        );
     }
   }
 
@@ -389,14 +507,20 @@ class _AutomationRuleEditorScreenState
     if (_error != null) return;
     final homeId = ref.read(currentHomeIdProvider);
     if (homeId == null) {
-      showStudioSnack(context, 'Vui lòng chọn ngôi nhà trước khi lưu.', success: false);
+      showStudioSnack(
+        context,
+        'Vui lòng chọn ngôi nhà trước khi lưu.',
+        success: false,
+      );
       return;
     }
     setState(() => _saving = true);
     try {
       final repo = ref.read(automationRepositoryProvider);
       final desc = _desc.text.trim();
-      final schedules = _trigger == 'SCHEDULE' ? _schedules.map((s) => s.toJson()).toList() : null;
+      final schedules = _trigger == 'SCHEDULE'
+          ? _schedules.map((s) => s.toJson()).toList()
+          : null;
       if (_isEdit) {
         await repo.updateRule(
           homeId,
@@ -429,7 +553,12 @@ class _AutomationRuleEditorScreenState
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      if (mounted) showStudioSnack(context, 'Lưu quy tắc thất bại: ${_reason(e)}', success: false);
+      if (mounted)
+        showStudioSnack(
+          context,
+          'Lưu quy tắc thất bại: ${_reason(e)}',
+          success: false,
+        );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -440,7 +569,8 @@ class _AutomationRuleEditorScreenState
   @override
   Widget build(BuildContext context) {
     // Theo dõi để danh sách thiết bị/kịch bản/phòng có dữ liệu khi mở bảng chọn.
-    final devices = ref.watch(devicesControllerProvider).valueOrNull ?? const <Device>[];
+    final devices =
+        ref.watch(devicesControllerProvider).valueOrNull ?? const <Device>[];
     final scenes = ref.watch(scenesListProvider).valueOrNull ?? const <Scene>[];
     final rooms = {for (final r in ref.watch(roomsProvider)) r.id: r.name};
     ref.watch(automationGroupsProvider); // tải sẵn để bảng chọn nhóm có dữ liệu
@@ -461,7 +591,9 @@ class _AutomationRuleEditorScreenState
                 child: SafeArea(
                   bottom: false,
                   child: GlassAppBar(
-                    title: _showTemplates ? 'Tạo quy tắc' : (_isEdit ? 'Sửa quy tắc' : 'Quy tắc mới'),
+                    title: _showTemplates
+                        ? 'Tạo quy tắc'
+                        : (_isEdit ? 'Sửa quy tắc' : 'Quy tắc mới'),
                     onBack: _close,
                     actions: [
                       if (_isEdit)
@@ -470,8 +602,19 @@ class _AutomationRuleEditorScreenState
                           icon: Icon(Icons.more_horiz_rounded, color: c.text),
                           onSelected: (fn) => fn(),
                           itemBuilder: (ctx) => [
-                            menuItem(ctx, Icons.copy_rounded, 'Nhân bản', _duplicate),
-                            menuItem(ctx, Icons.delete_outline_rounded, 'Xoá quy tắc', _delete, danger: true),
+                            menuItem(
+                              ctx,
+                              Icons.copy_rounded,
+                              'Nhân bản',
+                              _duplicate,
+                            ),
+                            menuItem(
+                              ctx,
+                              Icons.delete_outline_rounded,
+                              'Xoá quy tắc',
+                              _delete,
+                              danger: true,
+                            ),
                           ],
                         ),
                     ],
@@ -482,7 +625,10 @@ class _AutomationRuleEditorScreenState
                   ? ListView(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                       children: [
-                        TemplateGrid(onSelect: _applyTemplate, onBlank: () => _applyTemplate(null)),
+                        TemplateGrid(
+                          onSelect: _applyTemplate,
+                          onBlank: () => _applyTemplate(null),
+                        ),
                       ],
                     )
                   : Column(
@@ -494,11 +640,15 @@ class _AutomationRuleEditorScreenState
                             child: SegmentedButton<int>(
                               showSelectedIcon: false,
                               segments: const [
-                                ButtonSegment(value: 0, label: Text('Thiết lập')),
+                                ButtonSegment(
+                                  value: 0,
+                                  label: Text('Thiết lập'),
+                                ),
                                 ButtonSegment(value: 1, label: Text('Lịch sử')),
                               ],
                               selected: {_tab},
-                              onSelectionChanged: (s) => setState(() => _tab = s.first),
+                              onSelectionChanged: (s) =>
+                                  setState(() => _tab = s.first),
                             ),
                           ),
                         Expanded(
@@ -508,7 +658,9 @@ class _AutomationRuleEditorScreenState
                         ),
                       ],
                     ),
-              bottomNavigationBar: _showTemplates || _tab == 1 ? null : _footer(c),
+              bottomNavigationBar: _showTemplates || _tab == 1
+                  ? null
+                  : _footer(c),
             );
           },
         ),
@@ -527,7 +679,10 @@ class _AutomationRuleEditorScreenState
               style: TextStyle(fontSize: 13, color: c.muted),
             ),
           ),
-          GlassToggle(value: _enabled, onChanged: (v) => setState(() => _enabled = v)),
+          GlassToggle(
+            value: _enabled,
+            onChanged: (v) => setState(() => _enabled = v),
+          ),
         ],
       ),
     );
@@ -582,9 +737,21 @@ class _AutomationRuleEditorScreenState
         SegmentedButton<String>(
           showSelectedIcon: false,
           segments: const [
-            ButtonSegment(value: 'SENSOR', icon: Icon(Icons.sensors_rounded), label: Text('Cảm biến')),
-            ButtonSegment(value: 'EVENT', icon: Icon(Icons.bolt_rounded), label: Text('Sự kiện')),
-            ButtonSegment(value: 'SCHEDULE', icon: Icon(Icons.schedule_rounded), label: Text('Lịch giờ')),
+            ButtonSegment(
+              value: 'SENSOR',
+              icon: Icon(Icons.sensors_rounded),
+              label: Text('Cảm biến'),
+            ),
+            ButtonSegment(
+              value: 'EVENT',
+              icon: Icon(Icons.bolt_rounded),
+              label: Text('Sự kiện'),
+            ),
+            ButtonSegment(
+              value: 'SCHEDULE',
+              icon: Icon(Icons.schedule_rounded),
+              label: Text('Lịch giờ'),
+            ),
           ],
           selected: {_trigger},
           onSelectionChanged: _isEdit ? null : (s) => _setTrigger(s.first),
@@ -632,7 +799,8 @@ class _AutomationRuleEditorScreenState
               scene: scenes.where((s) => s.id == a.sceneId).firstOrNull,
               roomName: rooms[_device(a.deviceId)?.roomId],
               expanded: _openAct == i,
-              onToggle: () => setState(() => _openAct = _openAct == i ? null : i),
+              onToggle: () =>
+                  setState(() => _openAct = _openAct == i ? null : i),
               onChanged: (n) => setState(() => _actions[i] = n),
               onMoveUp: () => _moveAction(i, i - 1),
               onMoveDown: () => _moveAction(i, i + 1),
@@ -684,7 +852,9 @@ class _AutomationRuleEditorScreenState
                 label: 'Điều khiển cả nhóm',
                 onTap: () {
                   setState(() {
-                    _actions.add(const RuleAction(action: 'TURN_ON', groupId: ''));
+                    _actions.add(
+                      const RuleAction(action: 'TURN_ON', groupId: ''),
+                    );
                     _openAct = _actions.length - 1;
                   });
                   _pickActionGroup(_actions.length - 1);
@@ -697,7 +867,12 @@ class _AutomationRuleEditorScreenState
                 icon: Icons.hourglass_bottom_rounded,
                 label: 'Chờ một lúc',
                 onTap: () => setState(() {
-                  _actions.add(const RuleAction(action: kDelayAction, parameters: {'seconds': 30}));
+                  _actions.add(
+                    const RuleAction(
+                      action: kDelayAction,
+                      parameters: {'seconds': 30},
+                    ),
+                  );
                   _openAct = _actions.length - 1;
                 }),
               ),
@@ -754,7 +929,10 @@ class _AutomationRuleEditorScreenState
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Center(
-              child: StudioTag(label: _logicalOp == 'OR' ? 'HOẶC' : 'VÀ', color: c.accent),
+              child: StudioTag(
+                label: _logicalOp == 'OR' ? 'HOẶC' : 'VÀ',
+                color: c.accent,
+              ),
             ),
           ),
         Padding(
@@ -765,7 +943,8 @@ class _AutomationRuleEditorScreenState
             device: _device(cond.deviceId),
             roomName: rooms[_device(cond.deviceId)?.roomId],
             expanded: _openCond == i,
-            onToggle: () => setState(() => _openCond = _openCond == i ? null : i),
+            onToggle: () =>
+                setState(() => _openCond = _openCond == i ? null : i),
             onChanged: (n) => setState(() => _conditions[i] = n),
             onDuplicate: () => setState(() {
               _conditions.insert(i + 1, cond.copyWith());
@@ -786,7 +965,12 @@ class _AutomationRuleEditorScreenState
         label: 'Thêm điều kiện',
         onTap: () => setState(() {
           _conditions.add(
-            RuleCondition(attribute: 'temperature', operator: 'GT', expectedValue: 30, logicalOperator: _logicalOp),
+            RuleCondition(
+              attribute: 'temperature',
+              operator: 'GT',
+              expectedValue: 30,
+              logicalOperator: _logicalOp,
+            ),
           );
           _openCond = _conditions.length - 1;
         }),
@@ -801,7 +985,10 @@ class _AutomationRuleEditorScreenState
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               dense: true,
-              title: Text('Chỉ chạy khi điều kiện đúng liên tục', style: TextStyle(fontSize: 13.5, color: c.text)),
+              title: Text(
+                'Chỉ chạy khi điều kiện đúng liên tục',
+                style: TextStyle(fontSize: 13.5, color: c.text),
+              ),
               value: _hold > 0,
               onChanged: (on) => setState(() => _hold = on ? 60 : 0),
             ),
@@ -833,8 +1020,12 @@ class _AutomationRuleEditorScreenState
       const FieldLabel('Sự kiện hệ thống'),
       PickerField(
         icon: known?.icon ?? Icons.bolt_rounded,
-        label: code.isEmpty ? 'Chọn sự kiện' : (known?.name ?? eventLabel(code)),
-        caption: code.isEmpty ? 'Nhấn để chọn sự kiện kích hoạt' : (known?.description ?? 'Mã sự kiện: $code'),
+        label: code.isEmpty
+            ? 'Chọn sự kiện'
+            : (known?.name ?? eventLabel(code)),
+        caption: code.isEmpty
+            ? 'Nhấn để chọn sự kiện kích hoạt'
+            : (known?.description ?? 'Mã sự kiện: $code'),
         hasError: code.isEmpty,
         onTap: _pickEvent,
       ),
@@ -844,14 +1035,21 @@ class _AutomationRuleEditorScreenState
         trailing: src == null
             ? null
             : GestureDetector(
-                onTap: () => setState(() => _conditions[0] = cond!.copyWith(clearDevice: true)),
-                child: Text('Xoá chọn thiết bị', style: TextStyle(fontSize: 12, color: c.danger)),
+                onTap: () => setState(
+                  () => _conditions[0] = cond!.copyWith(clearDevice: true),
+                ),
+                child: Text(
+                  'Xoá chọn thiết bị',
+                  style: TextStyle(fontSize: 12, color: c.danger),
+                ),
               ),
       ),
       PickerField(
         icon: deviceIconFor(src),
         label: src?.name ?? 'Mọi thiết bị',
-        caption: src == null ? 'Để trống = mọi thiết bị' : rooms[src.roomId] ?? 'Thiết bị',
+        caption: src == null
+            ? 'Để trống = mọi thiết bị'
+            : rooms[src.roomId] ?? 'Thiết bị',
         online: src == null ? null : src.status == DeviceStatus.online,
         onTap: _pickEventSource,
       ),
@@ -878,7 +1076,12 @@ class _AutomationRuleEditorScreenState
                   children: [
                     Icon(Icons.info_outline_rounded, size: 16, color: c.warn),
                     const SizedBox(width: 6),
-                    Expanded(child: Text(err, style: TextStyle(fontSize: 12.5, color: c.warn))),
+                    Expanded(
+                      child: Text(
+                        err,
+                        style: TextStyle(fontSize: 12.5, color: c.warn),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -908,7 +1111,10 @@ class _AutomationRuleEditorScreenState
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -919,7 +1125,10 @@ class _AutomationRuleEditorScreenState
                                 Container(
                                   width: 7,
                                   height: 7,
-                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ],
                             ],
@@ -945,13 +1154,21 @@ class _Section extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 10),
     child: Text(
       text,
-      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: StudioColors.of(context).text),
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        color: StudioColors.of(context).text,
+      ),
     ),
   );
 }
 
 class _AddButton extends StatelessWidget {
-  const _AddButton({required this.icon, required this.label, required this.onTap});
+  const _AddButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
@@ -982,37 +1199,61 @@ class _History extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = StudioColors.of(context);
-    return ref.watch(automationRuleExecutionsProvider(ruleId)).when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, _) => Center(child: Text('Không tải được lịch sử', style: TextStyle(color: c.faint))),
-      data: (logs) => logs.isEmpty
-          ? Center(child: Text('Quy tắc này chưa chạy lần nào.', style: TextStyle(color: c.faint)))
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-              itemCount: logs.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (_, i) {
-                final log = logs[i];
-                final ok = log.status.toUpperCase() == 'SUCCESS';
-                return StudioCard(
-                  padding: const EdgeInsets.all(12),
-                  radius: 16,
-                  child: Row(
-                    children: [
-                      Icon(ok ? Icons.check_circle_rounded : Icons.error_rounded, size: 20, color: ok ? c.on : c.danger),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          log.details ?? (ok ? 'Chạy thành công' : 'Chạy không thành công'),
-                          style: TextStyle(fontSize: 13.5, color: c.text),
-                        ),
-                      ),
-                      Text(describeWhen(log.executedAt), style: TextStyle(fontSize: 12, color: c.faint)),
-                    ],
-                  ),
-                );
-              },
+    return ref
+        .watch(automationRuleExecutionsProvider(ruleId))
+        .when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => Center(
+            child: Text(
+              'Không tải được lịch sử',
+              style: TextStyle(color: c.faint),
             ),
-    );
+          ),
+          data: (logs) => logs.isEmpty
+              ? Center(
+                  child: Text(
+                    'Quy tắc này chưa chạy lần nào.',
+                    style: TextStyle(color: c.faint),
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                  itemCount: logs.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) {
+                    final log = logs[i];
+                    final ok = log.status.toUpperCase() == 'SUCCESS';
+                    return StudioCard(
+                      padding: const EdgeInsets.all(12),
+                      radius: 16,
+                      child: Row(
+                        children: [
+                          Icon(
+                            ok
+                                ? Icons.check_circle_rounded
+                                : Icons.error_rounded,
+                            size: 20,
+                            color: ok ? c.on : c.danger,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              log.details ??
+                                  (ok
+                                      ? 'Chạy thành công'
+                                      : 'Chạy không thành công'),
+                              style: TextStyle(fontSize: 13.5, color: c.text),
+                            ),
+                          ),
+                          Text(
+                            describeWhen(log.executedAt),
+                            style: TextStyle(fontSize: 12, color: c.faint),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        );
   }
 }

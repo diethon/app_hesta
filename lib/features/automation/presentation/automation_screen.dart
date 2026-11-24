@@ -68,15 +68,23 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
     );
   }
 
-  Future<void> _openEditor(Widget editor, Future<void> Function() refresh) async {
-    await Navigator.of(context, rootNavigator: true).push<bool>(
-      MaterialPageRoute(builder: (_) => editor),
-    );
+  Future<void> _openEditor(
+    Widget editor,
+    Future<void> Function() refresh,
+  ) async {
+    await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push<bool>(MaterialPageRoute(builder: (_) => editor));
     if (mounted) unawaited(refresh());
   }
 
   Widget _buildFAB(Color accent) {
-    final (IconData icon, String label, VoidCallback? onTap) = switch (_selectedTab) {
+    final (
+      IconData icon,
+      String label,
+      VoidCallback? onTap,
+    ) = switch (_selectedTab) {
       0 => (
         Icons.add_rounded,
         'Tạo quy tắc',
@@ -101,7 +109,9 @@ class _AutomationScreenState extends ConsumerState<AutomationScreen> {
     };
     return Padding(
       // A nested Scaffold ignores the shell's floating nav bar; its height is in padding.bottom.
-      padding: EdgeInsets.only(bottom: AppSpacing.md + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.only(
+        bottom: AppSpacing.md + MediaQuery.paddingOf(context).bottom,
+      ),
       child: FloatingActionButton.extended(
         onPressed: onTap,
         backgroundColor: accent,

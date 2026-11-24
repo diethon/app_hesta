@@ -19,7 +19,13 @@ import 'automation_rule_detail_screen.dart';
 import 'automation_rule_editor_screen.dart';
 import '../domain/rule_options.dart' show eventFriendlyNames, formatDuration;
 import '../../groups/domain/device_group.dart';
-import 'rule_editor_parts.dart' show actionSentence, capitalize, conditionSentence, menuItem, scheduleSentence;
+import 'rule_editor_parts.dart'
+    show
+        actionSentence,
+        capitalize,
+        conditionSentence,
+        menuItem,
+        scheduleSentence;
 
 class AutomationRulesScreen extends ConsumerStatefulWidget {
   const AutomationRulesScreen({this.isEmbedded = false, super.key});
@@ -42,6 +48,7 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
     _search.dispose();
     super.dispose();
   }
+
   /// `d:id` hoặc `g:id`: quy tắc theo dõi hoặc điều khiển thiết bị / nhóm đó.
   String _target = '';
 
@@ -192,11 +199,12 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
                 ('disabled', 'Đang tắt'),
               ]) ...[
                 GlassFilterChip(
-                  label: '$label (${switch (key) {
-                    'enabled' => allRules.where((r) => r.enabled).length,
-                    'disabled' => allRules.where((r) => !r.enabled).length,
-                    _ => allRules.length,
-                  }})',
+                  label:
+                      '$label (${switch (key) {
+                        'enabled' => allRules.where((r) => r.enabled).length,
+                        'disabled' => allRules.where((r) => !r.enabled).length,
+                        _ => allRules.length,
+                      }})',
                   selected: _status == key,
                   onTap: () => setState(() => _status = key),
                 ),
@@ -234,7 +242,11 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
           data: (rules) {
             final filtered = rules.where(_matches).toList();
             if (filtered.isEmpty) {
-              final isFiltered = _status != 'all' || _type != 'all' || _query.isNotEmpty || _target.isNotEmpty;
+              final isFiltered =
+                  _status != 'all' ||
+                  _type != 'all' ||
+                  _query.isNotEmpty ||
+                  _target.isNotEmpty;
               return Padding(
                 padding: const EdgeInsets.only(top: 40, bottom: 40),
                 child: Center(
@@ -277,7 +289,11 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
             }
 
             const groups = [
-              ('SENSOR', 'Cảm biến', 'Chạy khi giá trị cảm biến khớp điều kiện'),
+              (
+                'SENSOR',
+                'Cảm biến',
+                'Chạy khi giá trị cảm biến khớp điều kiện',
+              ),
               ('EVENT', 'Sự kiện', 'Chạy khi thiết bị báo một sự kiện'),
               ('SCHEDULE', 'Lịch giờ', 'Chạy vào giờ đã hẹn'),
             ];
@@ -285,13 +301,19 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (final (type, title, hint) in groups)
-                  if (filtered.any((r) => r.triggerType.toUpperCase() == type)) ...[
+                  if (filtered.any(
+                    (r) => r.triggerType.toUpperCase() == type,
+                  )) ...[
                     _GroupHeader(
                       title: title,
                       hint: hint,
-                      count: filtered.where((r) => r.triggerType.toUpperCase() == type).length,
+                      count: filtered
+                          .where((r) => r.triggerType.toUpperCase() == type)
+                          .length,
                     ),
-                    for (final rule in filtered.where((r) => r.triggerType.toUpperCase() == type))
+                    for (final rule in filtered.where(
+                      (r) => r.triggerType.toUpperCase() == type,
+                    ))
                       Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.md),
                         child: _RuleListItem(
@@ -299,17 +321,47 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
                           onTap: () => _openDetail(context, rule),
                           onToggle: () {
                             HapticFeedback.selectionClick();
-                            ref.read(automationRulesListProvider.notifier).toggleRule(rule.id);
+                            ref
+                                .read(automationRulesListProvider.notifier)
+                                .toggleRule(rule.id);
                           },
                           menu: (ctx) => [
-                            menuItem(ctx, Icons.edit_outlined, 'Chỉnh sửa', () => _openEditor(context, rule: rule)),
-                            menuItem(ctx, Icons.history_rounded, 'Xem lịch sử',
-                                () => _openEditor(context, rule: rule, history: true)),
+                            menuItem(
+                              ctx,
+                              Icons.edit_outlined,
+                              'Chỉnh sửa',
+                              () => _openEditor(context, rule: rule),
+                            ),
+                            menuItem(
+                              ctx,
+                              Icons.history_rounded,
+                              'Xem lịch sử',
+                              () => _openEditor(
+                                context,
+                                rule: rule,
+                                history: true,
+                              ),
+                            ),
                             if (rule.triggerType.toUpperCase() == 'SCHEDULE')
-                              menuItem(ctx, Icons.alarm_rounded, 'Lịch chạy', () => _openEditor(context, rule: rule)),
-                            menuItem(ctx, Icons.copy_rounded, 'Nhân bản', () => _duplicate(context, rule)),
-                            menuItem(ctx, Icons.delete_outline_rounded, 'Xoá quy tắc', () => _delete(context, rule),
-                                danger: true),
+                              menuItem(
+                                ctx,
+                                Icons.alarm_rounded,
+                                'Lịch chạy',
+                                () => _openEditor(context, rule: rule),
+                              ),
+                            menuItem(
+                              ctx,
+                              Icons.copy_rounded,
+                              'Nhân bản',
+                              () => _duplicate(context, rule),
+                            ),
+                            menuItem(
+                              ctx,
+                              Icons.delete_outline_rounded,
+                              'Xoá quy tắc',
+                              () => _delete(context, rule),
+                              danger: true,
+                            ),
                           ],
                         ),
                       ),
@@ -323,7 +375,8 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
             padding: const EdgeInsets.only(top: 30),
             child: ErrorView(
               message: 'Không tải được quy tắc. Kiểm tra kết nối rồi thử lại.',
-              onRetry: () => ref.read(automationRulesListProvider.notifier).refresh(),
+              onRetry: () =>
+                  ref.read(automationRulesListProvider.notifier).refresh(),
             ),
           ),
         ),
@@ -333,7 +386,9 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
 
   Widget _targetFilter(BuildContext context, List<AutomationRule> rules) {
     final c = StudioColors.of(context);
-    final groups = ref.watch(automationGroupsProvider).valueOrNull ?? const <DeviceGroup>[];
+    final groups =
+        ref.watch(automationGroupsProvider).valueOrNull ??
+        const <DeviceGroup>[];
     // Thiết bị lấy từ chính các quy tắc: chỉ những thiết bị có quy tắc dùng tới.
     final devices = <String, String>{
       for (final r in rules) ...{
@@ -345,8 +400,10 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
     };
     final items = <DropdownMenuItem<String>>[
       const DropdownMenuItem(value: '', child: Text('Mọi thiết bị và nhóm')),
-      for (final g in groups) DropdownMenuItem(value: 'g:${g.id}', child: Text('Nhóm · ${g.name}')),
-      for (final e in devices.entries) DropdownMenuItem(value: 'd:${e.key}', child: Text(e.value)),
+      for (final g in groups)
+        DropdownMenuItem(value: 'g:${g.id}', child: Text('Nhóm · ${g.name}')),
+      for (final e in devices.entries)
+        DropdownMenuItem(value: 'd:${e.key}', child: Text(e.value)),
     ];
     return DropdownButtonFormField<String>(
       // Thiết bị / nhóm đã bị xoá: quay về "tất cả".
@@ -372,7 +429,12 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
     if (_status == 'enabled' && !r.enabled) return false;
     if (_status == 'disabled' && r.enabled) return false;
     if (_type != 'all' && r.triggerType.toUpperCase() != _type) return false;
-    if (_target.isNotEmpty && !ruleTouches(r, _target, ref.read(automationGroupsProvider).valueOrNull ?? const [])) {
+    if (_target.isNotEmpty &&
+        !ruleTouches(
+          r,
+          _target,
+          ref.read(automationGroupsProvider).valueOrNull ?? const [],
+        )) {
       return false;
     }
     if (_query.isEmpty) return true;
@@ -380,33 +442,46 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
       r.name,
       r.description ?? '',
       for (final c in r.conditions) ...[c.deviceName ?? '', c.groupName ?? ''],
-      for (final a in r.actions) ...[a.deviceName ?? '', a.sceneName ?? '', a.groupName ?? ''],
+      for (final a in r.actions) ...[
+        a.deviceName ?? '',
+        a.sceneName ?? '',
+        a.groupName ?? '',
+      ],
     ].join(' ').toLowerCase();
     return hay.contains(_query);
   }
 
-  Future<void> _openEditor(BuildContext context, {AutomationRule? rule, bool history = false}) async {
+  Future<void> _openEditor(
+    BuildContext context, {
+    AutomationRule? rule,
+    bool history = false,
+  }) async {
     await Navigator.of(context, rootNavigator: true).push<bool>(
       MaterialPageRoute(
-        builder: (_) => AutomationRuleEditorScreen(rule: rule, openHistory: history),
+        builder: (_) =>
+            AutomationRuleEditorScreen(rule: rule, openHistory: history),
       ),
     );
-    if (mounted) unawaited(ref.read(automationRulesListProvider.notifier).refresh());
+    if (mounted)
+      unawaited(ref.read(automationRulesListProvider.notifier).refresh());
   }
 
   Future<void> _openDetail(BuildContext context, AutomationRule rule) async {
     await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(builder: (_) => AutomationRuleDetailScreen(rule: rule)),
     );
-    if (mounted) unawaited(ref.read(automationRulesListProvider.notifier).refresh());
+    if (mounted)
+      unawaited(ref.read(automationRulesListProvider.notifier).refresh());
   }
 
   Future<void> _duplicate(BuildContext context, AutomationRule rule) async {
     try {
       await ref.read(automationRulesListProvider.notifier).duplicateRule(rule);
-      if (context.mounted) showStudioSnack(context, 'Đã tạo bản sao (đang tắt)');
+      if (context.mounted)
+        showStudioSnack(context, 'Đã tạo bản sao (đang tắt)');
     } catch (_) {
-      if (context.mounted) showStudioSnack(context, 'Không nhân bản được quy tắc', success: false);
+      if (context.mounted)
+        showStudioSnack(context, 'Không nhân bản được quy tắc', success: false);
     }
   }
 
@@ -417,16 +492,22 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
         title: const Text('Xoá quy tắc?'),
         content: Text('"${rule.name}" sẽ ngừng chạy và bị xoá vĩnh viễn.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Huỷ'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: StudioColors.of(ctx).danger),
+            style: TextButton.styleFrom(
+              foregroundColor: StudioColors.of(ctx).danger,
+            ),
             child: const Text('Xoá'),
           ),
         ],
       ),
     );
-    if (ok == true) await ref.read(automationRulesListProvider.notifier).deleteRule(rule.id);
+    if (ok == true)
+      await ref.read(automationRulesListProvider.notifier).deleteRule(rule.id);
   }
 
   @override
@@ -502,7 +583,11 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
 }
 
 class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({required this.title, required this.hint, required this.count});
+  const _GroupHeader({
+    required this.title,
+    required this.hint,
+    required this.count,
+  });
 
   final String title;
   final String hint;
@@ -516,7 +601,14 @@ class _GroupHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$title ($count)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: c.text)),
+          Text(
+            '$title ($count)',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: c.text,
+            ),
+          ),
           Text(hint, style: TextStyle(fontSize: 12.5, color: c.faint)),
         ],
       ),
@@ -548,22 +640,33 @@ class _RuleListItem extends StatelessWidget {
     if (type == 'SCHEDULE') return scheduleSentence(rule.schedules);
     if (type == 'EVENT') {
       final c = rule.conditions.firstOrNull;
-      final ev = eventFriendlyNames['${c?.expectedValue}'] ?? 'thiết bị báo có sự kiện';
-      return capitalize('$ev${c?.deviceName != null ? ' từ ${c!.deviceName}' : ''}');
+      final ev =
+          eventFriendlyNames['${c?.expectedValue}'] ??
+          'thiết bị báo có sự kiện';
+      return capitalize(
+        '$ev${c?.deviceName != null ? ' từ ${c!.deviceName}' : ''}',
+      );
     }
     if (rule.conditions.isEmpty) return 'Chưa có điều kiện';
-    final ops = rule.conditions.skip(1).map((c) => c.logicalOperator.toUpperCase());
+    final ops = rule.conditions
+        .skip(1)
+        .map((c) => c.logicalOperator.toUpperCase());
     final join = ops.contains('OR') ? ' hoặc ' : ' và ';
-    final hold = rule.holdSeconds > 0 ? ', liên tục ${formatDuration(rule.holdSeconds)}' : '';
+    final hold = rule.holdSeconds > 0
+        ? ', liên tục ${formatDuration(rule.holdSeconds)}'
+        : '';
     // Shown after a "Khi" label, so no "Khi" here.
-    return capitalize('${rule.conditions.map((c) => conditionSentence(c, null)).join(join)}$hold');
+    return capitalize(
+      '${rule.conditions.map((c) => conditionSentence(c, null)).join(join)}$hold',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final c = StudioColors.of(context);
     final on = rule.enabled;
-    final actions = [...rule.actions]..sort((a, b) => a.order.compareTo(b.order));
+    final actions = [...rule.actions]
+      ..sort((a, b) => a.order.compareTo(b.order));
     final noActions = actions.isEmpty;
     final condCount = rule.conditions.length;
 
@@ -583,7 +686,11 @@ class _RuleListItem extends StatelessWidget {
                   children: [
                     Text(
                       rule.name,
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: on ? c.text : c.muted),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: on ? c.text : c.muted,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -592,7 +699,8 @@ class _RuleListItem extends StatelessWidget {
                       // Trigger type is already shown by the icon and the group header.
                       [
                         on ? 'Đang bật' : 'Đang tắt',
-                        if (rule.triggerType.toUpperCase() == 'SENSOR') '$condCount điều kiện',
+                        if (rule.triggerType.toUpperCase() == 'SENSOR')
+                          '$condCount điều kiện',
                       ].join(' · '),
                       style: TextStyle(fontSize: 12.5, color: c.muted),
                       maxLines: 1,
@@ -604,7 +712,10 @@ class _RuleListItem extends StatelessWidget {
               const SizedBox(width: 8),
               Tooltip(
                 message: noActions ? 'Thêm hành động trước khi bật' : '',
-                child: GlassToggle(value: on, onChanged: noActions && !on ? null : (_) => onToggle()),
+                child: GlassToggle(
+                  value: on,
+                  onChanged: noActions && !on ? null : (_) => onToggle(),
+                ),
               ),
               PopupMenuButton<VoidCallback>(
                 tooltip: 'Tuỳ chọn',
@@ -619,10 +730,17 @@ class _RuleListItem extends StatelessWidget {
             width: double.infinity,
             margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: c.soft, borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(
+              color: c.soft,
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Column(
               children: [
-                _FlowLine(icon: triggerIcon(rule.triggerType), label: 'Khi', text: _when),
+                _FlowLine(
+                  icon: triggerIcon(rule.triggerType),
+                  label: 'Khi',
+                  text: _when,
+                ),
                 const SizedBox(height: 8),
                 _FlowLine(
                   icon: Icons.arrow_forward_rounded,
@@ -630,8 +748,10 @@ class _RuleListItem extends StatelessWidget {
                   text: noActions
                       ? 'Chưa có hành động'
                       : [
-                          for (final a in actions.take(3)) actionSentence(a, null, null),
-                          if (actions.length > 3) '+${actions.length - 3} hành động khác',
+                          for (final a in actions.take(3))
+                            actionSentence(a, null, null),
+                          if (actions.length > 3)
+                            '+${actions.length - 3} hành động khác',
                         ].join('\n'),
                 ),
               ],
@@ -639,7 +759,11 @@ class _RuleListItem extends StatelessWidget {
           ),
           if (noActions) ...[
             const SizedBox(height: 10),
-            StudioTag(label: 'Thiếu hành động', color: c.warn, icon: Icons.warning_amber_rounded),
+            StudioTag(
+              label: 'Thiếu hành động',
+              color: c.warn,
+              icon: Icons.warning_amber_rounded,
+            ),
           ],
         ],
       ),
@@ -648,7 +772,11 @@ class _RuleListItem extends StatelessWidget {
 }
 
 class _FlowLine extends StatelessWidget {
-  const _FlowLine({required this.icon, required this.label, required this.text});
+  const _FlowLine({
+    required this.icon,
+    required this.label,
+    required this.text,
+  });
 
   final IconData icon;
   final String label;
@@ -691,9 +819,17 @@ bool ruleTouches(AutomationRule rule, String target, List<DeviceGroup> groups) {
     for (final a in rule.actions) (a.deviceId, a.groupId),
   ];
   if (target.startsWith('g:')) {
-    final members = groups.where((g) => g.id == id).firstOrNull?.deviceIds ?? const [];
-    return refs.any((r) => r.$2 == id || (r.$1 != null && members.contains(r.$1)));
+    final members =
+        groups.where((g) => g.id == id).firstOrNull?.deviceIds ?? const [];
+    return refs.any(
+      (r) => r.$2 == id || (r.$1 != null && members.contains(r.$1)),
+    );
   }
-  final groupsOfDevice = {for (final g in groups) if (g.deviceIds.contains(id)) g.id};
-  return refs.any((r) => r.$1 == id || (r.$2 != null && groupsOfDevice.contains(r.$2)));
+  final groupsOfDevice = {
+    for (final g in groups)
+      if (g.deviceIds.contains(id)) g.id,
+  };
+  return refs.any(
+    (r) => r.$1 == id || (r.$2 != null && groupsOfDevice.contains(r.$2)),
+  );
 }
