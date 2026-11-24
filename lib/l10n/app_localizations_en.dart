@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'Syna';
+  String get appName => 'Hesta';
 
   @override
   String get welcomeBack => 'Welcome Back';
@@ -71,6 +71,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String goodAfternoon(String name) {
+    return 'Good Afternoon, $name';
+  }
+
+  @override
+  String goodEvening(String name) {
+    return 'Good Evening, $name';
+  }
+
+  @override
   String get everythingSecure => 'Everything is secure';
 
   @override
@@ -118,7 +128,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteAccount => 'Delete account';
 
   @override
-  String get onboardingTitle => 'Syna connects your edge-first smart home';
+  String get onboardingTitle => 'Hesta connects your edge-first smart home';
 
   @override
   String get onboardingSubtitle =>
@@ -421,13 +431,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get carbonFootprint => 'Carbon Footprint';
 
   @override
-  String get assistantTitle => 'Syna AI';
+  String get assistantTitle => 'Hesta AI';
 
   @override
   String get assistantOnline => 'Online • Ready';
 
   @override
-  String get askAnything => 'Ask Syna anything...';
+  String get askAnything => 'Ask Hesta anything...';
 
   @override
   String get suggestionEveningScene => 'Set evening scene';
@@ -539,7 +549,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboarding2Subtitle =>
-      'Syna learns your routines to perfectly adjust lighting, climate, and sound automatically.';
+      'Hesta learns your routines to perfectly adjust lighting, climate, and sound automatically.';
 
   @override
   String get onboarding3Title => 'Total Security.';
@@ -559,19 +569,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get termsFooter =>
-      'By continuing, you agree to Syna\'s Terms & Privacy.';
+      'By continuing, you agree to Hesta\'s Terms & Privacy.';
 
   @override
   String get orContinueWith => 'Or continue with';
 
   @override
-  String get signInWithFaceId => 'Sign in with FaceID';
+  String get signInWithGoogle => 'Sign in with Google';
 
   @override
-  String get newToApp => 'New to Syna?';
+  String get newToApp => 'New to Hesta?';
 
   @override
-  String get joinApp => 'Join Syna';
+  String get joinApp => 'Join Hesta';
 
   @override
   String get registerSubtitle =>
@@ -592,7 +602,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assistantGreeting =>
-      'Hello! I\'m Syna AI. I can control your devices or schedule automations — e.g. \"turn off all living room devices\" or \"turn on the lights at 6pm\".';
+      'Hello! I\'m Hesta AI. I can control your devices or schedule automations — e.g. \"turn off all living room devices\" or \"turn on the lights at 6pm\".';
 
   @override
   String get assistantError =>
