@@ -98,6 +98,16 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AuthSession> loginWithGoogle({required String idToken}) async {
+    final data = await _post('/api/v1/auth/google', {
+      'idToken': idToken,
+      'deviceId': 'FLUTTER_MOBILE',
+      'deviceType': 'APP',
+    });
+    return _saveSession(AuthResponseDto.fromJson(data));
+  }
+
+  @override
   Future<AuthSession> register({
     required String name,
     required String email,

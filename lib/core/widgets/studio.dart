@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Bộ màu riêng cho Scene / Automation / Recommendation: trắng + xanh dương,
 /// một màu nhấn duy nhất; xanh lá/đỏ chỉ dùng cho trạng thái.
@@ -89,18 +90,28 @@ class StudioBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = StudioColors.of(context);
-    final theme = Theme.of(context);
     return Theme(
-      data: theme.copyWith(
-        colorScheme: theme.colorScheme.copyWith(
-          primary: c.accent,
-          onSurface: c.text,
-        ),
-        dividerColor: c.border,
-      ),
+      data: studioTheme(context),
       child: ColoredBox(color: c.bg, child: child),
     );
   }
+}
+
+/// Theme của 3 tính năng. Bottom sheet / dialog mở ra route mới nằm ngoài
+/// [StudioBackground], nên bọc lại bằng `Theme(data: studioTheme(context))`.
+ThemeData studioTheme(BuildContext context) {
+  final c = StudioColors.of(context);
+  final theme = Theme.of(context);
+  final dark = theme.brightness == Brightness.dark;
+  return theme.copyWith(
+    colorScheme: theme.colorScheme.copyWith(primary: c.accent, onSurface: c.text),
+    dividerColor: c.border,
+    // App bar trong suốt trên nền sáng: icon thanh trạng thái phải tối.
+    appBarTheme: theme.appBarTheme.copyWith(
+      systemOverlayStyle: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+    ),
+    dialogTheme: theme.dialogTheme.copyWith(backgroundColor: c.card),
+  );
 }
 
 /// Thẻ phẳng: nền đặc, viền mảnh, bóng rất nhẹ (không glow).
@@ -290,8 +301,8 @@ String describeAction(
     'SET_STATE': 'Cài đặt nâng cao',
     'LOCK': 'Khoá',
     'UNLOCK': 'Mở khoá',
-    'RUN_SCENE': 'Chạy ngữ cảnh',
-    'EXECUTE_SCENE': 'Chạy ngữ cảnh',
+    'RUN_SCENE': 'Chạy kịch bản',
+    'EXECUTE_SCENE': 'Chạy kịch bản',
     'NOTIFY': 'Gửi thông báo',
     'SEND_NOTIFICATION': 'Gửi thông báo',
   };
@@ -378,6 +389,7 @@ String _valueKeyFor(String action) => switch (action) {
   'SET_BRIGHTNESS' => 'brightness',
   'SET_TEMPERATURE' => 'temperature',
   'SET_FAN' => 'fan',
+  'SET_SPEED' => 'speed',
   'SET_MODE' => 'mode',
   _ => '',
 };
