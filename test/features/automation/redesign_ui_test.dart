@@ -58,7 +58,7 @@ void main() {
 
     test('returns default atmosphere for unknown icon', () {
       final atm = SceneIcons.getAtmosphere('non_existent');
-      expect(atm.vietnameseLabel, 'Ngữ cảnh');
+      expect(atm.vietnameseLabel, 'Kịch bản');
     });
   });
 
