@@ -64,7 +64,7 @@ class MockNotificationRepository implements NotificationRepository {
       ),
       AppNotification(
         id: 'mock-2',
-        title: 'Chào mừng đến Syna Home',
+        title: 'Chào mừng đến Hesta Home',
         body: 'Tài khoản demo của bạn đã sẵn sàng.',
         type: 'SYSTEM',
         read: true,
