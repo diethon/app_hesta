@@ -18,7 +18,11 @@ String formatNextRun(DateTime at, {DateTime? now}) {
   final today = now ?? DateTime.now();
   String two(int v) => v.toString().padLeft(2, '0');
   final hm = '${two(t.hour)}:${two(t.minute)}';
-  final days = DateTime(t.year, t.month, t.day).difference(DateTime(today.year, today.month, today.day)).inDays;
+  final days = DateTime(
+    t.year,
+    t.month,
+    t.day,
+  ).difference(DateTime(today.year, today.month, today.day)).inDays;
   if (days == 0) return 'hôm nay $hm';
   if (days == 1) return 'ngày mai $hm';
   const wd = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];

@@ -104,11 +104,16 @@ ThemeData studioTheme(BuildContext context) {
   final theme = Theme.of(context);
   final dark = theme.brightness == Brightness.dark;
   return theme.copyWith(
-    colorScheme: theme.colorScheme.copyWith(primary: c.accent, onSurface: c.text),
+    colorScheme: theme.colorScheme.copyWith(
+      primary: c.accent,
+      onSurface: c.text,
+    ),
     dividerColor: c.border,
     // App bar trong suốt trên nền sáng: icon thanh trạng thái phải tối.
     appBarTheme: theme.appBarTheme.copyWith(
-      systemOverlayStyle: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      systemOverlayStyle: dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
     ),
     dialogTheme: theme.dialogTheme.copyWith(backgroundColor: c.card),
   );
@@ -404,14 +409,16 @@ String _describeParam(String key, dynamic value) {
   if (const {'r', 'g', 'b', 'hex', 'state'}.contains(k)) return '';
   if (k.contains('bright') || k == 'level') return 'Độ sáng $v%';
   if (k.contains('temp')) return 'Nhiệt độ $v°C';
-  if (k.contains('fan') || k.contains('speed')) return v is num ? 'Tốc độ $v%' : 'Tốc độ ${_fanName('$v')}';
+  if (k.contains('fan') || k.contains('speed'))
+    return v is num ? 'Tốc độ $v%' : 'Tốc độ ${_fanName('$v')}';
   if (k.contains('position') || k.contains('percent')) return 'Mức $v%';
   if (k == 'mode') return 'Chế độ ${_modeName('$v')}';
   if (k.contains('color') || k == 'rgb') {
     return 'Màu ${_colorNames['$v'.toLowerCase()] ?? 'tuỳ chọn'}';
   }
   if (k == 'message' || k == 'title') return '“$v”';
-  if (k.endsWith('id') || k.endsWith('ids')) return ''; // id nội bộ, không cho người dùng xem
+  if (k.endsWith('id') || k.endsWith('ids'))
+    return ''; // id nội bộ, không cho người dùng xem
   return k.isEmpty ? '$v' : '$key $v';
 }
 
@@ -434,7 +441,8 @@ String describeWhen(DateTime? t) {
       '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   if (diff.inMinutes < 1) return 'Vừa xong';
   if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-  if (diff.inHours < 24 && local.day == DateTime.now().day) return 'Hôm nay ${hm()}';
+  if (diff.inHours < 24 && local.day == DateTime.now().day)
+    return 'Hôm nay ${hm()}';
   if (diff.inDays < 2) return 'Hôm qua ${hm()}';
   return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')} ${hm()}';
 }
@@ -456,14 +464,22 @@ String describeCondition(
     _ => 'là',
   };
   final negate = operator.toUpperCase() == 'NE';
-  final prefix = deviceName == null || deviceName.isEmpty ? '' : '$deviceName: ';
+  final prefix = deviceName == null || deviceName.isEmpty
+      ? ''
+      : '$deviceName: ';
 
   if (value is bool || value == 'true' || value == 'false') {
     final yes = (value == true || value == 'true') != negate;
     final text = switch (a) {
-      _ when a.contains('motion') || a.contains('presence') || a.contains('occup') =>
+      _
+          when a.contains('motion') ||
+              a.contains('presence') ||
+              a.contains('occup') =>
         yes ? 'Có người/chuyển động' : 'Không có chuyển động',
-      _ when a.contains('door') || a.contains('open') || a.contains('contact') =>
+      _
+          when a.contains('door') ||
+              a.contains('open') ||
+              a.contains('contact') =>
         yes ? 'Đang mở' : 'Đang đóng',
       _ when a.contains('smoke') || a.contains('gas') || a.contains('leak') =>
         yes ? 'Phát hiện bất thường' : 'Bình thường',
@@ -476,7 +492,10 @@ String describeCondition(
     _ when a.contains('temp') => ('Nhiệt độ', '°C'),
     _ when a.contains('humid') => ('Độ ẩm', '%'),
     _ when a.contains('bright') => ('Độ sáng', '%'),
-    _ when a.contains('lux') || a.contains('illum') || a.contains('light') => ('Ánh sáng', ' lux'),
+    _ when a.contains('lux') || a.contains('illum') || a.contains('light') => (
+      'Ánh sáng',
+      ' lux',
+    ),
     _ when a.contains('co2') => ('CO₂', ' ppm'),
     _ when a.contains('pm') => ('Bụi mịn', ' µg/m³'),
     _ when a.contains('power') || a.contains('watt') => ('Công suất', ' W'),

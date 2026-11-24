@@ -77,7 +77,13 @@ class AutomationRulesListNotifier extends AsyncNotifier<List<AutomationRule>> {
     final repo = ref.read(automationRepositoryProvider);
     final schedules = rule.triggerType == 'SCHEDULE'
         ? (await repo.getSchedules(homeId, rule.id))
-              .map((s) => RuleSchedule(time: s.time, repeatDays: s.repeatDays, active: s.active).toJson())
+              .map(
+                (s) => RuleSchedule(
+                  time: s.time,
+                  repeatDays: s.repeatDays,
+                  active: s.active,
+                ).toJson(),
+              )
               .toList()
         : null;
     final name = '${rule.name} (bản sao)';
@@ -223,7 +229,9 @@ final automationRuleExecutionsProvider = FutureProvider.family
     });
 
 /// Nhóm thiết bị thật của nhà (không lấy nhóm demo) cho trình soạn và bộ lọc quy tắc.
-final automationGroupsProvider = FutureProvider.autoDispose<List<DeviceGroup>>((ref) async {
+final automationGroupsProvider = FutureProvider.autoDispose<List<DeviceGroup>>((
+  ref,
+) async {
   final homeId = ref.watch(currentHomeIdProvider);
   if (homeId == null || kUseMockData) return const [];
   return ref.watch(deviceGroupRepositoryProvider).getGroups(homeId);
