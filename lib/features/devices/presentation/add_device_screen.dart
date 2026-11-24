@@ -693,7 +693,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
-                'Đang tìm kiếm thiết bị SYNA...',
+                'Đang tìm kiếm thiết bị HESTA...',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -778,7 +778,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   const CircularProgressIndicator(),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    'Đang quét Bluetooth tìm thiết bị SYNA...',
+                    'Đang quét Bluetooth tìm thiết bị HESTA...',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
