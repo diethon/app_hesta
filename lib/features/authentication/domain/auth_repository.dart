@@ -5,6 +5,9 @@ abstract interface class AuthRepository {
 
   Future<AuthSession> login({required String email, required String password});
 
+  /// Đổi Google ID token lấy phiên HESTA (backend verify token).
+  Future<AuthSession> loginWithGoogle({required String idToken});
+
   Future<AuthSession> register({
     required String name,
     required String email,

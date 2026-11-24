@@ -49,6 +49,20 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AuthSession> loginWithGoogle({required String idToken}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    return _save(
+      AuthSession(
+        userId: 'user-001',
+        email: 'alex@gmail.com',
+        name: 'Alex',
+        accessToken: 'mock-access-${DateTime.now().millisecondsSinceEpoch}',
+        refreshToken: 'mock-refresh-${DateTime.now().millisecondsSinceEpoch}',
+      ),
+    );
+  }
+
+  @override
   Future<AuthSession> register({
     required String name,
     required String email,
