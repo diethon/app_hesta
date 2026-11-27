@@ -28,6 +28,7 @@ class ScenesScreen extends ConsumerStatefulWidget {
 
 class _ScenesScreenState extends ConsumerState<ScenesScreen> {
   String _selectedFilter = 'all'; // all, enabled, disabled
+  String _query = '';
   String? _executingSceneId;
 
   Future<void> _executeScene(Scene scene) async {
@@ -102,6 +103,27 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
           const SizedBox(height: 20),
         ],
 
+        // Tìm kiếm (giống web): theo tên, mô tả hoặc thiết bị trong kịch bản.
+        TextField(
+          decoration: InputDecoration(
+            isDense: true,
+            prefixIcon: const Icon(Icons.search_rounded),
+            hintText: 'Tìm kịch bản',
+            filled: true,
+            fillColor: c.card,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: c.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: c.border),
+            ),
+          ),
+          onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+
         // Filter Chips
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -114,13 +136,13 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
               ),
               const SizedBox(width: AppSpacing.sm),
               GlassFilterChip(
-                label: 'Đang bật ($enabledCount)',
+                label: 'Đang dùng ($enabledCount)',
                 selected: _selectedFilter == 'enabled',
                 onTap: () => setState(() => _selectedFilter = 'enabled'),
               ),
               const SizedBox(width: AppSpacing.sm),
               GlassFilterChip(
-                label: 'Đã tắt ($disabledCount)',
+                label: 'Tạm dừng ($disabledCount)',
                 selected: _selectedFilter == 'disabled',
                 onTap: () => setState(() => _selectedFilter = 'disabled'),
               ),
@@ -132,14 +154,24 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
         // Scenes List
         scenesAsync.when(
           data: (scenes) {
-            final filtered = scenes.where((s) {
-              if (_selectedFilter == 'enabled') return s.enabled;
-              if (_selectedFilter == 'disabled') return !s.enabled;
-              return true;
+            final matched = scenes.where((s) {
+              if (_selectedFilter == 'enabled' && !s.enabled) return false;
+              if (_selectedFilter == 'disabled' && s.enabled) return false;
+              if (_query.isEmpty) return true;
+              return [
+                s.name,
+                s.description ?? '',
+                ...s.actions.map((a) => a.targetDeviceName),
+              ].any((t) => t.toLowerCase().contains(_query));
             }).toList();
+            // Enabled first; split instead of sort to keep the server order within each group.
+            final filtered = [
+              ...matched.where((s) => s.enabled),
+              ...matched.where((s) => !s.enabled),
+            ];
 
             if (filtered.isEmpty) {
-              final isFiltered = _selectedFilter != 'all';
+              final isFiltered = _selectedFilter != 'all' || _query.isNotEmpty;
               return Padding(
                 padding: const EdgeInsets.only(top: 36, bottom: 44),
                 child: Center(
@@ -147,10 +179,12 @@ class _ScenesScreenState extends ConsumerState<ScenesScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       EmptyView(
-                        message: isFiltered
+                        message: _query.isNotEmpty
+                            ? 'Không tìm thấy kịch bản phù hợp.'
+                            : isFiltered
                             ? (_selectedFilter == 'enabled'
-                                  ? 'Không có kịch bản nào đang bật.'
-                                  : 'Không có kịch bản nào đang tắt.')
+                                  ? 'Không có kịch bản nào đang dùng.'
+                                  : 'Không có kịch bản nào đang tạm dừng.')
                             : 'Chưa có kịch bản nào.\nTạo một kịch bản để điều khiển nhiều thiết bị chỉ với một chạm.',
                         icon: Icons.layers_outlined,
                       ),
@@ -428,14 +462,14 @@ class _SceneListItem extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: on ? c.text : c.muted,
+                        color: c.text,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$devices thiết bị · ${on ? 'Đang bật' : 'Đã tắt'}',
+                      '$devices thiết bị · ${on ? 'Đang dùng' : 'Tạm dừng'}',
                       style: TextStyle(fontSize: 12.5, color: c.muted),
                     ),
                     if (scene.pendingRunAt != null)
@@ -451,7 +485,7 @@ class _SceneListItem extends StatelessWidget {
                 ),
               ),
               Semantics(
-                label: on ? 'Tắt kịch bản' : 'Bật kịch bản',
+                label: on ? 'Tạm dừng kịch bản' : 'Dùng lại kịch bản',
                 child: GlassToggle(value: on, onChanged: (_) => onToggle()),
               ),
             ],
@@ -489,30 +523,33 @@ class _SceneListItem extends StatelessWidget {
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              // The backend refuses to run a switched-off scene, so do not offer it.
-              onPressed: isExecuting || !on || devices == 0 ? null : onExecute,
-              icon: isExecuting
-                  ? SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: c.accent,
-                      ),
-                    )
-                  : const Icon(Icons.play_arrow_rounded, size: 18),
-              label: Text(isExecuting ? 'Đang chạy…' : 'Chạy'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: c.accent,
-                side: BorderSide(
-                  color: on ? c.accent.withValues(alpha: 0.4) : c.border,
-                ),
-                shape: const StadiumBorder(),
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-              ),
-            ),
+            // The backend refuses to run a paused scene, so say how to use it instead of a dead button.
+            child: !on
+                ? Text(
+                    'Bật công tắc để dùng lại',
+                    style: TextStyle(fontSize: 12.5, color: c.muted),
+                  )
+                : OutlinedButton.icon(
+                    onPressed: isExecuting || devices == 0 ? null : onExecute,
+                    icon: isExecuting
+                        ? SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: c.accent,
+                            ),
+                          )
+                        : const Icon(Icons.play_arrow_rounded, size: 18),
+                    label: Text(isExecuting ? 'Đang chạy…' : 'Chạy'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: c.accent,
+                      side: BorderSide(color: c.accent.withValues(alpha: 0.4)),
+                      shape: const StadiumBorder(),
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                  ),
           ),
         ],
       ),

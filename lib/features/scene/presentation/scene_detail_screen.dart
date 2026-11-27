@@ -159,6 +159,23 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                         ),
                       ),
                       GlassIconButton(
+                        icon: Icons.copy_rounded,
+                        tooltip: 'Nhân bản',
+                        onTap: () async {
+                          final copy = await ref
+                              .read(scenesListProvider.notifier)
+                              .duplicateScene(_scene);
+                          if (!context.mounted) return;
+                          showStudioSnack(
+                            context,
+                            copy == null
+                                ? 'Không thể nhân bản kịch bản'
+                                : 'Đã nhân bản kịch bản "${copy.name}"',
+                            success: copy != null,
+                          );
+                        },
+                      ),
+                      GlassIconButton(
                         icon: Icons.edit_outlined,
                         tooltip: 'Chỉnh sửa',
                         onTap: () async {
@@ -211,7 +228,7 @@ class _SceneDetailScreenState extends ConsumerState<SceneDetailScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${_scene.actions.length} thiết bị · ${_scene.enabled ? 'Đang bật' : 'Đã tắt'}',
+                              '${_scene.actions.length} thiết bị · ${_scene.enabled ? 'Đang dùng' : 'Tạm dừng'}',
                               style: TextStyle(fontSize: 13, color: c.muted),
                             ),
                             if (desc != null && desc.isNotEmpty) ...[

@@ -106,7 +106,9 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
     if (homeId == null) return 'Vui lòng chọn ngôi nhà trước';
 
     final scene = state.valueOrNull?.where((s) => s.id == sceneId).firstOrNull;
-    if (scene != null && !scene.enabled) return 'Bật kịch bản để chạy';
+    if (scene != null && !scene.enabled) {
+      return 'Kịch bản đang tạm dừng, hãy bật lại để chạy';
+    }
     if (scene != null && scene.actions.isEmpty) {
       return 'Kịch bản chưa có hành động nào để thực thi';
     }
@@ -152,6 +154,29 @@ class ScenesListNotifier extends AsyncNotifier<List<Scene>> {
         // Revert on error
         state = AsyncValue.data(current);
       }
+    }
+  }
+
+  /// Copies a scene like the web "Nhân bản": same icon, description, state and actions.
+  /// Returns the new scene, or null on failure.
+  Future<Scene?> duplicateScene(Scene scene) async {
+    final homeId = ref.read(currentHomeIdProvider);
+    if (homeId == null) return null;
+    try {
+      final created = await ref
+          .read(sceneRepositoryProvider)
+          .createScene(
+            homeId,
+            name: '${scene.name} (bản sao)',
+            icon: scene.icon,
+            description: scene.description,
+            enabled: scene.enabled,
+            actions: scene.actions,
+          );
+      state = AsyncValue.data([...?state.valueOrNull, created]);
+      return created;
+    } catch (_) {
+      return null;
     }
   }
 
