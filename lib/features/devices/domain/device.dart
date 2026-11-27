@@ -48,6 +48,7 @@ class Device {
     this.uptimePercent,
     this.chatteringWarning,
     this.safetyTripped,
+    this.capabilities,
   });
 
   final String id;
@@ -76,6 +77,9 @@ class Device {
   final int? timerHour;
   final bool? timerHalfHour;
   final String? rawType;
+
+  /// Lệnh backend khai báo cho thiết bị, theo nhóm (POWER: [TURN_ON, …]); null nếu backend không gửi.
+  final Map<String, List<String>>? capabilities;
 
   // Thuộc tính Cổng / Cửa cuốn (Gate / Rolling Door)
   final String? gateState;
@@ -222,6 +226,7 @@ class Device {
       uptimePercent: uptimePercent ?? this.uptimePercent,
       chatteringWarning: chatteringWarning ?? this.chatteringWarning,
       safetyTripped: safetyTripped ?? this.safetyTripped,
+      capabilities: capabilities,
     );
   }
 }

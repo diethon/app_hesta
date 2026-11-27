@@ -33,6 +33,7 @@ class DeviceDto {
     this.uptimePercent,
     this.chatteringWarning,
     this.safetyTripped,
+    this.capabilities,
   });
 
   factory DeviceDto.fromJson(Map<String, dynamic> json) {
@@ -149,6 +150,16 @@ class DeviceDto {
     final uptimePercent = (json['uptimePercent'] as num?)?.toDouble();
     final chatteringWarning = json['chatteringWarning'] == true;
     final safetyTripped = json['safetyTripped'] == true;
+    final rawCaps = json['capabilities'];
+    final capabilities = rawCaps is Map
+        ? {
+            for (final e in rawCaps.entries)
+              if (e.value is List)
+                e.key.toString(): [
+                  for (final a in e.value as List) a.toString(),
+                ],
+          }
+        : null;
 
     return DeviceDto(
       id: id,
@@ -181,6 +192,7 @@ class DeviceDto {
       uptimePercent: uptimePercent,
       chatteringWarning: chatteringWarning,
       safetyTripped: safetyTripped,
+      capabilities: capabilities,
     );
   }
 
@@ -215,6 +227,7 @@ class DeviceDto {
   final double? uptimePercent;
   final bool? chatteringWarning;
   final bool? safetyTripped;
+  final Map<String, List<String>>? capabilities;
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -247,6 +260,7 @@ class DeviceDto {
     'uptimePercent': uptimePercent,
     'chatteringWarning': chatteringWarning,
     'safetyTripped': safetyTripped,
+    'capabilities': capabilities,
   };
 
   Device toDomain() {
@@ -282,6 +296,7 @@ class DeviceDto {
       uptimePercent: uptimePercent,
       chatteringWarning: chatteringWarning,
       safetyTripped: safetyTripped,
+      capabilities: capabilities,
     );
   }
 

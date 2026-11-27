@@ -19,7 +19,7 @@ class ActionOption {
 const actionOptions = <ActionOption>[
   ActionOption('TURN_ON', 'Bật nguồn', ActionValueKind.none),
   ActionOption('TURN_OFF', 'Tắt nguồn', ActionValueKind.none),
-  ActionOption('TOGGLE', 'Đảo trạng thái bật/tắt', ActionValueKind.none),
+  ActionOption('TOGGLE', 'Đổi bật ⇄ tắt', ActionValueKind.none),
   ActionOption(
     'SET_BRIGHTNESS',
     'Đặt độ sáng',
@@ -123,11 +123,43 @@ String deviceTypeCode(Device d) {
   };
 }
 
-/// Lệnh hợp lệ cho thiết bị; luôn kèm "nâng cao" như web.
+/// Lệnh hợp lệ cho thiết bị. "SET_STATE" (gõ JSON) là lệnh kỹ thuật nên không đưa ra cho người dùng.
+/// Giống getDeviceActions của web: ưu tiên capabilities backend gửi, không có thì suy theo loại thiết bị.
 List<ActionOption> deviceActions(Device d) {
-  final allowed = {...?_actionsByType[deviceTypeCode(d)], 'SET_STATE'};
+  final caps = d.capabilities ?? const <String, List<String>>{};
+  final allowed = <String>{};
+  if (caps.isEmpty) {
+    allowed.addAll(_actionsByType[deviceTypeCode(d)] ?? const []);
+  } else {
+    for (final e in caps.entries) {
+      allowed.addAll(e.value.map((a) => a.trim().toUpperCase()));
+      final group = e.key.toUpperCase();
+      if (group == 'POWER' && !allowed.any(_powerActions.contains)) {
+        allowed.addAll(_powerActions);
+      }
+      if (group == 'COLOR' || group == 'RGB') allowed.add('SET_RGB');
+      if (group == 'BRIGHTNESS') allowed.add('SET_BRIGHTNESS');
+      if (group == 'CLIMATE' || group == 'TEMPERATURE') {
+        allowed.add('SET_TEMPERATURE');
+      }
+      if (group == 'SPEED' || group == 'FAN') allowed.add('SET_SPEED');
+      if (group == 'GATE' || group == 'DOOR' || group == 'CURTAIN') {
+        allowed.addAll(const ['OPEN', 'CLOSE', 'STOP']);
+      }
+    }
+  }
+  // Đèn trắng không đổi màu được dù backend có khai báo.
+  if ((d.rawType ?? '').trim().toUpperCase() == 'LIGHT') {
+    allowed.removeAll(const ['SET_RGB', 'SET_COLOR']);
+  }
+  if (allowed.contains('SET_RGB') || allowed.contains('SET_COLOR')) {
+    allowed.addAll(const ['SET_RGB', 'SET_COLOR']);
+  }
+  if (allowed.contains('SET_FAN')) allowed.add('SET_SPEED');
   return actionOptions.where((o) => allowed.contains(o.code)).toList();
 }
+
+const _powerActions = ['TURN_ON', 'TURN_OFF', 'TOGGLE'];
 
 const _sensorTypes = [
   'SENSOR',
@@ -232,14 +264,14 @@ class SystemEvent {
 const systemEvents = <SystemEvent>[
   SystemEvent(
     'EVENT',
-    'Sự kiện thiết bị (IoT Event)',
-    'Phát sinh khi thiết bị trong nhà (công tắc, rèm, khóa, cổng) thay đổi trạng thái và gửi bản tin sự kiện',
+    'Thiết bị báo sự kiện',
+    'Khi công tắc, rèm, khóa hoặc cổng trong nhà báo có thay đổi',
     Icons.bolt_rounded,
   ),
   SystemEvent(
     'DEVICE_STATE_CHANGED',
-    'Thay đổi trạng thái thiết bị (Realtime)',
-    'Sự kiện phát sinh trên luồng realtime khi thiết bị thay đổi trạng thái hoạt động',
+    'Thiết bị đổi trạng thái',
+    'Khi một thiết bị được bật, tắt hoặc đổi chế độ',
     Icons.sensors_rounded,
   ),
 ];
