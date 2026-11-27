@@ -39,6 +39,18 @@ abstract final class SceneIcons {
     'bell': Icons.notifications_rounded,
     'exit': Icons.logout_rounded,
     'party': Icons.celebration_rounded,
+    // Keys the web icon picker saves, so web-made scenes show the same icon here.
+    'door': Icons.door_front_door_rounded,
+    'film': Icons.movie_rounded,
+    'sofa': Icons.weekend_rounded,
+    'car': Icons.directions_car_rounded,
+    'leaf': Icons.eco_rounded,
+    'plane': Icons.flight_rounded,
+    'activity': Icons.monitor_heart_rounded,
+    'thermometer': Icons.thermostat_rounded,
+    'snowflake': Icons.ac_unit_rounded,
+    'droplet': Icons.water_drop_rounded,
+    'lock': Icons.lock_rounded,
   };
 
   static final Map<String, SceneAtmosphere> _atmosphereMap = {

@@ -15,7 +15,7 @@ import '../../automation/domain/automation_models.dart' show RuleSchedule;
 import '../../automation/domain/rule_options.dart'
     show ActionOption, ActionValueKind, deviceActions, isControllableDevice;
 import '../../automation/presentation/rule_editor_parts.dart'
-    show ScheduleSection;
+    show ScheduleSection, TemplateGrid;
 import '../../devices/domain/device.dart';
 import '../../home/data/home_providers.dart';
 import '../../rooms/data/room_providers.dart';
@@ -23,6 +23,7 @@ import '../../rooms/domain/room.dart';
 import '../data/scene_providers.dart';
 import '../domain/scene.dart';
 import 'scene_icons.dart';
+import 'scene_templates.dart';
 
 class SceneEditorScreen extends ConsumerStatefulWidget {
   const SceneEditorScreen({this.scene, super.key});
@@ -41,6 +42,9 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
   late bool _enabled;
   late List<SceneAction> _actions;
   bool _isSaving = false;
+
+  // Like the web, a new scene starts from the template picker.
+  late bool _showTemplates = widget.scene == null;
 
   // Run times, edited locally and synced on save (same flow as the web scene editor).
   List<RuleSchedule> _schedules = [];
@@ -220,6 +224,18 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
     }
   }
 
+  void _applyTemplate(SceneTemplate? t) {
+    setState(() {
+      _showTemplates = false;
+      if (t == null) return;
+      final devices = ref.read(devicesControllerProvider).valueOrNull ?? [];
+      _nameController.text = t.name;
+      _descController.text = t.description;
+      _selectedIcon = t.icon;
+      _actions = buildSceneTemplateActions(t.key, devices);
+    });
+  }
+
   /// Adds a step, or edits the step at [index].
   void _showAddActionModal({int? index}) {
     // Sensors and cameras cannot run an action, same as the web picker.
@@ -334,341 +350,56 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                   AppSpacing.navClearance * 1.5,
                 ),
                 sliver: SliverToBoxAdapter(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Live Preview Card
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                  child: _showTemplates
+                      ? TemplateGrid(
+                          items: [
+                            for (final t in sceneTemplates)
+                              (
+                                icon: SceneIcons.getIcon(t.icon),
+                                name: t.name,
+                                description: t.description,
+                              ),
+                          ],
+                          onSelect: (i) => _applyTemplate(sceneTemplates[i]),
+                          onBlank: () => _applyTemplate(null),
+                        )
+                      : Form(
+                          key: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Xem trước',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: StudioColors.of(context).text,
+                              // Live Preview Card
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: AppSpacing.lg,
                                 ),
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              Builder(
-                                builder: (context) {
-                                  final atmosphere = SceneIcons.getAtmosphere(
-                                    _selectedIcon,
-                                  );
-                                  return StudioCard(
-                                    radius: AppRadius.card,
-                                    padding: const EdgeInsets.all(
-                                      AppSpacing.md,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        StudioIconTile(icon: atmosphere.icon),
-                                        const SizedBox(width: AppSpacing.md),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                _nameController.text
-                                                        .trim()
-                                                        .isEmpty
-                                                    ? 'Tên kịch bản'
-                                                    : _nameController.text
-                                                          .trim(),
-                                                style: theme
-                                                    .textTheme
-                                                    .titleMedium
-                                                    ?.copyWith(
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      letterSpacing: -0.2,
-                                                    ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                '${_actions.length} thiết bị · ${atmosphere.vietnameseLabel}',
-                                                style: theme.textTheme.bodySmall
-                                                    ?.copyWith(
-                                                      fontSize: 11.5,
-                                                      color: StudioColors.of(
-                                                        context,
-                                                      ).muted,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Basic Info Card
-                        StudioCard(
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          radius: AppRadius.card,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Thông tin chung',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              TextFormField(
-                                controller: _nameController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Tên kịch bản',
-                                  hintText:
-                                      'Ví dụ: Xem phim buổi tối, Đi ngủ...',
-                                ),
-                                validator: (v) {
-                                  if (v == null || v.trim().isEmpty) {
-                                    return 'Vui lòng nhập tên kịch bản';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              TextFormField(
-                                controller: _descController,
-                                maxLines: 2,
-                                decoration: const InputDecoration(
-                                  labelText: 'Mô tả (tùy chọn)',
-                                  hintText:
-                                      'Ví dụ: Tắt đèn, hạ rèm, bật điều hoà 26°C',
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-
-                              // Enabled Switch
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Bật kịch bản này',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: StudioColors.of(context).text,
-                                    ),
-                                  ),
-                                  GlassToggle(
-                                    value: _enabled,
-                                    onChanged: (val) =>
-                                        setState(() => _enabled = val),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Icon Selector Card
-                        StudioCard(
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          radius: AppRadius.card,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Biểu tượng kịch bản',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              SizedBox(
-                                height: 52,
-                                child: ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: _availableIcons.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(width: AppSpacing.sm),
-                                  itemBuilder: (context, i) {
-                                    final iconName = _availableIcons[i];
-                                    final isSelected =
-                                        _selectedIcon == iconName;
-                                    final atmosphere = SceneIcons.getAtmosphere(
-                                      iconName,
-                                    );
-                                    return Tooltip(
-                                      message: atmosphere.vietnameseLabel,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          HapticFeedback.selectionClick();
-                                          setState(
-                                            () => _selectedIcon = iconName,
-                                          );
-                                        },
-                                        child: AnimatedContainer(
-                                          duration: const Duration(
-                                            milliseconds: 200,
-                                          ),
-                                          width: 50,
-                                          height: 50,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: isSelected
-                                                ? StudioColors.of(
-                                                    context,
-                                                  ).accentSoft
-                                                : StudioColors.of(context).soft,
-                                            border: Border.all(
-                                              color: isSelected
-                                                  ? StudioColors.of(
-                                                      context,
-                                                    ).accent
-                                                  : Colors.transparent,
-                                              width: isSelected ? 2 : 1,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            atmosphere.icon,
-                                            color: isSelected
-                                                ? StudioColors.of(
-                                                    context,
-                                                  ).accent
-                                                : (StudioColors.of(
-                                                    context,
-                                                  ).muted),
-                                            size: 24,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Actions List Card
-                        StudioCard(
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          radius: AppRadius.card,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Hành động (${_actions.length})',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                  ),
-                                  InkWell(
-                                    onTap: _showAddActionModal,
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.sm,
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4.0),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.add_circle_outline_rounded,
-                                            size: 18,
-                                            color: accent,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'Thêm hành động',
-                                            style: TextStyle(
-                                              color: accent,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Xem trước',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: StudioColors.of(context).text,
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-
-                              if (_actions.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 20,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      'Chưa có hành động nào. Nhấn "Thêm hành động" để chọn thiết bị; các bước chạy từ trên xuống, kéo để đổi thứ tự.',
-                                      textAlign: TextAlign.center,
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                            color: StudioColors.of(
-                                              context,
-                                            ).faint,
-                                          ),
-                                    ),
-                                  ),
-                                )
-                              else
-                                ReorderableListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  buildDefaultDragHandles: false,
-                                  itemCount: _actions.length,
-                                  onReorder: (from, to) => setState(() {
-                                    if (to > from) to--;
-                                    _actions.insert(
-                                      to,
-                                      _actions.removeAt(from),
-                                    );
-                                  }),
-                                  itemBuilder: (context, index) {
-                                    final act = _actions[index];
-                                    final c = StudioColors.of(context);
-                                    return Material(
-                                      key: ObjectKey(act),
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () =>
-                                            _showAddActionModal(index: index),
-                                        borderRadius: BorderRadius.circular(
-                                          AppRadius.sm,
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 6,
+                                    const SizedBox(height: AppSpacing.sm),
+                                    Builder(
+                                      builder: (context) {
+                                        final atmosphere =
+                                            SceneIcons.getAtmosphere(
+                                              _selectedIcon,
+                                            );
+                                        return StudioCard(
+                                          radius: AppRadius.card,
+                                          padding: const EdgeInsets.all(
+                                            AppSpacing.md,
                                           ),
                                           child: Row(
                                             children: [
-                                              Container(
-                                                width: 28,
-                                                height: 28,
-                                                alignment: Alignment.center,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: c.accentSoft,
-                                                ),
-                                                child: Text(
-                                                  '${index + 1}',
-                                                  style: TextStyle(
-                                                    color: accent,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
+                                              StudioIconTile(
+                                                icon: atmosphere.icon,
                                               ),
                                               const SizedBox(
                                                 width: AppSpacing.md,
@@ -679,111 +410,447 @@ class _SceneEditorScreenState extends ConsumerState<SceneEditorScreen> {
                                                       CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
-                                                      act.targetDeviceName,
+                                                      _nameController.text
+                                                              .trim()
+                                                              .isEmpty
+                                                          ? 'Tên kịch bản'
+                                                          : _nameController.text
+                                                                .trim(),
                                                       style: theme
                                                           .textTheme
-                                                          .bodyMedium
+                                                          .titleMedium
                                                           ?.copyWith(
                                                             fontWeight:
-                                                                FontWeight.w600,
+                                                                FontWeight.w700,
+                                                            letterSpacing: -0.2,
                                                           ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
+                                                    const SizedBox(height: 2),
                                                     Text(
-                                                      describeAction(
-                                                        act.action,
-                                                        value: act.value,
-                                                      ),
+                                                      '${_actions.length} thiết bị · ${atmosphere.vietnameseLabel}',
                                                       style: theme
                                                           .textTheme
                                                           .bodySmall
                                                           ?.copyWith(
-                                                            color: c.muted,
+                                                            fontSize: 11.5,
+                                                            color:
+                                                                StudioColors.of(
+                                                                  context,
+                                                                ).muted,
                                                           ),
                                                     ),
                                                   ],
                                                 ),
                                               ),
-                                              IconButton(
-                                                tooltip: 'Xoá hành động',
-                                                icon: Icon(
-                                                  Icons.delete_outline_rounded,
-                                                  size: 20,
-                                                  color: c.danger,
-                                                ),
-                                                onPressed: () => setState(
-                                                  () =>
-                                                      _actions.removeAt(index),
-                                                ),
-                                              ),
-                                              if (_actions.length > 1)
-                                                ReorderableDragStartListener(
-                                                  index: index,
-                                                  child: Tooltip(
-                                                    message:
-                                                        'Kéo để đổi thứ tự',
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                            8,
-                                                          ),
-                                                      child: Icon(
-                                                        Icons
-                                                            .drag_indicator_rounded,
-                                                        color: c.faint,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
                                             ],
                                           ),
-                                        ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Basic Info Card
+                              StudioCard(
+                                padding: const EdgeInsets.all(AppSpacing.lg),
+                                radius: AppRadius.card,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Thông tin chung',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.md),
+                                    TextFormField(
+                                      controller: _nameController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Tên kịch bản',
+                                        hintText:
+                                            'Ví dụ: Xem phim buổi tối, Đi ngủ...',
                                       ),
-                                    );
-                                  },
+                                      validator: (v) {
+                                        if (v == null || v.trim().isEmpty) {
+                                          return 'Vui lòng nhập tên kịch bản';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: AppSpacing.md),
+                                    TextFormField(
+                                      controller: _descController,
+                                      maxLines: 2,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Mô tả (tùy chọn)',
+                                        hintText:
+                                            'Ví dụ: Tắt đèn, hạ rèm, bật điều hoà 26°C',
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.md),
+
+                                    // Enabled Switch
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Dùng kịch bản này',
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                                color: StudioColors.of(
+                                                  context,
+                                                ).text,
+                                              ),
+                                        ),
+                                        GlassToggle(
+                                          value: _enabled,
+                                          onChanged: (val) =>
+                                              setState(() => _enabled = val),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+
+                              // Icon Selector Card
+                              StudioCard(
+                                padding: const EdgeInsets.all(AppSpacing.lg),
+                                radius: AppRadius.card,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Biểu tượng kịch bản',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.md),
+                                    SizedBox(
+                                      height: 52,
+                                      child: ListView.separated(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: _availableIcons.length,
+                                        separatorBuilder: (_, __) =>
+                                            const SizedBox(
+                                              width: AppSpacing.sm,
+                                            ),
+                                        itemBuilder: (context, i) {
+                                          final iconName = _availableIcons[i];
+                                          final isSelected =
+                                              _selectedIcon == iconName;
+                                          final atmosphere =
+                                              SceneIcons.getAtmosphere(
+                                                iconName,
+                                              );
+                                          return Tooltip(
+                                            message: atmosphere.vietnameseLabel,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                HapticFeedback.selectionClick();
+                                                setState(
+                                                  () =>
+                                                      _selectedIcon = iconName,
+                                                );
+                                              },
+                                              child: AnimatedContainer(
+                                                duration: const Duration(
+                                                  milliseconds: 200,
+                                                ),
+                                                width: 50,
+                                                height: 50,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: isSelected
+                                                      ? StudioColors.of(
+                                                          context,
+                                                        ).accentSoft
+                                                      : StudioColors.of(
+                                                          context,
+                                                        ).soft,
+                                                  border: Border.all(
+                                                    color: isSelected
+                                                        ? StudioColors.of(
+                                                            context,
+                                                          ).accent
+                                                        : Colors.transparent,
+                                                    width: isSelected ? 2 : 1,
+                                                  ),
+                                                ),
+                                                child: Icon(
+                                                  atmosphere.icon,
+                                                  color: isSelected
+                                                      ? StudioColors.of(
+                                                          context,
+                                                        ).accent
+                                                      : (StudioColors.of(
+                                                          context,
+                                                        ).muted),
+                                                  size: 24,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+
+                              // Actions List Card
+                              StudioCard(
+                                padding: const EdgeInsets.all(AppSpacing.lg),
+                                radius: AppRadius.card,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Hành động (${_actions.length})',
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                        InkWell(
+                                          onTap: _showAddActionModal,
+                                          borderRadius: BorderRadius.circular(
+                                            AppRadius.sm,
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(4.0),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons
+                                                      .add_circle_outline_rounded,
+                                                  size: 18,
+                                                  color: accent,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'Thêm hành động',
+                                                  style: TextStyle(
+                                                    color: accent,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: AppSpacing.md),
+
+                                    if (_actions.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 20,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            'Chưa có hành động nào. Nhấn "Thêm hành động" để chọn thiết bị; các bước chạy từ trên xuống, kéo để đổi thứ tự.',
+                                            textAlign: TextAlign.center,
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  color: StudioColors.of(
+                                                    context,
+                                                  ).faint,
+                                                ),
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      ReorderableListView.builder(
+                                        shrinkWrap: true,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        buildDefaultDragHandles: false,
+                                        itemCount: _actions.length,
+                                        onReorder: (from, to) => setState(() {
+                                          if (to > from) to--;
+                                          _actions.insert(
+                                            to,
+                                            _actions.removeAt(from),
+                                          );
+                                        }),
+                                        itemBuilder: (context, index) {
+                                          final act = _actions[index];
+                                          final c = StudioColors.of(context);
+                                          return Material(
+                                            key: ObjectKey(act),
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              onTap: () => _showAddActionModal(
+                                                index: index,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    AppRadius.sm,
+                                                  ),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 6,
+                                                    ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      width: 28,
+                                                      height: 28,
+                                                      alignment:
+                                                          Alignment.center,
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: c.accentSoft,
+                                                      ),
+                                                      child: Text(
+                                                        '${index + 1}',
+                                                        style: TextStyle(
+                                                          color: accent,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(
+                                                      width: AppSpacing.md,
+                                                    ),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            act.targetDeviceName,
+                                                            style: theme
+                                                                .textTheme
+                                                                .bodyMedium
+                                                                ?.copyWith(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                          ),
+                                                          Text(
+                                                            describeAction(
+                                                              act.action,
+                                                              value: act.value,
+                                                            ),
+                                                            style: theme
+                                                                .textTheme
+                                                                .bodySmall
+                                                                ?.copyWith(
+                                                                  color:
+                                                                      c.muted,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      tooltip: 'Xoá hành động',
+                                                      icon: Icon(
+                                                        Icons
+                                                            .delete_outline_rounded,
+                                                        size: 20,
+                                                        color: c.danger,
+                                                      ),
+                                                      onPressed: () => setState(
+                                                        () => _actions.removeAt(
+                                                          index,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    if (_actions.length > 1)
+                                                      ReorderableDragStartListener(
+                                                        index: index,
+                                                        child: Tooltip(
+                                                          message:
+                                                              'Kéo để đổi thứ tự',
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  8,
+                                                                ),
+                                                            child: Icon(
+                                                              Icons
+                                                                  .drag_indicator_rounded,
+                                                              color: c.faint,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+
+                              // Run times card (giờ : phút : giây)
+                              StudioCard(
+                                padding: const EdgeInsets.all(AppSpacing.lg),
+                                radius: AppRadius.card,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      'Lịch chạy (${_schedules.length})',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.md),
+                                    ScheduleSection(
+                                      schedules: _schedules,
+                                      loading: _loadingSchedules,
+                                      emptyText:
+                                          'Chưa có lịch chạy. Kịch bản chỉ chạy khi bạn bấm "Chạy".',
+                                      onChanged: (next) =>
+                                          setState(() => _schedules = next),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.xl),
+
+                              // Save Button
+                              AppButton(
+                                label: widget.scene == null
+                                    ? 'Tạo kịch bản'
+                                    : 'Lưu thay đổi',
+                                isLoading: _isSaving,
+                                onPressed: _save,
+                              ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Run times card (giờ : phút : giây)
-                        StudioCard(
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          radius: AppRadius.card,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                'Lịch chạy (${_schedules.length})',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              ScheduleSection(
-                                schedules: _schedules,
-                                loading: _loadingSchedules,
-                                emptyText:
-                                    'Chưa có lịch chạy. Kịch bản chỉ chạy khi bạn bấm "Chạy".',
-                                onChanged: (next) =>
-                                    setState(() => _schedules = next),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-
-                        // Save Button
-                        AppButton(
-                          label: widget.scene == null
-                              ? 'Tạo kịch bản'
-                              : 'Lưu thay đổi',
-                          isLoading: _isSaving,
-                          onPressed: _save,
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               ),
             ],
