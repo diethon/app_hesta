@@ -20,6 +20,7 @@ import '../../scene/data/scene_providers.dart';
 import '../../scene/domain/scene.dart';
 import '../../scene/presentation/scene_icons.dart';
 import '../../groups/presentation/device_group_strip.dart';
+import '../../recommendation/presentation/widgets/top_recommendation_banner.dart';
 import 'widgets/hero_house_model.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -248,6 +249,8 @@ class _DashboardContent extends ConsumerWidget {
           _StatusPillsRow(devices: devices),
           const SizedBox(height: AppSpacing.lg),
         ],
+
+        const TopRecommendationBanner(),
 
         // Lối vào Automation, Recommendation, Scenes, Camera.
         _SectionLabel(label: l10n.quickAccess),

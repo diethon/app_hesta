@@ -215,12 +215,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Trợ lý thói quen'), findsOneWidget);
-      // Số liệu kỹ thuật ẩn trong mục "Chi tiết".
+      // Người dùng cuối không thấy số liệu mô hình hay nút học lại.
       expect(find.text('94%'), findsNothing);
-      await tester.tap(find.text('Chi tiết'));
-      await tester.pumpAndSettle();
-      expect(find.text('94%'), findsOneWidget);
-      expect(find.text('1500'), findsOneWidget);
+      expect(find.text('1500'), findsNothing);
+      expect(find.text('Chi tiết'), findsNothing);
+      expect(find.text('Học lại'), findsNothing);
       expect(find.text('Tìm gợi ý mới'), findsOneWidget);
       expect(find.text('Đèn ban công'), findsOneWidget);
       expect(find.text('Rất phù hợp'), findsOneWidget);
