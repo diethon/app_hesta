@@ -265,7 +265,7 @@ class _AutomationRuleDetailScreenState
                             horizontal: 16,
                             vertical: 6,
                           ),
-                          child: logs.isEmpty
+                          child: logs.every((l) => l.isTest)
                               ? Padding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 16,
@@ -279,7 +279,9 @@ class _AutomationRuleDetailScreenState
                                 )
                               : Column(
                                   children: [
-                                    for (final log in logs)
+                                    for (final log in logs.where(
+                                      (l) => !l.isTest,
+                                    ))
                                       Padding(
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 10,

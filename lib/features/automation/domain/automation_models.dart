@@ -307,6 +307,7 @@ class AutomationExecution {
     required this.executedAt,
     this.durationMs,
     this.details,
+    this.isTest = false,
   });
 
   final String id;
@@ -315,6 +316,9 @@ class AutomationExecution {
   final DateTime executedAt;
   final int? durationMs;
   final String? details;
+
+  /// A test run (simulated event); the web hides these unless "Hiện lần kiểm tra" is on.
+  final bool isTest;
 
   /// Backend AutomationExecutionResponse: matchedAt / startedAt / completedAt, test flag,
   /// resultDetail = [{deviceId|sceneId, action, success, status}]. Duration and the summary are derived.
@@ -328,12 +332,19 @@ class AutomationExecution {
         ? (json['resultDetail'] as List).whereType<Map>().toList()
         : const <Map>[];
     final failed = steps.where((d) => d['success'] != true).length;
+    // Test runs only preview steps (status PREVIEW, success=false); they are not failures.
+    String? stepsSummary() {
+      if (steps.isEmpty) return null;
+      if (steps.every((d) => d['status'] == 'PREVIEW')) {
+        return '${steps.length} hành động (không gửi lệnh thật)';
+      }
+      if (failed == 0) return '${steps.length} hành động thành công';
+      return '$failed/${steps.length} hành động lỗi';
+    }
+
     final summary = [
       if (json['test'] == true) 'Chạy thử',
-      if (steps.isNotEmpty)
-        failed == 0
-            ? '${steps.length} hành động thành công'
-            : '$failed/${steps.length} hành động lỗi',
+      ?stepsSummary(),
     ].join(' · ');
 
     return AutomationExecution(
@@ -345,6 +356,7 @@ class AutomationExecution {
           ? completed.difference(started).inMilliseconds
           : null,
       details: summary.isEmpty ? null : summary,
+      isTest: json['test'] == true,
     );
   }
 }

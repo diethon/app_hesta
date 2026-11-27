@@ -107,5 +107,20 @@ void main() {
       expect(exec.durationMs, 150);
       expect(exec.details, '1/2 hành động lỗi');
     });
+
+    test('test run with PREVIEW steps is not reported as failed', () {
+      final exec = AutomationExecution.fromJson({
+        'id': 'exec-2',
+        'ruleId': 'rule-1',
+        'status': 'SKIPPED',
+        'test': true,
+        'matchedAt': '2026-10-27T12:00:00Z',
+        'resultDetail': [
+          {'action': 'TURN_ON', 'status': 'PREVIEW', 'success': false},
+        ],
+      });
+      expect(exec.isTest, isTrue);
+      expect(exec.details, 'Chạy thử · 1 hành động (không gửi lệnh thật)');
+    });
   });
 }
