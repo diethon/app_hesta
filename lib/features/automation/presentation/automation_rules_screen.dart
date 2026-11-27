@@ -240,7 +240,11 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
 
         rulesAsync.when(
           data: (rules) {
-            final filtered = rules.where(_matches).toList();
+            // Enabled first; split instead of sort to keep the server order within each group.
+            final filtered = [
+              ...rules.where((r) => r.enabled && _matches(r)),
+              ...rules.where((r) => !r.enabled && _matches(r)),
+            ];
             if (filtered.isEmpty) {
               final isFiltered =
                   _status != 'all' ||
@@ -668,7 +672,6 @@ class _RuleListItem extends StatelessWidget {
     final actions = [...rule.actions]
       ..sort((a, b) => a.order.compareTo(b.order));
     final noActions = actions.isEmpty;
-    final condCount = rule.conditions.length;
 
     return StudioCard(
       onTap: onTap,
@@ -697,11 +700,7 @@ class _RuleListItem extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       // Trigger type is already shown by the icon and the group header.
-                      [
-                        on ? 'Đang bật' : 'Đang tắt',
-                        if (rule.triggerType.toUpperCase() == 'SENSOR')
-                          '$condCount điều kiện',
-                      ].join(' · '),
+                      on ? 'Đang bật' : 'Đang tắt',
                       style: TextStyle(fontSize: 12.5, color: c.muted),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

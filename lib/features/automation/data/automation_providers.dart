@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/network_client.dart';
+import '../../../core/services/websocket_service.dart';
 import '../../authentication/data/auth_providers.dart' show kUseMockData;
 import '../../home/data/home_providers.dart';
 import '../../groups/data/device_group_providers.dart';
@@ -30,8 +31,32 @@ class AutomationRulesListNotifier extends AsyncNotifier<List<AutomationRule>> {
       return _mockRules();
     }
 
+    // Same events the web listens to: rule edits/runs/schedules, and scene renames shown in rule steps.
+    final sub = ref
+        .watch(webSocketServiceProvider)
+        .subscribeJson('/topic/homes/$homeId/events')
+        .listen((event) {
+          final type = event['type'];
+          if (type == 'AUTOMATION_RULE_CHANGED' || type == 'SCENE_CHANGED') {
+            ref.invalidate(automationRuleExecutionsProvider);
+            _reloadQuietly(homeId);
+          }
+        });
+    ref.onDispose(sub.cancel);
+
     // Errors reach the screen's ErrorView with a retry button; an empty list would look like "no data".
     return ref.read(automationRepositoryProvider).getRules(homeId);
+  }
+
+  Future<void> _reloadQuietly(String homeId) async {
+    try {
+      final rules = await ref
+          .read(automationRepositoryProvider)
+          .getRules(homeId);
+      state = AsyncValue.data(rules);
+    } catch (_) {
+      // keep what is shown; the next event or pull-to-refresh retries
+    }
   }
 
   Future<void> refresh() async {

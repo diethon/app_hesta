@@ -43,6 +43,8 @@ class _AutomationRuleEditorScreenState
   late final TextEditingController _name;
   late final TextEditingController _desc;
   late bool _showDesc;
+  // Description text that came from a template; dropped if the trigger type changes and it is untouched.
+  String? _templateDesc;
   late String _trigger;
   late bool _enabled;
   late List<RuleCondition> _conditions;
@@ -241,6 +243,7 @@ class _AutomationRuleEditorScreenState
       }
       _name.text = t.name;
       _desc.text = t.description;
+      _templateDesc = t.description;
       _showDesc = true;
       _trigger = t.triggerType;
       switch (t.id) {
@@ -294,6 +297,11 @@ class _AutomationRuleEditorScreenState
     setState(() {
       _trigger = t;
       _openCond = null;
+      if (_templateDesc != null && _desc.text == _templateDesc) {
+        _desc.clear();
+        _showDesc = false;
+      }
+      _templateDesc = null;
       if (t == 'EVENT') {
         _conditions = [
           const RuleCondition(
@@ -626,7 +634,16 @@ class _AutomationRuleEditorScreenState
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                       children: [
                         TemplateGrid(
-                          onSelect: _applyTemplate,
+                          items: [
+                            for (final t in automationTemplates)
+                              (
+                                icon: t.icon,
+                                name: t.name,
+                                description: t.description,
+                              ),
+                          ],
+                          onSelect: (i) =>
+                              _applyTemplate(automationTemplates[i]),
                           onBlank: () => _applyTemplate(null),
                         ),
                       ],
@@ -779,14 +796,6 @@ class _AutomationRuleEditorScreenState
         const SizedBox(height: 20),
 
         _Section('3. Thì làm gì (Hành động ${_actions.length})'),
-        if (_actions.length > 1)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              'Cùng thiết bị chạy theo thứ tự từ trên xuống',
-              style: TextStyle(fontSize: 12.5, color: c.faint),
-            ),
-          ),
         for (final (i, a) in _actions.indexed)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -1025,7 +1034,7 @@ class _AutomationRuleEditorScreenState
             : (known?.name ?? eventLabel(code)),
         caption: code.isEmpty
             ? 'Nhấn để chọn sự kiện kích hoạt'
-            : (known?.description ?? 'Mã sự kiện: $code'),
+            : (known?.description ?? 'Sự kiện khác'),
         hasError: code.isEmpty,
         onTap: _pickEvent,
       ),
@@ -1191,16 +1200,43 @@ class _AddButton extends StatelessWidget {
   }
 }
 
-class _History extends ConsumerWidget {
+/// Same filters as the web RuleHistoryPanel: status chips, and test runs hidden unless "Hiện lần kiểm tra".
+class _History extends ConsumerStatefulWidget {
   const _History({required this.ruleId});
 
   final String ruleId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_History> createState() => _HistoryState();
+}
+
+class _HistoryState extends ConsumerState<_History> {
+  static const _filters = [
+    ('ALL', 'Tất cả'),
+    ('SUCCESS', 'Thành công'),
+    ('ERROR', 'Có lỗi'),
+    ('SKIPPED', 'Đã bỏ qua'),
+  ];
+
+  String _filter = 'ALL';
+  bool _showTests = false;
+
+  bool _matches(AutomationExecution log) {
+    if (!_showTests && log.isTest) return false;
+    final status = log.status.toUpperCase();
+    return switch (_filter) {
+      'SUCCESS' => status == 'SUCCESS',
+      'ERROR' => status == 'FAILED' || status == 'PARTIAL',
+      'SKIPPED' => status == 'SKIPPED',
+      _ => true,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = StudioColors.of(context);
     return ref
-        .watch(automationRuleExecutionsProvider(ruleId))
+        .watch(automationRuleExecutionsProvider(widget.ruleId))
         .when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => Center(
@@ -1209,51 +1245,95 @@ class _History extends ConsumerWidget {
               style: TextStyle(color: c.faint),
             ),
           ),
-          data: (logs) => logs.isEmpty
-              ? Center(
-                  child: Text(
-                    'Quy tắc này chưa chạy lần nào.',
-                    style: TextStyle(color: c.faint),
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                  itemCount: logs.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) {
-                    final log = logs[i];
-                    final ok = log.status.toUpperCase() == 'SUCCESS';
-                    return StudioCard(
-                      padding: const EdgeInsets.all(12),
-                      radius: 16,
-                      child: Row(
-                        children: [
-                          Icon(
-                            ok
-                                ? Icons.check_circle_rounded
-                                : Icons.error_rounded,
-                            size: 20,
-                            color: ok ? c.on : c.danger,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              log.details ??
-                                  (ok
-                                      ? 'Chạy thành công'
-                                      : 'Chạy không thành công'),
-                              style: TextStyle(fontSize: 13.5, color: c.text),
-                            ),
-                          ),
-                          Text(
-                            describeWhen(log.executedAt),
-                            style: TextStyle(fontSize: 12, color: c.faint),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+          data: (all) {
+            if (all.isEmpty) {
+              return Center(
+                child: Text(
+                  'Quy tắc này chưa chạy lần nào.',
+                  style: TextStyle(color: c.faint),
                 ),
+              );
+            }
+            final logs = all.where(_matches).toList();
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+              children: [
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final (id, label) in _filters)
+                      ChoiceChip(
+                        label: Text(label),
+                        selected: _filter == id,
+                        onSelected: (_) => setState(() => _filter = id),
+                      ),
+                  ],
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(
+                    'Hiện lần kiểm tra',
+                    style: TextStyle(fontSize: 13, color: c.muted),
+                  ),
+                  value: _showTests,
+                  onChanged: (v) => setState(() => _showTests = v),
+                ),
+                if (logs.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: Center(
+                      child: Text(
+                        'Không có lần chạy nào khớp bộ lọc.',
+                        style: TextStyle(color: c.faint),
+                      ),
+                    ),
+                  ),
+                for (final log in logs)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _HistoryRow(log: log),
+                  ),
+              ],
+            );
+          },
         );
+  }
+}
+
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({required this.log});
+
+  final AutomationExecution log;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = StudioColors.of(context);
+    final (icon, color, fallback) = switch (log.status.toUpperCase()) {
+      'SUCCESS' => (Icons.check_circle_rounded, c.on, 'Chạy thành công'),
+      'SKIPPED' => (Icons.remove_circle_outline_rounded, c.faint, 'Đã bỏ qua'),
+      _ => (Icons.error_rounded, c.danger, 'Chạy không thành công'),
+    };
+    return StudioCard(
+      padding: const EdgeInsets.all(12),
+      radius: 16,
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              log.details ?? fallback,
+              style: TextStyle(fontSize: 13.5, color: c.text),
+            ),
+          ),
+          Text(
+            describeWhen(log.executedAt),
+            style: TextStyle(fontSize: 12, color: c.faint),
+          ),
+        ],
+      ),
+    );
   }
 }
