@@ -55,7 +55,7 @@ class RecommendationItemCard extends StatelessWidget {
     final t = recommendation.triggerCondition;
     final time = t.time;
     if (time == null || time.isEmpty) return 'Khi có hoạt động tương tự';
-    return 'Lúc ${formatHms(time)} · ${describeDays(t.repeatDays)}';
+    return 'Lúc ${displayTime(time)} · ${describeDays(t.repeatDays)}';
   }
 
   @override

@@ -54,7 +54,7 @@ void main() {
         expect(find.text('Rất phù hợp'), findsOneWidget);
 
         // Verify trigger time and repeat days
-        expect(find.text('Lúc 23:00:00 · Thứ 2 – Thứ 6'), findsOneWidget);
+        expect(find.text('Lúc 23:00 · Thứ 2 – Thứ 6'), findsOneWidget);
 
         // Verify action buttons
         expect(find.text('Tạo quy tắc'), findsOneWidget);
