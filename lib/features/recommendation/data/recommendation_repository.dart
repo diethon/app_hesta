@@ -17,6 +17,18 @@ class RecommendationRepository {
         .toList();
   }
 
+  /// The backend's pick for the home banner (pending, above the confidence threshold); null when there is none.
+  Future<Recommendation?> getTopRecommendation(String homeId) async {
+    final response = await client.get<dynamic>(
+      '/api/v1/homes/$homeId/recommendations/top',
+    );
+    final body = response.data;
+    final result = body is Map ? body['result'] ?? body['data'] : null;
+    return result is Map
+        ? Recommendation.fromJson(Map<String, dynamic>.from(result))
+        : null;
+  }
+
   Future<List<Recommendation>> generateRecommendations(
     String homeId,
     DateTime from,
@@ -60,13 +72,6 @@ class RecommendationRepository {
   Future<MlModelStatus> getModelStatus(String homeId) async {
     final response = await client.get<dynamic>(
       '/api/v1/homes/$homeId/recommendations/model-status',
-    );
-    return MlModelStatus.fromJson(_extractMap(response.data));
-  }
-
-  Future<MlModelStatus> triggerRetraining(String homeId) async {
-    final response = await client.post<dynamic>(
-      '/api/v1/homes/$homeId/recommendations/retrain',
     );
     return MlModelStatus.fromJson(_extractMap(response.data));
   }

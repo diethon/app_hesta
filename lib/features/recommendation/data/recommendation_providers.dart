@@ -202,6 +202,19 @@ class RecommendationsListNotifier extends AsyncNotifier<List<Recommendation>> {
   }
 }
 
+/// Home banner pick, like the web SpotlightRecommendationBanner. Refetched whenever the list changes
+/// (approve/reject/dismiss/generate), so the banner never shows an answered suggestion.
+final topRecommendationProvider = FutureProvider.autoDispose<Recommendation?>((
+  ref,
+) async {
+  final homeId = ref.watch(currentHomeIdProvider);
+  await ref.watch(recommendationsListProvider.future);
+  if (homeId == null || kUseMockData) return null;
+  return ref
+      .read(recommendationRepositoryProvider)
+      .getTopRecommendation(homeId);
+});
+
 final mlModelStatusProvider =
     AsyncNotifierProvider<MlModelStatusNotifier, MlModelStatus>(
       MlModelStatusNotifier.new,
@@ -236,33 +249,6 @@ class MlModelStatusNotifier extends AsyncNotifier<MlModelStatus> {
       final repo = ref.read(recommendationRepositoryProvider);
       return repo.getModelStatus(homeId);
     });
-  }
-
-  Future<MlModelStatus?> retrain() async {
-    final homeId = ref.read(currentHomeIdProvider);
-    if (homeId == null) return null;
-
-    state = const AsyncValue.loading();
-    try {
-      final repo = ref.read(recommendationRepositoryProvider);
-      final newStatus = await repo.triggerRetraining(homeId);
-      state = AsyncValue.data(newStatus);
-      return newStatus;
-    } catch (e) {
-      if (kUseMockData) {
-        final fallback = _mockStatus();
-        state = AsyncValue.data(fallback);
-        return fallback;
-      }
-      final unavailable = const MlModelStatus(
-        status: 'UNAVAILABLE',
-        version: 'none',
-        modelType: 'BehaviorML',
-        accuracy: 0.0,
-      );
-      state = AsyncValue.data(unavailable);
-      return unavailable;
-    }
   }
 
   MlModelStatus _mockStatus() {
