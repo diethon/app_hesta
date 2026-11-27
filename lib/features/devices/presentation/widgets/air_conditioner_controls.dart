@@ -43,10 +43,10 @@ class _AirConditionerControlsState
 
   Color _modeAccent(String mode) {
     return switch (mode.toUpperCase()) {
-      'COOL' => const Color(0xFF00D2FF),
-      'DRY' => const Color(0xFF00E5A3),
-      'HEAT' => const Color(0xFFFF9500),
-      'AUTO' => const Color(0xFFA855F7),
+      'COOL' => AppColors.auroraAccent,
+      'DRY' => AppColors.orbTeal,
+      'HEAT' => AppColors.auroraWarning,
+      'AUTO' => AppColors.orbViolet,
       _ => AppColors.auroraAccent,
     };
   }
@@ -179,7 +179,7 @@ class _AirConditionerControlsState
     final isTimerActive = device.timerEnabled ?? false;
     final timerHour = device.timerHour ?? 0;
     final timerHalfHour = device.timerHalfHour ?? false;
-    final activeAccent = isOn ? _modeAccent(currentMode) : Colors.grey;
+    final activeAccent = isOn ? _modeAccent(currentMode) : AppColors.onDarkMuted;
 
     return Column(
       children: [
@@ -663,7 +663,9 @@ class _AirConditionerControlsState
                             child: Text(
                               '${h}h',
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: selected ? Colors.black : Colors.white,
+                                color: selected
+                                    ? AppColors.auroraCanvasTop
+                                    : Colors.white,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -698,7 +700,7 @@ class _AirConditionerControlsState
                     onPressed: _applyTimer,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: activeAccent,
-                      foregroundColor: Colors.black,
+                      foregroundColor: AppColors.auroraCanvasTop,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),

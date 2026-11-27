@@ -133,12 +133,65 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
     ]);
   }
 
+  Future<Device> updateDeviceConfig(
+    String id, {
+    String? name,
+    String? roomId,
+    String? icon,
+    double? wattage,
+  }) async {
+    final updated = await _repository.updateDeviceConfig(
+      id,
+      name: name,
+      roomId: roomId,
+      icon: icon,
+      wattage: wattage,
+    );
+    final previous = state.valueOrNull ?? const <Device>[];
+    if (!mounted) {
+      return updated;
+    }
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+    return updated;
+  }
+
+  Future<void> removeDevice(String id) async {
+    await _repository.removeDevice(id);
+    final previous = state.valueOrNull ?? const <Device>[];
+    if (!mounted) {
+      return;
+    }
+    state = AsyncValue.data([
+      for (final device in previous)
+        if (device.id != id) device,
+    ]);
+  }
+
   Future<void> cancelAutomation(String id, {int minutes = 30}) async {
     final previous = state.valueOrNull ?? const <Device>[];
     final updated = await _repository.cancelDeviceAutomation(
       id,
       minutes: minutes,
     );
+    if (!mounted) {
+      return;
+    }
+    state = AsyncValue.data([
+      for (final device in previous) device.id == id ? updated : device,
+    ]);
+  }
+
+  Future<void> extendAutomation(String id, {int minutes = 60}) async {
+    final previous = state.valueOrNull ?? const <Device>[];
+    final updated = await _repository.extendDeviceAutomation(
+      id,
+      minutes: minutes,
+    );
+    if (!mounted) {
+      return;
+    }
     state = AsyncValue.data([
       for (final device in previous) device.id == id ? updated : device,
     ]);
@@ -147,18 +200,42 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
   Future<void> resumeAutomation(String id) async {
     final previous = state.valueOrNull ?? const <Device>[];
     final updated = await _repository.resumeDeviceAutomation(id);
+    if (!mounted) {
+      return;
+    }
     state = AsyncValue.data([
       for (final device in previous) device.id == id ? updated : device,
     ]);
   }
 
+  Future<List<Map<String, dynamic>>> getOverrideHistory(String id) async {
+    return _repository.getDeviceOverrideHistory(id);
+  }
+
   Future<Device> fetchDeviceHealth(String id) async {
     final previous = state.valueOrNull ?? const <Device>[];
     final updated = await _repository.getDeviceHealth(id);
+    if (!mounted) {
+      return updated;
+    }
     state = AsyncValue.data([
       for (final device in previous) device.id == id ? updated : device,
     ]);
     return updated;
+  }
+
+  Future<DeviceUptimeInfo> getDeviceUptime(String id, {int days = 7}) async {
+    final info = await _repository.getDeviceUptime(id, days: days);
+    final previous = state.valueOrNull ?? const <Device>[];
+    if (mounted && previous.any((d) => d.id == id)) {
+      state = AsyncValue.data([
+        for (final device in previous)
+          device.id == id
+              ? device.copyWith(uptimePercent: info.uptimePercent)
+              : device,
+      ]);
+    }
+    return info;
   }
 
   Future<List<Map<String, dynamic>>> getAuditHistory(String id) async {
@@ -169,11 +246,40 @@ class DevicesController extends StateNotifier<AsyncValue<List<Device>>> {
     return _repository.exportDeviceAuditExcel(id, deviceName);
   }
 
+  Future<String> exportAuditCsv(String id, String deviceName) async {
+    return _repository.exportDeviceAuditCsv(id, deviceName);
+  }
+
   Future<void> updateDeviceWattage(String id, double wattage) async {
     final updated = await _repository.updateDeviceWattage(id, wattage);
     final previous = state.valueOrNull ?? const <Device>[];
+    if (!mounted) {
+      return;
+    }
     state = AsyncValue.data([
       for (final device in previous) device.id == id ? updated : device,
+    ]);
+  }
+
+  void detachRoomFromDevices(String deletedRoomId) {
+    final previous = state.valueOrNull;
+    if (previous == null) {
+      return;
+    }
+    state = AsyncValue.data([
+      for (final device in previous)
+        device.roomId == deletedRoomId ? device.copyWith(roomId: '') : device,
+    ]);
+  }
+
+  void applyRoomPowerLocal(String roomId, bool turnOn) {
+    final previous = state.valueOrNull;
+    if (previous == null) {
+      return;
+    }
+    state = AsyncValue.data([
+      for (final device in previous)
+        device.roomId == roomId ? device.copyWith(isOn: turnOn) : device,
     ]);
   }
 

@@ -25,9 +25,13 @@ void main() {
   late HttpServer server;
   late ApiDeviceRepository repository;
   Map<String, dynamic>? lastCommandBody;
+  Map<String, dynamic>? lastUpdateBody;
+  bool deletedCalled = false;
 
   setUp(() async {
     lastCommandBody = null;
+    lastUpdateBody = null;
+    deletedCalled = false;
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     server.listen((request) async {
       final path = request.uri.path;
@@ -51,6 +55,44 @@ void main() {
             'deviceId': 'd8e5b6a0-0000-0000-0000-000000000001',
             'action': lastCommandBody?['action'] ?? 'POWER_OFF',
             'status': 'SUCCESS',
+          },
+        };
+      } else if (request.method == 'PUT' && path.startsWith('/api/v1/devices/')) {
+        lastUpdateBody =
+            jsonDecode(await utf8.decoder.bind(request).join())
+                as Map<String, dynamic>;
+        final dev = Map<String, dynamic>.from(_deviceHestaJson);
+        if (lastUpdateBody?['name'] != null) {
+          dev['name'] = lastUpdateBody!['name'];
+        }
+        if (lastUpdateBody?['roomId'] != null) {
+          dev['roomId'] = lastUpdateBody!['roomId'];
+        }
+        body = {'code': 1000, 'message': 'Updated', 'result': dev};
+      } else if (request.method == 'DELETE' &&
+          path.startsWith('/api/v1/devices/')) {
+        deletedCalled = true;
+        body = {'code': 1000, 'message': 'Deleted'};
+      } else if (request.method == 'POST' &&
+          path.endsWith('/automation/extend')) {
+        body = {
+          'code': 1000,
+          'message': 'Extended',
+          'result': '2030-01-01T12:00:00Z',
+        };
+      } else if (request.method == 'GET' &&
+          path.endsWith('/analytics/uptime')) {
+        body = {
+          'code': 1000,
+          'result': {
+            'uptimePercent': 95.5,
+            'totalHours': 168.0,
+            'onHours': 160.4,
+            'offHours': 7.6,
+            'timelinePoints': [
+              {'hour': 0, 'state': 'ON', 'durationSeconds': 3600},
+              {'hour': 1, 'state': 'OFF', 'durationSeconds': 0},
+            ],
           },
         };
       } else {
@@ -114,6 +156,29 @@ void main() {
       'action': 'POWER_OFF',
       'parameters': <String, dynamic>{'power': false},
     });
+  });
+
+  test('updateDeviceConfig, removeDevice, extendDeviceAutomation, getDeviceUptime', () async {
+    final id = _deviceHestaJson['id']! as String;
+    final updated = await repository.updateDeviceConfig(
+      id,
+      name: 'Đèn Trần Mới',
+      roomId: 'room-new-1',
+    );
+    expect(updated.name, 'Đèn Trần Mới');
+    expect(updated.roomId, 'room-new-1');
+    expect(lastUpdateBody?['name'], 'Đèn Trần Mới');
+
+    final extended = await repository.extendDeviceAutomation(id, minutes: 60);
+    expect(extended.manualOverrideActive, isTrue);
+    expect(extended.manualOverrideUntil, '2030-01-01T12:00:00Z');
+
+    final uptime = await repository.getDeviceUptime(id, days: 7);
+    expect(uptime.uptimePercent, 95.5);
+    expect(uptime.timelinePoints, hasLength(2));
+
+    await repository.removeDevice(id);
+    expect(deletedCalled, isTrue);
   });
 
   group('deviceCommandToRequestBody', () {

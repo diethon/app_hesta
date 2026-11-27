@@ -8,7 +8,9 @@ import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/glass/glass.dart';
+import '../../authentication/data/auth_providers.dart' show kUseMockData;
 import '../../devices/presentation/device_visuals.dart';
+import '../../home/data/home_providers.dart';
 import '../data/room_providers.dart';
 import '../domain/room.dart';
 
@@ -37,6 +39,11 @@ class RoomsScreen extends ConsumerWidget {
               centerTitle: false,
               title: l10n.appName,
               actions: [
+                GlassIconButton(
+                  icon: Icons.create_new_folder_outlined,
+                  tooltip: 'Tạo phòng mới',
+                  onTap: () => _showCreateRoomDialog(context, ref),
+                ),
                 GlassIconButton(
                   icon: Icons.add_rounded,
                   tooltip: 'Add Device',
@@ -88,6 +95,199 @@ class RoomsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _showCreateRoomDialog(BuildContext context, WidgetRef ref) async {
+    final nameController = TextEditingController();
+    String selectedIcon = 'default';
+    const iconOptions = <(String, String, IconData)>[
+      ('default', 'Mặc định', Icons.meeting_room_outlined),
+      ('living', 'Phòng khách', Icons.weekend_outlined),
+      ('bed', 'Phòng ngủ', Icons.bed_outlined),
+      ('kitchen', 'Bếp', Icons.kitchen_outlined),
+      ('bath', 'Phòng tắm', Icons.bathtub_outlined),
+      ('garden', 'Sân vườn', Icons.nature_outlined),
+    ];
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheetState) {
+          final sheetTheme = Theme.of(sheetCtx);
+          return GlassBottomSheet(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: sheetTheme.colorScheme.primary.withValues(
+                          alpha: 0.14,
+                        ),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
+                          color: sheetTheme.colorScheme.primary.withValues(
+                            alpha: 0.25,
+                          ),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.create_new_folder_outlined,
+                        color: sheetTheme.colorScheme.primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm + 4),
+                    Expanded(
+                      child: Text(
+                        'Tạo Phòng Mới',
+                        style: sheetTheme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                TextField(
+                  controller: nameController,
+                  autofocus: true,
+                  maxLength: 100,
+                  decoration: glassInputDecoration(
+                    sheetCtx,
+                    labelText: 'Tên phòng',
+                    hintText: 'VD: Phòng khách, Phòng làm việc...',
+                    prefixIcon: const Icon(Icons.meeting_room_rounded, size: 20),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Biểu tượng phòng',
+                  style: sheetTheme.textTheme.labelMedium?.copyWith(
+                    color: sheetTheme.colorScheme.onSurface.withValues(
+                      alpha: 0.72,
+                    ),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: iconOptions.map((opt) {
+                    return GlassFilterChip(
+                      label: opt.$2,
+                      icon: opt.$3,
+                      selected: selectedIcon == opt.$1,
+                      onTap: () {
+                        setSheetState(() => selectedIcon = opt.$1);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          foregroundColor: sheetTheme.colorScheme.onSurface
+                              .withValues(alpha: 0.72),
+                          side: BorderSide(
+                            color: GlassTokens.borderSolid(sheetTheme.brightness),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                          ),
+                        ),
+                        onPressed: () => Navigator.of(sheetCtx).pop(false),
+                        child: const Text('Hủy'),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm + 4),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                          ),
+                        ),
+                        onPressed: () {
+                          if (nameController.text.trim().isEmpty) {
+                            return;
+                          }
+                          Navigator.of(sheetCtx).pop(true);
+                        },
+                        child: const Text(
+                          'Tạo phòng',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    final roomName = nameController.text.trim();
+    nameController.dispose();
+    if (confirmed != true || roomName.isEmpty) {
+      return;
+    }
+
+    final homeId =
+        ref.read(currentHomeIdProvider) ?? (kUseMockData ? 'mock-home-1' : '');
+    if (homeId.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraError,
+            content: Text('Chưa xác định được ngôi nhà hiện tại.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      await ref
+          .read(roomRepositoryProvider)
+          .createRoom(homeId: homeId, name: roomName, icon: selectedIcon);
+      ref.invalidate(roomsForHomeProvider(homeId));
+      ref.invalidate(remoteRoomsProvider);
+      ref.invalidate(roomsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraMintOnLight,
+            content: Text('Đã tạo phòng "$roomName"'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraError,
+            content: Text('Không thể tạo phòng: $e'),
+          ),
+        );
+      }
+    }
   }
 }
 
@@ -168,12 +368,12 @@ class _RoomCard extends StatelessWidget {
 
   // Màu nhấn + icon theo phòng để card không đơn điệu.
   static const _roomConfig = <String, (Color, IconData)>{
-    'living-room': (Color(0xFFC4956A), Icons.weekend_outlined),
-    'bedroom': (Color(0xFF7EA8C4), Icons.bed_outlined),
-    'kitchen': (Color(0xFF5A8A72), Icons.kitchen_outlined),
-    'garage': (Color(0xFF8A8A9A), Icons.garage_outlined),
-    'bathroom': (Color(0xFF5AA0C4), Icons.bathtub_outlined),
-    'garden': (Color(0xFF5A8A52), Icons.nature_outlined),
+    'living-room': (AppColors.auroraAccent, Icons.weekend_outlined),
+    'bedroom': (AppColors.orbViolet, Icons.bed_outlined),
+    'kitchen': (AppColors.auroraWarning, Icons.kitchen_outlined),
+    'garage': (AppColors.orbAzure, Icons.garage_outlined),
+    'bathroom': (AppColors.orbTeal, Icons.bathtub_outlined),
+    'garden': (AppColors.auroraMint, Icons.nature_outlined),
   };
 
   @override

@@ -147,3 +147,36 @@ class AiStatus {
     );
   }
 }
+
+@immutable
+class DemoVideoItem {
+  const DemoVideoItem({
+    required this.id,
+    required this.name,
+    required this.type,
+    this.active = false,
+  });
+
+  final String id;
+  final String name;
+  final String type;
+  final bool active;
+
+  DemoVideoItem copyWith({bool? active}) {
+    return DemoVideoItem(
+      id: id,
+      name: name,
+      type: type,
+      active: active ?? this.active,
+    );
+  }
+
+  factory DemoVideoItem.fromJson(Map<String, dynamic> json) {
+    return DemoVideoItem(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      type: (json['type'] ?? 'LIVE').toString(),
+      active: json['active'] == true,
+    );
+  }
+}

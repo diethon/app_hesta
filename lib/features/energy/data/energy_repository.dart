@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../../core/network/error_mapper.dart';
 import '../../../core/network/network_client.dart';
 import '../domain/evn_tier_calculator.dart';
 import 'models/energy_models.dart';
@@ -8,6 +9,20 @@ abstract class EnergyRepository {
   Future<EnergyAnalyticsModel> getHomeEnergyAnalytics({
     String? homeId,
     String period = '30D',
+  });
+
+  Future<DemandResponseSettingsModel> getDemandResponseSettings({
+    String? homeId,
+  });
+
+  Future<DemandResponseSettingsModel> updateDemandResponseSettings({
+    String? homeId,
+    required DemandResponseSettingsModel settings,
+  });
+
+  Future<DemandResponseEvaluationModel> evaluateDemandResponse({
+    String? homeId,
+    double? simulatedWatts,
   });
 }
 
@@ -18,27 +33,32 @@ class ApiEnergyRepository implements EnergyRepository {
   final NetworkClient _client;
   final String? Function()? _getHomeId;
 
+  Future<String?> _resolveHomeId(String? homeId) async {
+    String? targetHomeId = homeId ?? _getHomeId?.call();
+    if (targetHomeId != null && targetHomeId.isNotEmpty) {
+      return targetHomeId;
+    }
+    final homesRes = await _client.get<dynamic>('/api/v1/homes/my-homes');
+    final rawHomes = homesRes.data;
+    final homesBody = rawHomes is Map
+        ? (rawHomes['result'] ?? rawHomes['data'])
+        : (rawHomes is List ? rawHomes : null);
+    if (homesBody is List && homesBody.isNotEmpty) {
+      final first = homesBody.first;
+      if (first is Map) {
+        targetHomeId = (first['homeId'] ?? first['id'])?.toString();
+      }
+    }
+    return targetHomeId;
+  }
+
   @override
   Future<EnergyAnalyticsModel> getHomeEnergyAnalytics({
     String? homeId,
     String period = '30D',
   }) async {
     try {
-      String? targetHomeId = homeId ?? _getHomeId?.call();
-      if (targetHomeId == null || targetHomeId.isEmpty) {
-        final homesRes = await _client.get<dynamic>('/api/v1/homes/my-homes');
-        final rawHomes = homesRes.data;
-        final homesBody = rawHomes is Map
-            ? (rawHomes['result'] ?? rawHomes['data'])
-            : (rawHomes is List ? rawHomes : null);
-        if (homesBody is List && homesBody.isNotEmpty) {
-          final first = homesBody.first;
-          if (first is Map) {
-            targetHomeId = (first['homeId'] ?? first['id'])?.toString();
-          }
-        }
-      }
-
+      final targetHomeId = await _resolveHomeId(homeId);
       if (targetHomeId != null && targetHomeId.isNotEmpty) {
         final response = await _client.get<dynamic>(
           '/api/v1/homes/$targetHomeId/energy',
@@ -59,6 +79,117 @@ class ApiEnergyRepository implements EnergyRepository {
     }
 
     return buildMockAnalytics(period);
+  }
+
+  @override
+  Future<DemandResponseSettingsModel> getDemandResponseSettings({
+    String? homeId,
+  }) async {
+    try {
+      final targetHomeId = await _resolveHomeId(homeId);
+      if (targetHomeId != null && targetHomeId.isNotEmpty) {
+        final response = await _client.get<dynamic>(
+          '/api/v1/homes/$targetHomeId/dr/settings',
+        );
+        final raw = response.data;
+        final data = raw is Map ? (raw['result'] ?? raw['data'] ?? raw) : null;
+        if (data is Map) {
+          return DemandResponseSettingsModel.fromJson(
+            Map<String, dynamic>.from(data),
+          );
+        }
+      }
+    } catch (_) {
+      // Fallback gracefully below
+    }
+    return DemandResponseSettingsModel(
+      homeId: homeId,
+      enabled: true,
+      peakThresholdWatts: 4000,
+      mode: 'AUTO_SHED',
+    );
+  }
+
+  @override
+  Future<DemandResponseSettingsModel> updateDemandResponseSettings({
+    String? homeId,
+    required DemandResponseSettingsModel settings,
+  }) async {
+    try {
+      final targetHomeId = await _resolveHomeId(homeId);
+      if (targetHomeId == null || targetHomeId.isEmpty) {
+        return settings;
+      }
+      final response = await _client.put<dynamic>(
+        '/api/v1/homes/$targetHomeId/dr/settings',
+        data: settings.toJson(),
+      );
+      final raw = response.data;
+      final data = raw is Map ? (raw['result'] ?? raw['data'] ?? raw) : null;
+      if (data is Map) {
+        return DemandResponseSettingsModel.fromJson(
+          Map<String, dynamic>.from(data),
+        );
+      }
+      return settings.copyWith(homeId: targetHomeId);
+    } on DioException catch (error) {
+      if (error.response != null) {
+        throw mapDioException(error);
+      }
+      return settings;
+    }
+  }
+
+  @override
+  Future<DemandResponseEvaluationModel> evaluateDemandResponse({
+    String? homeId,
+    double? simulatedWatts,
+  }) async {
+    try {
+      final targetHomeId = await _resolveHomeId(homeId);
+      if (targetHomeId != null && targetHomeId.isNotEmpty) {
+        final response = await _client.dio.post<dynamic>(
+          '/api/v1/homes/$targetHomeId/dr/evaluate',
+          queryParameters: simulatedWatts != null
+              ? {'simulatedWatts': simulatedWatts}
+              : null,
+        );
+        final raw = response.data;
+        final data = raw is Map ? (raw['result'] ?? raw['data'] ?? raw) : null;
+        if (data is Map) {
+          return DemandResponseEvaluationModel.fromJson(
+            Map<String, dynamic>.from(data),
+          );
+        }
+      }
+    } on DioException catch (error) {
+      if (error.response != null) {
+        throw mapDioException(error);
+      }
+    }
+    final watts = simulatedWatts ?? 2400.0;
+    final threshold = 4000.0;
+    final excess = (watts - threshold).clamp(0.0, double.infinity);
+    if (excess > 0) {
+      return DemandResponseEvaluationModel(
+        totalCurrentWatts: watts,
+        peakThresholdWatts: threshold,
+        excessWatts: excess,
+        status: 'PEAK_SHEDDING_EXECUTED',
+        sheddedDevices: const ['Smart LED RGB Strip', 'Điều hòa Daikin'],
+        wattsSaved: excess > 1800 ? 1850 : excess,
+        message: 'Đã tự động cắt tải thiết bị phụ bảo vệ an toàn.',
+      );
+    }
+    return DemandResponseEvaluationModel(
+      totalCurrentWatts: watts,
+      peakThresholdWatts: threshold,
+      excessWatts: 0,
+      status: 'NORMAL',
+      sheddedDevices: const [],
+      wattsSaved: 0,
+      message: 'Công suất trong ngưỡng an toàn.',
+    );
   }
 
   static EnergyAnalyticsModel buildMockAnalytics(String period) {

@@ -4,6 +4,7 @@ import '../../../core/network/error_mapper.dart';
 import '../../../core/network/network_client.dart';
 import '../domain/camera_repository.dart';
 import '../domain/fall_incident.dart';
+import 'mock_camera_repository.dart';
 
 class ApiCameraRepository implements CameraRepository {
   ApiCameraRepository(this._client, {String? aiEdgeBaseUrl})
@@ -17,6 +18,9 @@ class ApiCameraRepository implements CameraRepository {
       receiveTimeout: const Duration(seconds: 2),
     ),
   );
+
+  @override
+  String get videoFeedUrl => '$_aiEdgeUrl/video_feed';
 
   @override
   Future<List<FallIncident>> getActiveIncidents(String? homeId) async {
@@ -33,15 +37,17 @@ class ApiCameraRepository implements CameraRepository {
 
       if (body is List) {
         return body
-            .whereType<Map<String, dynamic>>()
-            .map((json) => FallIncident.fromJson(json))
+            .whereType<Map>()
+            .map((json) => FallIncident.fromJson(Map<String, dynamic>.from(json)))
             .toList();
       }
       return const <FallIncident>[];
     } on DioException catch (e) {
       throw mapDioException(e);
     } catch (e) {
-      if (e is AppException) rethrow;
+      if (e is AppException) {
+        rethrow;
+      }
       return const <FallIncident>[];
     }
   }
@@ -78,13 +84,14 @@ class ApiCameraRepository implements CameraRepository {
     String note = 'Đã cấp cứu an toàn',
   }) async {
     try {
-      await _client.post<dynamic>(
+      await _client.dio.post<dynamic>(
         '/api/v1/emergency/fall/$id/resolve',
-        data: {'note': note},
+        queryParameters: {'note': note},
       );
     } catch (_) {
       // Ignored
     }
+    await dismissAiLocal();
   }
 
   @override
@@ -121,6 +128,39 @@ class ApiCameraRepository implements CameraRepository {
       final res = await _edgeDio.post<dynamic>('$_aiEdgeUrl/api/dismiss');
       if (res.data is Map) {
         return res.data['success'] == true || res.data['status'] == 'ok';
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<List<DemoVideoItem>> getDemoVideos() async {
+    try {
+      final res = await _edgeDio.get<dynamic>('$_aiEdgeUrl/api/video/list');
+      final data = res.data;
+      if (data is Map && data['videos'] is List) {
+        return (data['videos'] as List)
+            .whereType<Map>()
+            .map((m) => DemoVideoItem.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+    } catch (_) {
+      // Fallback below when local AI edge server is unreachable
+    }
+    return MockCameraRepository().getDemoVideos();
+  }
+
+  @override
+  Future<bool> selectDemoVideo(String videoId) async {
+    try {
+      final res = await _edgeDio.post<dynamic>(
+        '$_aiEdgeUrl/api/video/select',
+        data: {'video_id': videoId},
+      );
+      if (res.data is Map) {
+        return res.data['success'] == true;
       }
       return true;
     } catch (_) {

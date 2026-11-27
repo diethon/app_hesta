@@ -8,6 +8,7 @@ import '../../../app/theme/app_radius.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/glass/glass.dart';
+import '../../home/data/home_providers.dart';
 import '../data/energy_providers.dart';
 import '../data/models/energy_models.dart';
 import '../domain/evn_tier_calculator.dart';
@@ -120,10 +121,15 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(AppSpacing.sm + 2),
                       decoration: BoxDecoration(
-                        color: AppColors.auroraWarning.withValues(alpha: 0.15),
+                        color: AppColors.auroraWarning.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
+                          color: AppColors.auroraWarning.withValues(
+                            alpha: 0.28,
+                          ),
+                        ),
                       ),
                       child: const Icon(
                         Icons.bolt_rounded,
@@ -131,7 +137,7 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
+                    const SizedBox(width: AppSpacing.sm + 4),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,6 +149,7 @@ class _EnergyScreenState extends ConsumerState<EnergyScreen>
                               fontWeight: FontWeight.w700,
                             ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
                             'Ước tính kWh & Tiền điện biểu giá EVN 6 bậc',
                             style: theme.textTheme.bodySmall?.copyWith(
@@ -222,7 +229,7 @@ class _EnergyDataSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── TOP 3 KPI CARDS ───────────────────────────────────────────
+        // ── TOP KPI CARDS ───────────────────────────────────────────
         Row(
           children: [
             Expanded(
@@ -269,6 +276,10 @@ class _EnergyDataSection extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
 
+        // ── DEMAND RESPONSE & PEAK SHAVING (UC-ENG-03) ────────────────
+        const _DemandResponseSection(),
+        const SizedBox(height: AppSpacing.md),
+
         // ── EFFICIENCY TIP & PEAK SHAVING ────────────────────────────
         _EnergySavingsTipCard(currentTier: split.computedTier, mint: mint),
       ],
@@ -301,6 +312,10 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    final danger = isDark ? AppColors.auroraError : AppColors.error;
+    final badgeColor = isBadgePositive ? mint : danger;
 
     return GlassContainer(
       radius: AppRadius.card,
@@ -316,20 +331,18 @@ class _KpiCard extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: iconColor.withValues(alpha: 0.15),
+                  color: iconColor.withValues(alpha: 0.14),
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
               ),
               if (badgeText != null)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
+                    horizontal: 8,
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: isBadgePositive
-                        ? AppColors.auroraMint.withValues(alpha: 0.15)
-                        : AppColors.auroraError.withValues(alpha: 0.15),
+                    color: badgeColor.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                   child: Text(
@@ -337,19 +350,17 @@ class _KpiCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: isBadgePositive
-                          ? AppColors.auroraMint
-                          : AppColors.auroraError,
+                      color: badgeColor,
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm + 2),
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
             ),
           ),
           const SizedBox(height: 2),
@@ -402,27 +413,31 @@ class _EvnTierLadderCard extends StatefulWidget {
 class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
   bool _expanded = false;
 
-  Color _getTierColor(int tier) {
+  Color _getTierColor(int tier, Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    final danger = isDark ? AppColors.auroraError : AppColors.error;
     switch (tier) {
       case 1:
       case 2:
-        return AppColors.auroraMint;
+        return mint;
       case 3:
       case 4:
         return AppColors.auroraWarning;
       case 5:
       case 6:
       default:
-        return AppColors.auroraError;
+        return danger;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
     final split = widget.split;
     final currentTier = split.computedTier;
-    final tierColor = _getTierColor(currentTier);
+    final tierColor = _getTierColor(currentTier, theme.brightness);
 
     return GlassContainer(
       radius: AppRadius.card,
@@ -438,14 +453,10 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      color: accent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(AppRadius.sm + 2),
                     ),
-                    child: const Icon(
-                      Icons.layers_rounded,
-                      color: AppColors.primary,
-                      size: 18,
-                    ),
+                    child: Icon(Icons.layers_rounded, color: accent, size: 18),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Text(
@@ -458,12 +469,12 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+                  horizontal: AppSpacing.sm + 2,
+                  vertical: AppSpacing.xs,
                 ),
                 decoration: BoxDecoration(
-                  color: tierColor.withValues(alpha: 0.15),
-                  border: Border.all(color: tierColor.withValues(alpha: 0.5)),
+                  color: tierColor.withValues(alpha: 0.14),
+                  border: Border.all(color: tierColor.withValues(alpha: 0.45)),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text(
@@ -494,7 +505,7 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
                     ? '100% (Bậc kịch trần)'
                     : '${split.progressInCurrentTier.toStringAsFixed(0)}% bậc hiện tại',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
                 ),
               ),
             ],
@@ -511,15 +522,15 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
               valueColor: AlwaysStoppedAnimation<Color>(tierColor),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.sm + 2),
 
           // Guidance box
           Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
+            padding: const EdgeInsets.all(AppSpacing.sm + 2),
             decoration: BoxDecoration(
-              color: tierColor.withValues(alpha: 0.08),
+              color: tierColor.withValues(alpha: 0.09),
               borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: tierColor.withValues(alpha: 0.2)),
+              border: Border.all(color: tierColor.withValues(alpha: 0.24)),
             ),
             child: Row(
               children: [
@@ -551,9 +562,9 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
           // Expandable detail button
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -562,7 +573,7 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
                         ? 'Thu gọn bảng giá'
                         : 'Xem chi tiết 6 bậc tính giá',
                     style: theme.textTheme.labelMedium?.copyWith(
-                      color: AppColors.primary,
+                      color: accent,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -570,7 +581,7 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
                     _expanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.primary,
+                    color: accent,
                     size: 18,
                   ),
                 ],
@@ -579,7 +590,10 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
           ),
 
           if (_expanded) ...[
-            const Divider(height: AppSpacing.lg),
+            Divider(
+              height: AppSpacing.lg,
+              color: GlassTokens.borderSolid(theme.brightness),
+            ),
             ...split.tierCosts.map((tier) {
               final isCurrent = tier.tier == currentTier;
               return Padding(
@@ -594,9 +608,9 @@ class _EvnTierLadderCardState extends State<_EvnTierLadderCard> {
                       ),
                       decoration: BoxDecoration(
                         color: isCurrent
-                            ? tierColor.withValues(alpha: 0.15)
+                            ? tierColor.withValues(alpha: 0.14)
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: Text(
                         tier.label,
@@ -682,8 +696,8 @@ class _EnergyChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
 
-    // Compute peak
     EnergyTimeSeriesPointModel? peak;
     if (timeSeries.isNotEmpty) {
       peak = timeSeries.reduce((a, b) => a.kwh > b.kwh ? a : b);
@@ -707,11 +721,11 @@ class _EnergyChartCard extends StatelessWidget {
               if (peak != null)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: AppSpacing.sm + 2,
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.auroraWarning.withValues(alpha: 0.15),
+                    color: AppColors.auroraWarning.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                   child: Text(
@@ -734,7 +748,7 @@ class _EnergyChartCard extends StatelessWidget {
                     size: const Size(double.infinity, 180),
                     painter: _TimeSeriesChartPainter(
                       points: timeSeries,
-                      lineColor: AppColors.primary,
+                      lineColor: accent,
                       gridColor: theme.colorScheme.onSurface.withValues(
                         alpha: 0.08,
                       ),
@@ -785,12 +799,13 @@ class _TimeSeriesChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (points.isEmpty) return;
+    if (points.isEmpty) {
+      return;
+    }
 
     final w = size.width;
     final h = size.height;
 
-    // Grid lines
     final gridPaint = Paint()
       ..color = gridColor
       ..strokeWidth = 1
@@ -813,7 +828,6 @@ class _TimeSeriesChartPainter extends CustomPainter {
       pixelPoints.add(Offset(x, y.clamp(10.0, h - 5.0)));
     }
 
-    // Bezier curve
     final path = Path()..moveTo(pixelPoints.first.dx, pixelPoints.first.dy);
     for (var i = 1; i < pixelPoints.length; i++) {
       final p0 = pixelPoints[i - 1];
@@ -823,7 +837,6 @@ class _TimeSeriesChartPainter extends CustomPainter {
       path.cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, p1.dx, p1.dy);
     }
 
-    // Gradient Area
     final areaPath = Path.from(path)
       ..lineTo(pixelPoints.last.dx, h)
       ..lineTo(pixelPoints.first.dx, h)
@@ -840,7 +853,6 @@ class _TimeSeriesChartPainter extends CustomPainter {
       ).createShader(Rect.fromLTWH(0, 0, w, h));
     canvas.drawPath(areaPath, gradPaint);
 
-    // Line
     final linePaint = Paint()
       ..color = lineColor
       ..strokeWidth = 3
@@ -849,7 +861,6 @@ class _TimeSeriesChartPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(path, linePaint);
 
-    // Peak dot
     int peakIndex = 0;
     double highestKwh = 0;
     for (var i = 0; i < points.length; i++) {
@@ -864,7 +875,11 @@ class _TimeSeriesChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TimeSeriesChartPainter old) => true;
+  bool shouldRepaint(_TimeSeriesChartPainter old) =>
+      old.points != points ||
+      old.lineColor != lineColor ||
+      old.gridColor != gridColor ||
+      old.peakColor != peakColor;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -896,13 +911,16 @@ class _TopConsumersBreakdownCard extends StatelessWidget {
     }
   }
 
-  Color _getCategoryColor(int index) {
-    const colors = [
+  Color _getCategoryColor(int index, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    final danger = isDark ? AppColors.auroraError : AppColors.error;
+    final colors = [
       AppColors.auroraWarning,
-      AppColors.primary,
-      AppColors.auroraMint,
-      Color(0xFF8B5CF6),
-      Color(0xFFF43F5E),
+      theme.colorScheme.primary,
+      mint,
+      AppColors.orbViolet,
+      danger,
     ];
     return colors[index % colors.length];
   }
@@ -938,7 +956,7 @@ class _TopConsumersBreakdownCard extends StatelessWidget {
           ...breakdown.asMap().entries.map((entry) {
             final idx = entry.key;
             final item = entry.value;
-            final color = _getCategoryColor(idx);
+            final color = _getCategoryColor(idx, theme);
 
             return Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -950,8 +968,8 @@ class _TopConsumersBreakdownCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          color: color.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(AppRadius.sm + 2),
                         ),
                         child: Icon(
                           _getDeviceIcon(item.deviceType),
@@ -1027,6 +1045,474 @@ class _TopConsumersBreakdownCard extends StatelessWidget {
             );
           }),
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Demand Response & Peak Shaving Card (UC-ENG-03)
+// ─────────────────────────────────────────────────────────────────────
+class _DemandResponseSection extends ConsumerStatefulWidget {
+  const _DemandResponseSection();
+
+  @override
+  ConsumerState<_DemandResponseSection> createState() =>
+      _DemandResponseSectionState();
+}
+
+class _DemandResponseSectionState
+    extends ConsumerState<_DemandResponseSection> {
+  bool _initialized = false;
+  bool _enabled = true;
+  double _thresholdWatts = 4000;
+  String _mode = 'AUTO_SHED';
+  bool _isSaving = false;
+  bool _isEvaluating = false;
+  DemandResponseEvaluationModel? _evaluation;
+
+  void _syncFromSettings(DemandResponseSettingsModel? settings) {
+    if (_initialized || settings == null) {
+      return;
+    }
+    _initialized = true;
+    _enabled = settings.enabled;
+    _thresholdWatts = settings.peakThresholdWatts.clamp(1500.0, 8000.0);
+    _mode = settings.mode == 'ALERT_ONLY' ? 'ALERT_ONLY' : 'AUTO_SHED';
+  }
+
+  Future<void> _saveSettings() async {
+    setState(() => _isSaving = true);
+    try {
+      final homeId = ref.read(currentHomeIdProvider);
+      final updated = await ref
+          .read(energyRepositoryProvider)
+          .updateDemandResponseSettings(
+            homeId: homeId,
+            settings: DemandResponseSettingsModel(
+              homeId: homeId,
+              enabled: _enabled,
+              peakThresholdWatts: _thresholdWatts,
+              mode: _mode,
+            ),
+          );
+      ref.invalidate(demandResponseSettingsProvider);
+      if (mounted) {
+        setState(() {
+          _enabled = updated.enabled;
+          _thresholdWatts = updated.peakThresholdWatts.clamp(1500.0, 8000.0);
+          _mode = updated.mode;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraMintOnLight,
+            content: Text(
+              'Đã lưu ngưỡng cắt tải: ${(_thresholdWatts / 1000).toStringAsFixed(1)} kW (${_mode == 'AUTO_SHED' ? 'Tự động ngắt' : 'Chỉ cảnh báo'})',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraError,
+            content: Text('Không thể lưu cấu hình cắt tải: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  Future<void> _evaluatePeak({double? simulatedWatts}) async {
+    setState(() => _isEvaluating = true);
+    try {
+      final homeId = ref.read(currentHomeIdProvider);
+      final res = await ref
+          .read(energyRepositoryProvider)
+          .evaluateDemandResponse(
+            homeId: homeId,
+            simulatedWatts: simulatedWatts,
+          );
+      if (mounted) {
+        setState(() => _evaluation = res);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: res.status == 'PEAK_SHEDDING_EXECUTED'
+                ? AppColors.auroraWarning
+                : AppColors.auroraMintOnLight,
+            content: Text(
+              res.message.isNotEmpty
+                  ? res.message
+                  : 'Đánh giá phụ tải: ${res.totalCurrentWatts.round()}W',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraError,
+            content: Text('Lỗi đánh giá phụ tải: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isEvaluating = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accent = theme.colorScheme.primary;
+    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    final danger = isDark ? AppColors.auroraError : AppColors.error;
+    final settingsAsync = ref.watch(demandResponseSettingsProvider);
+    _syncFromSettings(settingsAsync.valueOrNull);
+
+    final isOverload =
+        _evaluation != null && _evaluation!.totalCurrentWatts > _thresholdWatts;
+
+    return GlassContainer(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.auroraWarning.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+                ),
+                child: const Icon(
+                  Icons.speed_rounded,
+                  color: AppColors.auroraWarning,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cắt Tải Đỉnh (Peak Shaving)',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Bảo vệ quá tải theo 4 mức ưu tiên thiết bị',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.62,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              GlassToggle(
+                value: _enabled,
+                size: 0.85,
+                onChanged: (val) => setState(() => _enabled = val),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Ngưỡng công suất đỉnh
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Ngưỡng công suất đỉnh:',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '${(_thresholdWatts / 1000).toStringAsFixed(1)} kW (${_thresholdWatts.round()}W)',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          GlassSlider(
+            value: ((_thresholdWatts - 1500) / 6500).clamp(0.0, 1.0),
+            height: 44,
+            leadingIcon: Icons.bolt_rounded,
+            trailingIcon: Icons.speed_rounded,
+            label: '${(_thresholdWatts / 1000).toStringAsFixed(1)} kW',
+            onChanged: (val) {
+              final snapped = 1500.0 + ((val * 26).round() * 250.0);
+              setState(() => _thresholdWatts = snapped.clamp(1500.0, 8000.0));
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm + 4),
+
+          // Mức khuyên dùng nhanh
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.xs + 2,
+            children: [
+              for (final preset in <(String, double)>[
+                ('3.0 kW', 3000),
+                ('4.0 kW', 4000),
+                ('6.0 kW', 6000),
+              ])
+                GlassFilterChip(
+                  label: preset.$1,
+                  selected: (_thresholdWatts - preset.$2).abs() < 50,
+                  onTap: () {
+                    setState(() => _thresholdWatts = preset.$2);
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm + 4),
+
+          // Chế độ xử lý
+          GlassSegmentedControl(
+            segments: const [
+              GlassSegment(label: 'Tự động ngắt'),
+              GlassSegment(label: 'Chỉ cảnh báo'),
+            ],
+            selectedIndex: _mode == 'ALERT_ONLY' ? 1 : 0,
+            onChanged: (idx) {
+              setState(() {
+                _mode = idx == 1 ? 'ALERT_ONLY' : 'AUTO_SHED';
+              });
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm + 4),
+
+          // 4 tầng ưu tiên
+          Wrap(
+            spacing: AppSpacing.xs + 2,
+            runSpacing: AppSpacing.xs + 2,
+            children: [
+              _DrPriorityBadge(
+                label: '1. Khẩn cấp (Cấm ngắt)',
+                color: danger,
+              ),
+              _DrPriorityBadge(
+                label: '2. Cốt lõi (24/7)',
+                color: accent,
+              ),
+              const _DrPriorityBadge(
+                label: '3. Tiện nghi (Đợt 2)',
+                color: AppColors.auroraWarning,
+              ),
+              const _DrPriorityBadge(
+                label: '4. Phụ trợ (Ngắt trước)',
+                color: AppColors.orbViolet,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Nút Lưu & Thử nghiệm
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    backgroundColor: accent,
+                    foregroundColor: isDark
+                        ? AppColors.auroraCanvasTop
+                        : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  onPressed: _isSaving ? null : _saveSettings,
+                  icon: _isSaving
+                      ? SizedBox.square(
+                          dimension: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: isDark
+                                ? AppColors.auroraCanvasTop
+                                : Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save_rounded, size: 16),
+                  label: Text(
+                    _isSaving ? 'Đang lưu...' : 'Lưu Hạn Mức',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    foregroundColor: accent,
+                    side: BorderSide(color: accent.withValues(alpha: 0.45)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  onPressed: _isEvaluating ? null : () => _evaluatePeak(),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 16),
+                  label: const Text(
+                    'Đánh giá tải',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(38),
+                    foregroundColor: AppColors.auroraWarning,
+                    side: BorderSide(
+                      color: AppColors.auroraWarning.withValues(alpha: 0.45),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  onPressed: _isEvaluating
+                      ? null
+                      : () => _evaluatePeak(simulatedWatts: 5500),
+                  child: const Text(
+                    'Thử 5.5 kW',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(38),
+                    foregroundColor: danger,
+                    side: BorderSide(color: danger.withValues(alpha: 0.45)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  onPressed: _isEvaluating
+                      ? null
+                      : () => _evaluatePeak(simulatedWatts: 6800),
+                  child: const Text(
+                    'Quá tải 6.8 kW',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          if (_evaluation != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm + 4),
+              decoration: BoxDecoration(
+                color: (isOverload ? AppColors.auroraWarning : mint).withValues(
+                  alpha: 0.1,
+                ),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: (isOverload ? AppColors.auroraWarning : mint)
+                      .withValues(alpha: 0.35),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _evaluation!.message.isNotEmpty
+                        ? _evaluation!.message
+                        : _evaluation!.status,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: isOverload ? AppColors.auroraWarning : mint,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Công suất đo: ${_evaluation!.totalCurrentWatts.round()}W / Ngưỡng: ${_evaluation!.peakThresholdWatts.round()}W • Đã hạ: -${_evaluation!.wattsSaved.round()}W',
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                  ),
+                  if (_evaluation!.sheddedDevices.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: _evaluation!.sheddedDevices
+                          .map(
+                            (name) => GlassStatusPill(
+                              icon: Icons.power_off_rounded,
+                              label: name,
+                              color: danger,
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DrPriorityBadge extends StatelessWidget {
+  const _DrPriorityBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }

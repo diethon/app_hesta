@@ -1,6 +1,8 @@
 import 'fall_incident.dart';
 
 abstract class CameraRepository {
+  String get videoFeedUrl;
+
   Future<List<FallIncident>> getActiveIncidents(String? homeId);
 
   Future<void> dismissIncident(
@@ -17,4 +19,8 @@ abstract class CameraRepository {
   Future<bool> triggerDemoFall();
 
   Future<bool> dismissAiLocal();
+
+  Future<List<DemoVideoItem>> getDemoVideos();
+
+  Future<bool> selectDemoVideo(String videoId);
 }

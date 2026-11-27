@@ -8,6 +8,13 @@ import 'package:syna/features/energy/presentation/energy_screen.dart';
 import 'package:syna/l10n/app_localizations.dart';
 
 class _FakeEnergyRepository implements EnergyRepository {
+  DemandResponseSettingsModel _settings = const DemandResponseSettingsModel(
+    homeId: 'home-test',
+    enabled: true,
+    peakThresholdWatts: 4000,
+    mode: 'AUTO_SHED',
+  );
+
   @override
   Future<EnergyAnalyticsModel> getHomeEnergyAnalytics({
     String? homeId,
@@ -15,6 +22,45 @@ class _FakeEnergyRepository implements EnergyRepository {
   }) async {
     // Return mock analytics directly for testing
     return ApiEnergyRepository.buildMockAnalytics(period);
+  }
+
+  @override
+  Future<DemandResponseSettingsModel> getDemandResponseSettings({
+    String? homeId,
+  }) async {
+    return _settings;
+  }
+
+  @override
+  Future<DemandResponseSettingsModel> updateDemandResponseSettings({
+    String? homeId,
+    required DemandResponseSettingsModel settings,
+  }) async {
+    _settings = settings;
+    return _settings;
+  }
+
+  @override
+  Future<DemandResponseEvaluationModel> evaluateDemandResponse({
+    String? homeId,
+    double? simulatedWatts,
+  }) async {
+    final watts = simulatedWatts ?? 2400.0;
+    final excess = (watts - _settings.peakThresholdWatts).clamp(
+      0.0,
+      double.infinity,
+    );
+    return DemandResponseEvaluationModel(
+      totalCurrentWatts: watts,
+      peakThresholdWatts: _settings.peakThresholdWatts,
+      excessWatts: excess,
+      status: excess > 0 ? 'PEAK_SHEDDING_EXECUTED' : 'NORMAL',
+      sheddedDevices: excess > 0 ? const ['Smart LED RGB Strip'] : const [],
+      wattsSaved: excess > 0 ? 1500 : 0,
+      message: excess > 0
+          ? 'Đã tự động cắt tải bảo vệ!'
+          : 'Công suất trong ngưỡng an toàn.',
+    );
   }
 }
 
@@ -73,5 +119,23 @@ void main() {
 
     // Verify 7 Ngày is active
     expect(find.text('Biểu Đồ Phụ Tải (7D)'), findsOneWidget);
+
+    // Verify Demand Response (UC-ENG-03) and scroll button into viewport
+    final testBtn = find.text('Thử 5.5 kW');
+    await tester.ensureVisible(find.text('Cắt Tải Đỉnh (Peak Shaving)'));
+    expect(find.text('Cắt Tải Đỉnh (Peak Shaving)'), findsOneWidget);
+    expect(find.text('Lưu Hạn Mức'), findsOneWidget);
+
+    await tester.ensureVisible(testBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(testBtn);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đã tự động cắt tải bảo vệ!'), findsAtLeastNWidgets(1));
+    expect(
+      find.text('Công suất đo: 5500W / Ngưỡng: 4000W • Đã hạ: -1500W'),
+      findsOneWidget,
+    );
+    expect(find.text('Smart LED RGB Strip'), findsOneWidget);
   });
 }

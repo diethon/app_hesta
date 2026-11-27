@@ -26,28 +26,34 @@ class DeviceGroupStrip extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Nhóm Thiết Bị',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'NHÓM THIẾT BỊ',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                letterSpacing: 0.8,
+              ),
+            ),
+            GestureDetector(
+              onTap: () => context.push('/groups'),
+              child: Text(
+                'Xem tất cả',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              TextButton(
-                onPressed: () => context.push('/groups'),
-                child: const Text('Xem tất cả'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
+        const SizedBox(height: AppSpacing.md),
         SizedBox(
-          height: 180,
+          height: 192,
           child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            padding: EdgeInsets.zero,
+            clipBehavior: Clip.none,
             scrollDirection: Axis.horizontal,
             itemCount: groups.length,
             separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
@@ -57,7 +63,7 @@ class DeviceGroupStrip extends ConsumerWidget {
             },
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
@@ -71,12 +77,15 @@ class _CompactGroupCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final accent = theme.colorScheme.primary;
+    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    final danger = isDark ? AppColors.auroraError : AppColors.error;
 
     return SizedBox(
       width: 260,
       child: GlassCard(
-        padding: const EdgeInsets.all(AppSpacing.sm + 4),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -86,26 +95,27 @@ class _CompactGroupCard extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    color: accent.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(AppRadius.sm + 2),
                   ),
                   child: Icon(Icons.layers_rounded, color: accent, size: 18),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     group.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
+                const SizedBox(width: AppSpacing.xs),
                 Text(
                   '${group.deviceCount} TB',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                   ),
                 ),
               ],
@@ -115,12 +125,12 @@ class _CompactGroupCard extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.wb_sunny_rounded,
                       size: 14,
-                      color: Colors.amber.shade600,
+                      color: AppColors.auroraWarning,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpacing.xs),
                     Text(
                       'Master Dimmer',
                       style: theme.textTheme.labelSmall?.copyWith(fontSize: 11),
@@ -130,15 +140,15 @@ class _CompactGroupCard extends ConsumerWidget {
                 Text(
                   '${group.currentBrightness}%',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.amber.shade700,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.auroraWarning,
                   ),
                 ),
               ],
             ),
             GlassSlider(
               value: (group.currentBrightness / 100).clamp(0.0, 1.0),
-              height: 34,
+              height: 36,
               onChanged: (val) {
                 final intVal = (val * 100).round();
                 ref
@@ -153,43 +163,45 @@ class _CompactGroupCard extends ConsumerWidget {
                     onTap: () => ref
                         .read(deviceGroupsControllerProvider.notifier)
                         .toggleGroupPower(group.id, true),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: AppColors.success.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        color: mint.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: mint.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         'Bật hết',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: AppColors.success,
-                          fontWeight: FontWeight.bold,
+                          color: mint,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: InkWell(
                     onTap: () => ref
                         .read(deviceGroupsControllerProvider.notifier)
                         .toggleGroupPower(group.id, false),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.error.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        color: danger.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: danger.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         'Tắt hết',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.error,
-                          fontWeight: FontWeight.bold,
+                          color: danger,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
