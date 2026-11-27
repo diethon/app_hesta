@@ -3,6 +3,7 @@ import 'package:syna/core/widgets/studio.dart';
 import 'package:syna/features/automation/domain/automation_models.dart';
 import 'package:syna/features/automation/domain/rule_options.dart';
 import 'package:syna/features/automation/presentation/rule_editor_parts.dart';
+import 'package:syna/features/devices/domain/device.dart';
 
 void main() {
   String? check({
@@ -251,5 +252,46 @@ void main() {
       'Hằng ngày lúc 18:00 (+1 giờ khác)',
     );
     expect(scheduleSentence(const []), 'Chưa có giờ chạy nào đang bật');
+  });
+
+  test('deviceActions follows backend capabilities like the web', () {
+    Device device(String type, [Map<String, List<String>>? caps]) => Device(
+      id: 'd',
+      name: 'd',
+      roomId: 'r',
+      type: DeviceType.light,
+      status: DeviceStatus.online,
+      isOn: false,
+      rawType: type,
+      capabilities: caps,
+    );
+    List<String> codes(Device d) =>
+        deviceActions(d).map((o) => o.code).toList();
+
+    // No capabilities: falls back to the device type.
+    expect(codes(device('FAN')), [
+      'TURN_ON',
+      'TURN_OFF',
+      'TOGGLE',
+      'SET_SPEED',
+    ]);
+    // Capabilities win over the type and expand group names.
+    expect(codes(device('LED_RGB', {'POWER': [], 'COLOR': []})), [
+      'TURN_ON',
+      'TURN_OFF',
+      'TOGGLE',
+      'SET_RGB',
+      'SET_COLOR',
+    ]);
+    // A plain light never offers colour, even if declared.
+    expect(
+      codes(
+        device('LIGHT', {
+          'POWER': ['TURN_ON'],
+          'COLOR': ['SET_RGB'],
+        }),
+      ),
+      ['TURN_ON'],
+    );
   });
 }

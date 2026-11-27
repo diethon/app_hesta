@@ -615,7 +615,7 @@ class _ConditionCardState extends State<ConditionCard> {
           ],
           const SizedBox(height: 14),
           FieldLabel(
-            'Chỉ số theo dõi',
+            'Theo dõi gì',
             trailing: GestureDetector(
               onTap: () => setState(() => _customOpen = !_customOpen),
               child: Text(
@@ -723,7 +723,7 @@ class _ConditionCardState extends State<ConditionCard> {
                       child: Text(
                         cond.attribute == 'motion'
                             ? (v ? 'Có chuyển động' : 'Không có')
-                            : (v ? 'Bật (ON)' : 'Tắt (OFF)'),
+                            : (v ? 'Bật' : 'Tắt'),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -819,7 +819,7 @@ String _commandSentence(RuleAction act, Device? device, Scene? scene) {
   return switch (act.action) {
     'TURN_ON' => 'Bật $dev',
     'TURN_OFF' => 'Tắt $dev',
-    'TOGGLE' => 'Đảo trạng thái (Bật/Tắt) $dev',
+    'TOGGLE' => 'Đổi bật ⇄ tắt $dev',
     'OPEN' => 'Mở $dev',
     'CLOSE' => 'Đóng $dev',
     'STOP' => 'Dừng $dev',
@@ -891,14 +891,19 @@ class _ActionStepCardState extends State<ActionStepCard> {
     final dev = widget.device;
     final scene = widget.scene;
     final offline = dev != null && dev.status == DeviceStatus.offline;
-    final options = isGroup
-        ? {
-            for (final d in widget.groupDevices)
-              for (final o in deviceActions(d)) o.code: o,
-          }.values.toList()
-        : dev == null
-        ? const <ActionOption>[]
-        : deviceActions(dev);
+    final options = [
+      ...isGroup
+          ? {
+              for (final d in widget.groupDevices)
+                for (final o in deviceActions(d)) o.code: o,
+            }.values
+          : dev == null
+          ? const <ActionOption>[]
+          : deviceActions(dev),
+      // Old rules saved with the JSON command keep showing it so they stay editable.
+      if (_a.action == 'SET_STATE')
+        actionOptions.firstWhere((o) => o.code == 'SET_STATE'),
+    ];
     final autoOff = (num.tryParse('${_a.parameters[kAutoOffKey] ?? ''}') ?? 0)
         .toInt();
     final undoVerb = isDelay || isScene
@@ -1552,7 +1557,6 @@ Future<String?> showEventPicker(BuildContext context, {String? selected}) {
       title: 'Chọn sự kiện hệ thống',
       hint: 'Tìm theo tên sự kiện hoặc mô tả...',
       builder: (q) {
-        final c = StudioColors.of(ctx);
         final list = systemEvents
             .where(
               (e) =>
@@ -1572,23 +1576,6 @@ Future<String?> showEventPicker(BuildContext context, {String? selected}) {
                 subtitle: e.description,
                 selected: e.code == selected,
                 onTap: () => Navigator.pop(ctx, e.code),
-              ),
-            if (list.isEmpty && q.isNotEmpty)
-              StudioCard(
-                child: Column(
-                  children: [
-                    Text(
-                      'Dùng mã sự kiện tùy chỉnh: ${q.toUpperCase()}',
-                      style: TextStyle(color: c.muted),
-                    ),
-                    const SizedBox(height: 10),
-                    FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: c.accent),
-                      onPressed: () => Navigator.pop(ctx, q.toUpperCase()),
-                      child: const Text('Sử dụng mã sự kiện này'),
-                    ),
-                  ],
-                ),
               ),
           ],
         );
@@ -1628,7 +1615,7 @@ Future<Scene?> showScenePicker(
                 icon: SceneIcons.getAtmosphere(s.icon).icon,
                 title: s.name,
                 subtitle:
-                    '${s.actions.length} thiết bị${s.enabled ? '' : ' · Đã tắt'}',
+                    '${s.actions.length} thiết bị${s.enabled ? '' : ' · Tạm dừng'}',
                 selected: s.id == selectedId,
                 onTap: () => Navigator.pop(ctx, s),
               ),
@@ -2070,14 +2057,17 @@ extension on String {
 
 // ── Mẫu tạo nhanh ───────────────────────────────────────────────────
 
+/// Danh sách mẫu dùng chung cho quy tắc và kịch bản; [onSelect] nhận vị trí mẫu trong [items].
 class TemplateGrid extends StatelessWidget {
   const TemplateGrid({
+    required this.items,
     required this.onSelect,
     required this.onBlank,
     super.key,
   });
 
-  final ValueChanged<AutomationTemplate> onSelect;
+  final List<({IconData icon, String name, String description})> items;
+  final ValueChanged<int> onSelect;
   final VoidCallback onBlank;
 
   @override
@@ -2100,11 +2090,11 @@ class TemplateGrid extends StatelessWidget {
           style: TextStyle(fontSize: 13, color: c.muted),
         ),
         const SizedBox(height: 14),
-        for (final t in automationTemplates)
+        for (final (i, t) in items.indexed)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: StudioCard(
-              onTap: () => onSelect(t),
+              onTap: () => onSelect(i),
               child: Row(
                 children: [
                   StudioIconTile(icon: t.icon),

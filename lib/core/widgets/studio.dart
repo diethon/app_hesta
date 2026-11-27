@@ -286,7 +286,7 @@ String describeAction(
     'POWER_ON': 'Bật',
     'TURN_OFF': 'Tắt',
     'POWER_OFF': 'Tắt',
-    'TOGGLE': 'Đảo bật/tắt',
+    'TOGGLE': 'Đổi bật ⇄ tắt',
     'SET_POWER': 'Bật/tắt nguồn',
     'SET_BRIGHTNESS': 'Chỉnh độ sáng',
     'SET_TEMPERATURE': 'Đặt nhiệt độ',
