@@ -108,6 +108,10 @@ class NotificationsController
     }
     state = AsyncValue.data([notification, ...current]);
 
+    // Backend đánh dấu silent trong giờ yên tĩnh: vẫn thêm vào danh sách, không bật popup.
+    if (json['silent'] == true) {
+      return;
+    }
     unawaited(
       _notificationService.showLocal(
         title: notification.title,
