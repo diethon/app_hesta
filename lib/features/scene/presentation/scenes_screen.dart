@@ -384,18 +384,21 @@ class _SceneListItem extends StatelessWidget {
   static IconData deviceIcon(String? type, String name) {
     final n = name.toLowerCase();
     final t = (type ?? '').toLowerCase();
-    if (n.contains('đèn') || t.contains('light'))
+    if (n.contains('đèn') || t.contains('light')) {
       return Icons.lightbulb_outline_rounded;
+    }
     if (n.contains('lạnh') ||
         n.contains('điều hòa') ||
         t.contains('climate') ||
         t.contains('ac')) {
       return Icons.ac_unit_rounded;
     }
-    if (n.contains('rèm') || t.contains('curtain'))
+    if (n.contains('rèm') || t.contains('curtain')) {
       return Icons.curtains_rounded;
-    if (n.contains('khóa') || t.contains('lock'))
+    }
+    if (n.contains('khóa') || t.contains('lock')) {
       return Icons.lock_outline_rounded;
+    }
     if (n.contains('quạt') || t.contains('fan')) return Icons.air_rounded;
     return Icons.devices_other_rounded;
   }

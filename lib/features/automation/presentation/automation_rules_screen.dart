@@ -462,26 +462,30 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
             AutomationRuleEditorScreen(rule: rule, openHistory: history),
       ),
     );
-    if (mounted)
+    if (mounted) {
       unawaited(ref.read(automationRulesListProvider.notifier).refresh());
+    }
   }
 
   Future<void> _openDetail(BuildContext context, AutomationRule rule) async {
     await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(builder: (_) => AutomationRuleDetailScreen(rule: rule)),
     );
-    if (mounted)
+    if (mounted) {
       unawaited(ref.read(automationRulesListProvider.notifier).refresh());
+    }
   }
 
   Future<void> _duplicate(BuildContext context, AutomationRule rule) async {
     try {
       await ref.read(automationRulesListProvider.notifier).duplicateRule(rule);
-      if (context.mounted)
+      if (context.mounted) {
         showStudioSnack(context, 'Đã tạo bản sao (đang tắt)');
+      }
     } catch (_) {
-      if (context.mounted)
+      if (context.mounted) {
         showStudioSnack(context, 'Không nhân bản được quy tắc', success: false);
+      }
     }
   }
 
@@ -506,8 +510,9 @@ class _AutomationRulesScreenState extends ConsumerState<AutomationRulesScreen> {
         ],
       ),
     );
-    if (ok == true)
+    if (ok == true) {
       await ref.read(automationRulesListProvider.notifier).deleteRule(rule.id);
+    }
   }
 
   @override

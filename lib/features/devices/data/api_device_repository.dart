@@ -303,14 +303,14 @@ class ApiDeviceRepository implements DeviceRepository {
       if (data is Map) {
         return DeviceUptimeInfo.fromJson(Map<String, dynamic>.from(data));
       }
-      return MockDeviceRepository().getDeviceUptime(id, days: days);
+      return await MockDeviceRepository().getDeviceUptime(id, days: days);
     } on DioException catch (error) {
       if (error.response != null) {
         throw mapDioException(error);
       }
-      return MockDeviceRepository().getDeviceUptime(id, days: days);
+      return await MockDeviceRepository().getDeviceUptime(id, days: days);
     } catch (_) {
-      return MockDeviceRepository().getDeviceUptime(id, days: days);
+      return await MockDeviceRepository().getDeviceUptime(id, days: days);
     }
   }
 
