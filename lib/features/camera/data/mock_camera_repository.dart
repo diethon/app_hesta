@@ -4,6 +4,10 @@ import '../domain/fall_incident.dart';
 class MockCameraRepository implements CameraRepository {
   final List<FallIncident> _incidents = [];
   bool _mockAlert = false;
+  String _activeVideoId = 'webcam';
+
+  @override
+  String get videoFeedUrl => '';
 
   @override
   Future<List<FallIncident>> getActiveIncidents(String? homeId) async {
@@ -84,6 +88,37 @@ class MockCameraRepository implements CameraRepository {
 
   @override
   Future<bool> dismissAiLocal() async {
+    _mockAlert = false;
+    return true;
+  }
+
+  @override
+  Future<List<DemoVideoItem>> getDemoVideos() async {
+    return [
+      DemoVideoItem(
+        id: 'webcam',
+        name: 'Webcam Live (Camera chính)',
+        type: 'LIVE',
+        active: _activeVideoId == 'webcam',
+      ),
+      DemoVideoItem(
+        id: 'urfd_fall_01',
+        name: 'URFD Fall-01 (Ngã đứng đập sàn)',
+        type: 'FALL',
+        active: _activeVideoId == 'urfd_fall_01',
+      ),
+      DemoVideoItem(
+        id: 'urfd_adl_walk',
+        name: 'URFD ADL-01 (Đi lại an toàn)',
+        type: 'ADL',
+        active: _activeVideoId == 'urfd_adl_walk',
+      ),
+    ];
+  }
+
+  @override
+  Future<bool> selectDemoVideo(String videoId) async {
+    _activeVideoId = videoId;
     _mockAlert = false;
     return true;
   }

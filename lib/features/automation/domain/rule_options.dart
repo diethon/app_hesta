@@ -104,8 +104,9 @@ const _actionsByType = <String, List<String>>{
 String deviceTypeCode(Device d) {
   final raw = (d.rawType ?? '').toUpperCase();
   if (raw.isNotEmpty) {
-    if (raw == 'RGB_LED' || raw == 'RGB' || raw == 'LED_STRIP')
+    if (raw == 'RGB_LED' || raw == 'RGB' || raw == 'LED_STRIP') {
       return 'LED_RGB';
+    }
     if (raw == 'THERMOSTAT') return 'AC';
     return raw;
   }
@@ -186,16 +187,19 @@ List<SensorAttribute> attributesFor(Device? d) {
   if (d == null) return sensorAttributes;
   final t = deviceTypeCode(d);
   // Đèn, quạt, ổ cắm…: "khi bật / tắt" (power ON/OFF nó báo về), giống web.
-  if (isControllableDevice(d) && !t.contains('SENSOR'))
+  if (isControllableDevice(d) && !t.contains('SENSOR')) {
     return const [kPowerOnOff];
+  }
   List<SensorAttribute> only(List<String> keys) =>
       sensorAttributes.where((a) => keys.contains(a.key)).toList();
-  if (t.contains('TEMP') || t.contains('DHT'))
+  if (t.contains('TEMP') || t.contains('DHT')) {
     return only(['temperature', 'humidity']);
+  }
   if (t.contains('MOTION') || t.contains('PIR')) return only(['motion']);
   if (t.contains('LIGHT') || t.contains('LDR')) return only(['light']);
-  if (t.contains('POWER') || t.contains('ENERGY') || t.contains('SOCKET'))
+  if (t.contains('POWER') || t.contains('ENERGY') || t.contains('SOCKET')) {
     return only(['power', 'state']);
+  }
   return sensorAttributes;
 }
 
@@ -386,8 +390,9 @@ String? validateRuleDraft({
   required int activeScheduleCount,
 }) {
   if (name.trim().isEmpty) return 'Nhập tên quy tắc (tối đa 40 ký tự)';
-  if (triggerType == 'SCHEDULE' && activeScheduleCount == 0)
+  if (triggerType == 'SCHEDULE' && activeScheduleCount == 0) {
     return 'Thêm ít nhất 1 giờ chạy';
+  }
   if (triggerType == 'SENSOR') {
     if (conditions.isEmpty) return 'Thêm ít nhất 1 điều kiện cho cảm biến';
     if (conditions.any(
@@ -402,11 +407,13 @@ String? validateRuleDraft({
     return 'Chọn sự kiện kích hoạt';
   }
   if (actions.isEmpty) return 'Thêm ít nhất 1 hành động thực thi';
-  if (actions.every((a) => a.action == kDelayAction))
+  if (actions.every((a) => a.action == kDelayAction)) {
     return 'Thêm ít nhất 1 hành động ngoài bước chờ';
+  }
   final incomplete = actions.any((a) {
-    if (a.action == kDelayAction)
+    if (a.action == kDelayAction) {
       return !((num.tryParse('${a.seconds}') ?? 0) >= 1);
+    }
     if (a.action == 'EXECUTE_SCENE') return a.sceneId == null;
     return a.groupId != null ? a.groupId!.isEmpty : a.deviceId == null;
   });
@@ -438,8 +445,9 @@ String? autoOffVerb(String action, [Map<String, dynamic> params = const {}]) {
   if (action == 'TURN_ON' || action == 'POWER_ON') return 'Tự tắt';
   if (action == 'SET_POWER' &&
       params['power'] != false &&
-      params['power'] != 'OFF')
+      params['power'] != 'OFF') {
     return 'Tự tắt';
+  }
   if (action == 'OPEN' || action == 'GATE_OPEN') return 'Tự đóng';
   return null;
 }

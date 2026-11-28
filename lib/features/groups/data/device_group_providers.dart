@@ -91,6 +91,32 @@ class DeviceGroupsController extends StateNotifier<DeviceGroupsState> {
     }
   }
 
+  Future<bool> updateGroup({
+    required String groupId,
+    required String name,
+    required List<String> deviceIds,
+    String? icon,
+  }) async {
+    try {
+      final updated = await _repository.updateGroup(
+        groupId: groupId,
+        name: name,
+        deviceIds: deviceIds,
+        icon: icon,
+      );
+      state = state.copyWith(
+        groups: [
+          for (final group in state.groups)
+            group.id == groupId ? updated : group,
+        ],
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(errorMessage: 'Lỗi cập nhật nhóm: $e');
+      return false;
+    }
+  }
+
   Future<bool> deleteGroup(String groupId) async {
     _debounceTimers[groupId]?.cancel();
     _debounceTimers.remove(groupId);

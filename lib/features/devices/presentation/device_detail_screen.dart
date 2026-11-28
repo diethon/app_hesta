@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/glass/glass.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../rooms/data/room_providers.dart';
 import '../data/device_providers.dart';
 import '../domain/device.dart';
 import 'device_visuals.dart';
@@ -28,14 +31,22 @@ class DeviceDetailScreen extends ConsumerStatefulWidget {
 
 class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   bool _precached = false;
+  DeviceUptimeInfo? _uptimeInfo;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      ref
-          .read(devicesControllerProvider.notifier)
-          .fetchDeviceHealth(widget.deviceId);
+    Future.microtask(() async {
+      final notifier = ref.read(devicesControllerProvider.notifier);
+      try {
+        await notifier.fetchDeviceHealth(widget.deviceId);
+      } catch (_) {}
+      try {
+        final uptime = await notifier.getDeviceUptime(widget.deviceId);
+        if (mounted) {
+          setState(() => _uptimeInfo = uptime);
+        }
+      } catch (_) {}
     });
   }
 
@@ -56,10 +67,12 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
     if (!_precached) {
       _precached = true;
       final image = DeviceVisuals.detailImage(device);
-      if (image != null) precacheImage(AssetImage(image), context);
+      if (image != null) {
+        unawaited(precacheImage(AssetImage(image), context));
+      }
     }
 
-    return _DeviceDetailScaffold(device: device);
+    return _DeviceDetailScaffold(device: device, uptimeInfo: _uptimeInfo);
   }
 }
 
@@ -67,9 +80,10 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 /// làm background + glow theo trạng thái + layer control kính nổi.
 /// Control chính render theo [DeviceType] — không copy-paste screen.
 class _DeviceDetailScaffold extends ConsumerWidget {
-  const _DeviceDetailScaffold({required this.device});
+  const _DeviceDetailScaffold({required this.device, this.uptimeInfo});
 
   final Device device;
+  final DeviceUptimeInfo? uptimeInfo;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -182,7 +196,10 @@ class _DeviceDetailScaffold extends ConsumerWidget {
                           const SizedBox(height: AppSpacing.md),
                           _ManualOverrideCard(device: device),
                           const SizedBox(height: AppSpacing.md),
-                          _DeviceHealthCard(device: device),
+                          _DeviceHealthCard(
+                            device: device,
+                            uptimeInfo: uptimeInfo,
+                          ),
                           const SizedBox(height: AppSpacing.md),
                           _SecondaryBlock(device: device, accent: accent),
                           const SizedBox(height: AppSpacing.md),
@@ -200,24 +217,29 @@ class _DeviceDetailScaffold extends ConsumerWidget {
     );
   }
 
-  ThemeData _forcedDarkTheme(BuildContext context) {
-    final theme = Theme.of(context);
-    if (theme.brightness == Brightness.dark) return theme;
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.auroraAccent,
-        brightness: Brightness.dark,
-        primary: AppColors.auroraAccent,
-      ),
-      textTheme: theme.textTheme.apply(
-        bodyColor: AppColors.onDark,
-        displayColor: AppColors.onDark,
-      ),
-      splashFactory: NoSplash.splashFactory,
-    );
+  ThemeData _forcedDarkTheme(BuildContext context) =>
+      _darkOverlayTheme(context);
+}
+
+ThemeData _darkOverlayTheme(BuildContext context) {
+  final theme = Theme.of(context);
+  if (theme.brightness == Brightness.dark) {
+    return theme;
   }
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: AppColors.auroraAccent,
+      brightness: Brightness.dark,
+      primary: AppColors.auroraAccent,
+    ),
+    textTheme: theme.textTheme.apply(
+      bodyColor: AppColors.onDark,
+      displayColor: AppColors.onDark,
+    ),
+    splashFactory: NoSplash.splashFactory,
+  );
 }
 
 void _showDeviceMoreOptions(
@@ -228,89 +250,421 @@ void _showDeviceMoreOptions(
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
+    isScrollControlled: true,
     builder: (ctx) {
       final isOverride = device.isOverrideActive;
-      return Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF141A29),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
+      final divider = Divider(
+        height: 1,
+        color: GlassTokens.borderSolid(Brightness.dark),
+      );
+      return Theme(
+        data: _darkOverlayTheme(ctx),
+        child: GlassBottomSheet(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GlassOptionTile(
+                icon: Icons.edit_note_rounded,
+                color: AppColors.auroraMint,
+                title: 'Chỉnh sửa tên & phòng thiết bị',
+                subtitle: 'Đổi tên hiển thị, chuyển phòng hoặc chọn icon',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _showEditDeviceConfigSheet(context, ref, device);
+                },
               ),
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.bolt_rounded,
+              divider,
+              GlassOptionTile(
+                icon: Icons.bolt_rounded,
                 color: AppColors.auroraAccent,
+                title: 'Đổi công suất định mức',
+                subtitle:
+                    'Hiện tại: ${device.energyWatts?.toStringAsFixed(1) ?? 40}W',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _showEditWattageDialog(context, ref, device);
+                },
               ),
-              title: const Text(
-                'Đổi công suất định mức',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              subtitle: Text(
-                'Hiện tại: ${device.energyWatts?.toStringAsFixed(1) ?? 40}W',
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
-              ),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _showEditWattageDialog(context, ref, device);
-              },
-            ),
-            Divider(color: Colors.white.withValues(alpha: 0.08)),
-            ListTile(
-              leading: Icon(
-                isOverride
+              divider,
+              GlassOptionTile(
+                icon: isOverride
                     ? Icons.play_arrow_rounded
                     : Icons.lock_clock_rounded,
                 color: isOverride
                     ? AppColors.auroraMint
                     : AppColors.auroraWarning,
-              ),
-              title: Text(
-                isOverride
+                title: isOverride
                     ? 'Khôi phục tự động hóa AI'
                     : 'Khóa ưu tiên thủ công (30 phút)',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              subtitle: Text(
-                isOverride
+                subtitle: isOverride
                     ? 'Hủy bỏ đè tay và cho phép AI tiếp tục điều khiển'
                     : 'Giữ nguyên trạng thái thiết bị trong 30 phút tới',
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  try {
+                    if (isOverride) {
+                      await ref
+                          .read(devicesControllerProvider.notifier)
+                          .resumeAutomation(device.id);
+                    } else {
+                      await ref
+                          .read(devicesControllerProvider.notifier)
+                          .cancelAutomation(device.id, minutes: 30);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: AppColors.auroraError,
+                          content: Text('Không thể cập nhật khóa tay: $e'),
+                        ),
+                      );
+                    }
+                  }
+                },
               ),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                if (isOverride) {
-                  ref
-                      .read(devicesControllerProvider.notifier)
-                      .resumeAutomation(device.id);
-                } else {
-                  ref
-                      .read(devicesControllerProvider.notifier)
-                      .cancelAutomation(device.id, minutes: 30);
-                }
-              },
-            ),
-          ],
+              divider,
+              GlassOptionTile(
+                icon: Icons.delete_outline_rounded,
+                color: AppColors.auroraError,
+                titleColor: AppColors.auroraError,
+                title: 'Gỡ bỏ thiết bị khỏi nhà',
+                subtitle:
+                    'Xóa thiết bị và tự động dọn dẹp liên kết Kịch bản / Rule',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _confirmRemoveDevice(context, ref, device);
+                },
+              ),
+            ],
+          ),
         ),
       );
     },
+  );
+}
+
+void _showEditDeviceConfigSheet(
+  BuildContext context,
+  WidgetRef ref,
+  Device device,
+) {
+  final nameController = TextEditingController(text: device.name);
+  final rooms = ref.read(roomsProvider);
+  final validRoomIds = rooms.map((r) => r.id).toSet();
+  String? selectedRoomId = validRoomIds.contains(device.roomId)
+      ? device.roomId
+      : (rooms.isNotEmpty ? rooms.first.id : null);
+  String selectedIcon = 'lightbulb';
+  bool isSaving = false;
+
+  const iconChoices = <(String, String, IconData)>[
+    ('lightbulb', 'Đèn', Icons.lightbulb_outline_rounded),
+    ('ac_unit', 'Điều hòa', Icons.ac_unit_rounded),
+    ('door_front_door', 'Cổng/Cửa', Icons.door_front_door_outlined),
+    ('fan', 'Quạt', Icons.air_rounded),
+    ('sensors', 'Cảm biến', Icons.sensors_rounded),
+    ('tv', 'TV', Icons.tv_rounded),
+    ('water_drop', 'Bơm', Icons.water_drop_outlined),
+    ('speaker', 'Loa', Icons.speaker_outlined),
+  ];
+
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (sheetContext) {
+      return Theme(
+        data: _darkOverlayTheme(sheetContext),
+        child: StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final theme = Theme.of(sheetContext);
+            return GlassBottomSheet(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Chỉnh Sửa Thông Tin Thiết Bị',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onDark,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: nameController,
+                    maxLength: 150,
+                    style: const TextStyle(color: AppColors.onDark),
+                    decoration: glassInputDecoration(
+                      sheetContext,
+                      labelText: 'Tên thiết bị',
+                      prefixIcon: const Icon(
+                        Icons.devices_rounded,
+                        size: 20,
+                        color: AppColors.auroraAccent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm + 4),
+                  if (rooms.isNotEmpty) ...[
+                    Text(
+                      'Phòng lắp đặt',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: AppColors.onDarkMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs + 2),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                      ),
+                      decoration: BoxDecoration(
+                        color: GlassTokens.fillDarkActive,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(
+                          color: GlassTokens.borderSolid(Brightness.dark),
+                        ),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          dropdownColor: AppColors.auroraCanvasMid,
+                          value: selectedRoomId,
+                          style: const TextStyle(color: AppColors.onDark),
+                          items: rooms
+                              .map(
+                                (r) => DropdownMenuItem<String>(
+                                  value: r.id,
+                                  child: Text(r.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            setSheetState(() => selectedRoomId = val);
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  Text(
+                    'Biểu tượng',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: AppColors.onDarkMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: iconChoices.map((item) {
+                      return GlassFilterChip(
+                        label: item.$2,
+                        icon: item.$3,
+                        selected: selectedIcon == item.$1,
+                        onTap: () {
+                          setSheetState(() => selectedIcon = item.$1);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            foregroundColor: AppColors.onDarkMuted,
+                            side: BorderSide(
+                              color: GlassTokens.borderSolid(Brightness.dark),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          child: const Text('Hủy'),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm + 4),
+                      Expanded(
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            backgroundColor: AppColors.auroraAccent,
+                            foregroundColor: AppColors.auroraCanvasTop,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                            ),
+                          ),
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  final nextName = nameController.text.trim();
+                                  if (nextName.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        behavior: SnackBarBehavior.floating,
+                                        content: Text(
+                                          'Tên thiết bị không được để trống',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  setSheetState(() => isSaving = true);
+                                  try {
+                                    await ref
+                                        .read(
+                                          devicesControllerProvider.notifier,
+                                        )
+                                        .updateDeviceConfig(
+                                          device.id,
+                                          name: nextName,
+                                          roomId: selectedRoomId,
+                                          icon: selectedIcon,
+                                        );
+                                    if (sheetContext.mounted) {
+                                      Navigator.of(sheetContext).pop();
+                                    }
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          behavior: SnackBarBehavior.floating,
+                                          backgroundColor:
+                                              AppColors.auroraMintOnLight,
+                                          content: Text(
+                                            'Đã cập nhật thiết bị "$nextName"',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    setSheetState(() => isSaving = false);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          behavior: SnackBarBehavior.floating,
+                                          backgroundColor:
+                                              AppColors.auroraError,
+                                          content: Text(
+                                            'Cập nhật thất bại: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          child: isSaving
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.auroraCanvasTop,
+                                  ),
+                                )
+                              : const Text(
+                                  'Lưu Thay Đổi',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    },
+  ).whenComplete(nameController.dispose);
+}
+
+void _confirmRemoveDevice(BuildContext context, WidgetRef ref, Device device) {
+  showDialog<void>(
+    context: context,
+    builder: (dialogCtx) => Theme(
+      data: _darkOverlayTheme(dialogCtx),
+      child: GlassDialog(
+        icon: Icons.delete_outline_rounded,
+        iconColor: AppColors.auroraError,
+        title: 'Gỡ bỏ thiết bị?',
+        content: Text(
+          'Bạn có chắc chắn muốn gỡ "${device.name}" khỏi ngôi nhà?\n\nHệ thống sẽ tự động dọn dẹp các liên kết với Kịch bản và Quy tắc tự động hóa liên quan.',
+          style: Theme.of(dialogCtx).textTheme.bodyMedium?.copyWith(
+            color: AppColors.onDarkMuted,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
+              foregroundColor: AppColors.onDarkMuted,
+              side: BorderSide(color: GlassTokens.borderSolid(Brightness.dark)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
+              backgroundColor: AppColors.auroraError,
+              foregroundColor: AppColors.auroraCanvasTop,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              try {
+                await ref
+                    .read(devicesControllerProvider.notifier)
+                    .removeDevice(device.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppColors.auroraMintOnLight,
+                      content: Text('Đã gỡ bỏ "${device.name}" khỏi nhà'),
+                    ),
+                  );
+                  context.pop();
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppColors.auroraError,
+                      content: Text('Không thể gỡ thiết bị: $e'),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              'Gỡ thiết bị',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    ),
   );
 }
 
@@ -330,218 +684,188 @@ void _showEditWattageDialog(
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (sheetContext) {
-      return Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-        ),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF141A29),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Row(
+      return Theme(
+        data: _darkOverlayTheme(sheetContext),
+        child: StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final theme = Theme.of(sheetContext);
+            return GlassBottomSheet(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.auroraAccent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.bolt_rounded,
-                      color: AppColors.auroraAccent,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Cấu Hình Công Suất Định Mức',
-                          style: Theme.of(sheetContext).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                        ),
-                        Text(
-                          device.name,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.auroraAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(
+                            color: AppColors.auroraAccent.withValues(
+                              alpha: 0.25,
+                            ),
                           ),
                         ),
-                      ],
+                        child: const Icon(
+                          Icons.bolt_rounded,
+                          color: AppColors.auroraAccent,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm + 4),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Cấu Hình Công Suất Định Mức',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.onDark,
+                              ),
+                            ),
+                            Text(
+                              device.name,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppColors.onDarkMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm + 4),
+                  Text(
+                    'Công suất danh định (Watts) được HESTA dùng để tính toán năng lượng tiêu thụ, tích phân Riemann kWh và đối soát bậc thang EVN.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.onDarkMuted,
+                      height: 1.4,
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    onChanged: (_) => setSheetState(() {}),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.onDark,
+                    ),
+                    decoration: glassInputDecoration(
+                      sheetContext,
+                      labelText: 'Công suất tiêu thụ',
+                      suffixText: 'W',
+                      accentColor: AppColors.auroraAccent,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm + 4),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [15, 40, 60, 100, 680, 1500, 2200].map((w) {
+                      return GlassFilterChip(
+                        label: '${w}W',
+                        selected: controller.text.trim() == w.toString(),
+                        onTap: () {
+                          setSheetState(() {
+                            controller.text = w.toString();
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            foregroundColor: AppColors.onDarkMuted,
+                            side: BorderSide(
+                              color: GlassTokens.borderSolid(Brightness.dark),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                            ),
+                          ),
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          child: const Text('Hủy'),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm + 4),
+                      Expanded(
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            backgroundColor: AppColors.auroraAccent,
+                            foregroundColor: AppColors.auroraCanvasTop,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                            ),
+                          ),
+                          onPressed: () async {
+                            final val = double.tryParse(controller.text.trim());
+                            if (val == null || val <= 0 || val > 25000) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  behavior: SnackBarBehavior.floating,
+                                  content: Text(
+                                    'Vui lòng nhập công suất hợp lệ (1W - 25000W)',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            Navigator.of(sheetContext).pop();
+                            await ref
+                                .read(devicesControllerProvider.notifier)
+                                .updateDeviceWattage(device.id, val);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: AppColors.auroraMintOnLight,
+                                  content: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.check_circle_rounded,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      Expanded(
+                                        child: Text(
+                                          'Đã cập nhật công suất ${device.name}: ${val.toStringAsFixed(0)}W',
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text(
+                            'Lưu Công Suất',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Công suất danh định (Watts) được HESTA dùng để tính toán năng lượng tiêu thụ, tích phân Riemann kWh và đối soát bậc thang EVN.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withValues(alpha: 0.7),
-                  height: 1.35,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                decoration: InputDecoration(
-                  labelText: 'Công suất tiêu thụ',
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  suffixText: 'W',
-                  suffixStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.auroraAccent,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.15),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
-                      color: AppColors.auroraAccent,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [15, 40, 60, 100, 680, 1500, 2200].map((w) {
-                  return ActionChip(
-                    backgroundColor: Colors.white.withValues(alpha: 0.08),
-                    side: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                    label: Text(
-                      '${w}W',
-                      style: const TextStyle(fontSize: 11, color: Colors.white),
-                    ),
-                    onPressed: () => controller.text = w.toString(),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.2),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      onPressed: () => Navigator.of(sheetContext).pop(),
-                      child: const Text('Hủy'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.auroraAccent,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      onPressed: () async {
-                        final val = double.tryParse(controller.text.trim());
-                        if (val == null || val <= 0 || val > 25000) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Vui lòng nhập công suất hợp lệ (1W - 25000W)',
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-                        Navigator.of(sheetContext).pop();
-                        await ref
-                            .read(devicesControllerProvider.notifier)
-                            .updateDeviceWattage(device.id, val);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              behavior: SnackBarBehavior.floating,
-                              backgroundColor: AppColors.success,
-                              content: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Đã cập nhật công suất ${device.name}: ${val.toStringAsFixed(0)}W',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                      child: const Text(
-                        'Lưu Công Suất',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         ),
       );
     },
-  );
+  ).whenComplete(controller.dispose);
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -564,30 +888,28 @@ class _StatusBlock extends StatelessWidget {
     final pills = <Widget>[];
 
     if (device.isGate) {
-      final isClosing = device.gateState == 'CLOSING';
-      final isOpening = device.gateState == 'OPENING';
-      final isStopped = device.gateState == 'STOPPED';
+      final gate = device.gateState?.toUpperCase();
+      final isClosing = gate == 'CLOSING';
+      final isOpening = gate == 'OPENING';
+      final isStopped = gate == 'STOPPED' || gate == 'STOP';
       final isClosed =
-          device.gateState == 'CLOSED' ||
-          (device.gateState == null && device.isOn);
-      final isOpen =
-          device.gateState == 'OPEN' ||
-          (device.gateState == null && !device.isOn);
+          gate == 'CLOSED' || gate == 'CLOSE' || (gate == null && device.isOn);
+      final isOpen = gate == 'OPEN';
+      final targetName = device.apertureLabel;
 
-      final noun = device.gateNoun;
       final gateLabel = isOpening
-          ? 'Đang mở $noun...'
+          ? 'Đang mở $targetName...'
           : (isClosing
-                ? 'Đang đóng $noun...'
+                ? 'Đang đóng $targetName...'
                 : (isStopped
-                      ? 'Đang tạm dừng'
-                      : (isClosed ? 'Đã đóng $noun' : 'Đã mở $noun')));
+                      ? 'Đã tạm dừng'
+                      : (isClosed
+                            ? 'Đã đóng $targetName'
+                            : (isOpen ? 'Đã mở $targetName' : 'Sẵn sàng'))));
 
-      final gateColor = (isOpening || isClosing)
+      final gateColor = (isOpening || isClosing || isStopped)
           ? AppColors.auroraWarning
-          : (isStopped
-                ? Colors.orangeAccent
-                : (isClosed ? AppColors.auroraMint : AppColors.orbTeal));
+          : (isClosed ? AppColors.auroraMint : AppColors.orbTeal);
 
       final gateIcon = (isClosed)
           ? Icons.door_front_door_rounded
@@ -901,39 +1223,92 @@ class _LockControls extends ConsumerWidget {
   }
 }
 
-class _GateControls extends ConsumerWidget {
+class _GateControls extends ConsumerStatefulWidget {
   const _GateControls({required this.device, required this.accent});
 
   final Device device;
   final Color accent;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_GateControls> createState() => _GateControlsState();
+}
+
+class _GateControlsState extends ConsumerState<_GateControls> {
+  static const _transitLockDuration = Duration(milliseconds: 4500);
+  bool _transitLocked = false;
+  Timer? _transitTimer;
+
+  @override
+  void didUpdateWidget(covariant _GateControls oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextState = widget.device.gateState?.toUpperCase();
+    if (nextState != oldWidget.device.gateState?.toUpperCase() &&
+        (nextState == 'OPEN' ||
+            nextState == 'CLOSED' ||
+            nextState == 'STOPPED')) {
+      _transitTimer?.cancel();
+      _transitTimer = null;
+      if (_transitLocked) {
+        setState(() => _transitLocked = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _transitTimer?.cancel();
+    super.dispose();
+  }
+
+  void _armTransitLock() {
+    _transitTimer?.cancel();
+    setState(() => _transitLocked = true);
+    _transitTimer = Timer(_transitLockDuration, () {
+      if (mounted) {
+        setState(() => _transitLocked = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final device = widget.device;
     final theme = Theme.of(context);
     final offline = device.status == DeviceStatus.offline;
     final controller = ref.read(devicesControllerProvider.notifier);
 
-    final isClosing = device.gateState == 'CLOSING';
-    final isOpening = device.gateState == 'OPENING';
-    final isStopped = device.gateState == 'STOPPED';
+    final gate = device.gateState?.toUpperCase();
+    final isClosing = gate == 'CLOSING';
+    final isOpening = gate == 'OPENING';
+    final isStopped = gate == 'STOPPED' || gate == 'STOP';
     final isClosed =
-        device.gateState == 'CLOSED' ||
-        (device.gateState == null && device.isOn);
-    final isOpen =
-        device.gateState == 'OPEN' ||
-        (device.gateState == null && !device.isOn);
-
-    final noun = device.gateNoun;
+        gate == 'CLOSED' || gate == 'CLOSE' || (gate == null && device.isOn);
+    final isOpen = gate == 'OPEN';
+    final isMoving = isOpening || isClosing || _transitLocked;
+    final disableOpen = offline || isOpen || isMoving;
+    final disableClose = offline || isClosed || isMoving;
+    final disableStop = offline || !isMoving;
+    final targetName = device.apertureLabel;
 
     void sendGate(String action) {
+      if (action == 'OPEN' && disableOpen) return;
+      if (action == 'CLOSE' && disableClose) return;
+      if (action == 'STOP' && disableStop) return;
       HapticFeedback.mediumImpact();
+      if (action == 'STOP') {
+        _transitTimer?.cancel();
+        _transitTimer = null;
+        setState(() => _transitLocked = false);
+      } else {
+        _armTransitLock();
+      }
       controller.updateDevice(device.id, DeviceCommand(gateAction: action));
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Khối trạng thái & điều khiển 3 nút chính
+        // Khối trạng thái & điều khiển 3 nút chính (có khóa liên động hành trình)
         GlassContainer(
           radius: AppRadius.hero,
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -959,18 +1334,22 @@ class _GateControls extends ConsumerWidget {
                           offline
                               ? 'Thiết bị ngoại tuyến'
                               : (isOpening
-                                    ? 'Đang mở $noun...'
+                                    ? 'Đang mở $targetName...'
                                     : (isClosing
-                                          ? 'Đang đóng $noun...'
-                                          : (isStopped
-                                                ? 'Đã dừng'
-                                                : (isClosed
-                                                      ? 'Đã đóng hoàn toàn'
-                                                      : 'Đã mở')))),
+                                          ? 'Đang đóng $targetName...'
+                                          : (_transitLocked
+                                                ? 'Đang vận hành motor...'
+                                                : (isStopped
+                                                      ? 'Đã dừng $targetName'
+                                                      : (isClosed
+                                                            ? 'Đã đóng $targetName hoàn toàn'
+                                                            : (isOpen
+                                                                  ? 'Đã mở $targetName hoàn toàn'
+                                                                  : 'Sẵn sàng điều khiển')))))),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: offline
                                 ? AppColors.auroraError
-                                : (isOpening || isClosing
+                                : (isMoving
                                       ? AppColors.auroraWarning
                                       : (isClosed
                                             ? AppColors.auroraMint
@@ -1007,16 +1386,16 @@ class _GateControls extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              // 3 Nút lệnh: Mở cổng (OPEN), Dừng (STOP), Đóng cổng (CLOSE)
+              // 3 Nút lệnh: Mở (OPEN), Dừng (STOP), Đóng (CLOSE)
               Row(
                 children: [
                   Expanded(
                     child: _GateActionButton(
                       icon: Icons.arrow_upward_rounded,
-                      label: 'Mở $noun',
+                      label: 'Mở',
                       active: isOpening || isOpen,
                       accent: AppColors.orbTeal,
-                      enabled: !offline && !isOpening,
+                      enabled: !disableOpen,
                       onTap: () => sendGate('OPEN'),
                     ),
                   ),
@@ -1026,8 +1405,8 @@ class _GateControls extends ConsumerWidget {
                       icon: Icons.stop_rounded,
                       label: 'Dừng',
                       active: isStopped,
-                      accent: Colors.orangeAccent,
-                      enabled: !offline,
+                      accent: AppColors.auroraWarning,
+                      enabled: !disableStop,
                       onTap: () => sendGate('STOP'),
                     ),
                   ),
@@ -1035,10 +1414,10 @@ class _GateControls extends ConsumerWidget {
                   Expanded(
                     child: _GateActionButton(
                       icon: Icons.arrow_downward_rounded,
-                      label: 'Đóng $noun',
+                      label: 'Đóng',
                       active: isClosing || isClosed,
                       accent: AppColors.auroraMint,
-                      enabled: !offline && !isClosing,
+                      enabled: !disableClose,
                       onTap: () => sendGate('CLOSE'),
                     ),
                   ),
@@ -1047,28 +1426,32 @@ class _GateControls extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
-        // Thanh trượt xác nhận thao tác mở / đóng an toàn
-        SlideToConfirm(
-          label: isClosed
-              ? 'Kéo để MỞ $noun'
-              : (isOpen ? 'Kéo để ĐÓNG $noun' : 'Kéo để DỪNG $noun'),
-          icon: isClosed
-              ? Icons.lock_open_rounded
-              : (isOpen ? Icons.lock_rounded : Icons.stop_circle_outlined),
-          color: isClosed
-              ? AppColors.orbTeal
-              : (isOpen ? AppColors.auroraMint : Colors.orangeAccent),
-          onConfirmed: () {
-            if (isClosed) {
-              sendGate('OPEN');
-            } else if (isOpen) {
-              sendGate('CLOSE');
-            } else {
-              sendGate('STOP');
-            }
-          },
-        ),
+        if (!offline && (isMoving || isClosed || isOpen)) ...[
+          const SizedBox(height: AppSpacing.md),
+          // Thanh trượt xác nhận thao tác mở / đóng / dừng an toàn
+          SlideToConfirm(
+            label: isMoving
+                ? 'Kéo để DỪNG $targetName'
+                : (isClosed
+                      ? 'Kéo để MỞ $targetName'
+                      : 'Kéo để ĐÓNG $targetName'),
+            icon: isMoving
+                ? Icons.stop_circle_outlined
+                : (isClosed ? Icons.lock_open_rounded : Icons.lock_rounded),
+            color: isMoving
+                ? AppColors.auroraWarning
+                : (isClosed ? AppColors.orbTeal : AppColors.auroraMint),
+            onConfirmed: () {
+              if (isMoving) {
+                sendGate('STOP');
+              } else if (isClosed) {
+                sendGate('OPEN');
+              } else if (isOpen) {
+                sendGate('CLOSE');
+              }
+            },
+          ),
+        ],
       ],
     );
   }
@@ -1807,6 +2190,9 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
     final theme = Theme.of(context);
     final device = widget.device;
     final isOverride = device.isOverrideActive;
+    final statusTint = isOverride
+        ? AppColors.auroraWarning
+        : AppColors.auroraMint;
 
     return GlassContainer(
       radius: AppRadius.card,
@@ -1823,8 +2209,8 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: AppColors.auroraWarning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        color: AppColors.auroraWarning.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(AppRadius.sm + 2),
                       ),
                       child: const Icon(
                         Icons.lock_clock_rounded,
@@ -1849,35 +2235,34 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
               const SizedBox(width: AppSpacing.sm),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+                  horizontal: AppSpacing.sm + 2,
+                  vertical: AppSpacing.xs,
                 ),
                 decoration: BoxDecoration(
-                  color:
-                      (isOverride
-                              ? AppColors.auroraWarning
-                              : AppColors.auroraMint)
-                          .withValues(alpha: 0.15),
-                  border: Border.all(
-                    color:
-                        (isOverride
-                                ? AppColors.auroraWarning
-                                : AppColors.auroraMint)
-                            .withValues(alpha: 0.5),
-                  ),
+                  color: statusTint.withValues(alpha: 0.14),
+                  border: Border.all(color: statusTint.withValues(alpha: 0.45)),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-                child: Text(
-                  isOverride
-                      ? '🔒 ${device.formattedOverrideTime}'
-                      : '🟢 Tự động AI',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: isOverride
-                        ? AppColors.auroraWarning
-                        : AppColors.auroraMint,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isOverride
+                          ? Icons.lock_clock_rounded
+                          : Icons.auto_awesome_rounded,
+                      size: 13,
+                      color: statusTint,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      isOverride ? device.formattedOverrideTime : 'Tự động AI',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: statusTint,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -1888,8 +2273,8 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
                 ? 'Thiết bị đang được ưu tiên điều khiển tay. Mọi kịch bản tự động hóa AI sẽ bị khóa đến khi hết đếm lùi.'
                 : 'Bật chế độ khóa thủ công để giữ nguyên trạng thái hiện tại và ngăn kịch bản AI tự ý thay đổi.',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.white.withValues(alpha: 0.65),
-              height: 1.35,
+              color: AppColors.onDarkMuted,
+              height: 1.4,
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -1899,18 +2284,31 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
                       foregroundColor: AppColors.auroraMint,
                       side: BorderSide(
-                        color: AppColors.auroraMint.withValues(alpha: 0.6),
+                        color: AppColors.auroraMint.withValues(alpha: 0.55),
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
                     ),
-                    onPressed: () {
-                      ref
-                          .read(devicesControllerProvider.notifier)
-                          .resumeAutomation(device.id);
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(devicesControllerProvider.notifier)
+                            .resumeAutomation(device.id);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.auroraError,
+                              content: Text('Không thể hủy khóa: $e'),
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.play_arrow_rounded, size: 18),
                     label: const Text('Khôi phục AI'),
@@ -1918,46 +2316,206 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
                       backgroundColor: AppColors.auroraWarning,
-                      foregroundColor: Colors.black,
+                      foregroundColor: AppColors.auroraCanvasTop,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
                     ),
-                    onPressed: () {
-                      ref
-                          .read(devicesControllerProvider.notifier)
-                          .cancelAutomation(device.id, minutes: 30);
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(devicesControllerProvider.notifier)
+                            .extendAutomation(device.id, minutes: 60);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.auroraError,
+                              content: Text('Không thể gia hạn khóa: $e'),
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('+30 Phút'),
+                    label: const Text(
+                      '+60 Phút',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ] else ...[
                 Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(44),
                       backgroundColor: AppColors.auroraWarning,
-                      foregroundColor: Colors.black,
+                      foregroundColor: AppColors.auroraCanvasTop,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
                     ),
-                    onPressed: () {
-                      ref
-                          .read(devicesControllerProvider.notifier)
-                          .cancelAutomation(device.id, minutes: 30);
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(devicesControllerProvider.notifier)
+                            .cancelAutomation(device.id, minutes: 30);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.auroraError,
+                              content: Text('Không thể bật khóa tay: $e'),
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.lock_rounded, size: 16),
-                    label: const Text('Khóa Tự Động 30 Phút'),
+                    label: const Text(
+                      'Khóa Tự Động 30 Phút',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ],
             ],
           ),
+          const SizedBox(height: AppSpacing.xs),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.onDarkMuted,
+                visualDensity: VisualDensity.compact,
+              ),
+              onPressed: () => _showOverrideHistorySheet(context, device.id),
+              icon: const Icon(Icons.history_rounded, size: 16),
+              label: const Text('Lịch sử khóa', style: TextStyle(fontSize: 12)),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showOverrideHistorySheet(
+    BuildContext context,
+    String deviceId,
+  ) async {
+    unawaited(
+      showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (ctx) {
+          return Theme(
+            data: _darkOverlayTheme(ctx),
+            child: GlassBottomSheet(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Lịch Sử Khóa Thủ Công (Override)',
+                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                      color: AppColors.onDark,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FutureBuilder<List<Map<String, dynamic>>>(
+                    future: ref
+                        .read(devicesControllerProvider.notifier)
+                        .getOverrideHistory(deviceId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.all(AppSpacing.lg),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final items = snapshot.data ?? const [];
+                      if (items.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: AppSpacing.lg,
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Chưa có lịch sử khóa ưu tiên nào.',
+                              style: TextStyle(color: AppColors.onDarkMuted),
+                            ),
+                          ),
+                        );
+                      }
+                      return ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 280),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) => Divider(
+                            height: 1,
+                            color: GlassTokens.borderSolid(Brightness.dark),
+                          ),
+                          itemBuilder: (_, idx) {
+                            final item = items[idx];
+                            final action = (item['action'] ?? 'MANUAL_OVERRIDE')
+                                .toString();
+                            final source = (item['source'] ?? 'APP').toString();
+                            final rawTime =
+                                (item['createdAt'] ?? item['timestamp'] ?? '')
+                                    .toString();
+                            final dt = DateTime.tryParse(rawTime);
+                            final timeText = dt != null
+                                ? DateFormat(
+                                    'HH:mm • dd/MM',
+                                  ).format(dt.toLocal())
+                                : rawTime;
+                            final isResume = action.contains('RESUME');
+                            return ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                isResume
+                                    ? Icons.play_circle_outline_rounded
+                                    : Icons.lock_clock_rounded,
+                                color: isResume
+                                    ? AppColors.auroraMint
+                                    : AppColors.auroraWarning,
+                              ),
+                              title: Text(
+                                '$action ($source)',
+                                style: const TextStyle(
+                                  color: AppColors.onDark,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                timeText,
+                                style: const TextStyle(
+                                  color: AppColors.onDarkMuted,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1967,9 +2525,10 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
 // PHO-034 & PHO-042: Device Hardware Health & Relay Lifespan Card
 // ─────────────────────────────────────────────────────────────────────
 class _DeviceHealthCard extends StatelessWidget {
-  const _DeviceHealthCard({required this.device});
+  const _DeviceHealthCard({required this.device, this.uptimeInfo});
 
   final Device device;
+  final DeviceUptimeInfo? uptimeInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -1977,9 +2536,12 @@ class _DeviceHealthCard extends StatelessWidget {
     final healthPercent = device.healthPercent ?? 98.5;
     final switchCycles = device.switchCycles ?? 1450;
     final maxRatedCycles = device.maxRatedCycles ?? 100000;
-    final uptimePercent = device.uptimePercent ?? 99.4;
+    final uptimePercent =
+        uptimeInfo?.uptimePercent ?? device.uptimePercent ?? 99.4;
     final isChattering = device.chatteringWarning == true;
     final isTripped = device.safetyTripped == true;
+    final timeline =
+        uptimeInfo?.timelinePoints ?? const <UptimeTimelinePoint>[];
 
     final healthColor = isChattering || isTripped
         ? AppColors.auroraError
@@ -1998,8 +2560,8 @@ class _DeviceHealthCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: healthColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  color: healthColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.sm + 2),
                 ),
                 child: Icon(
                   Icons.health_and_safety_rounded,
@@ -2021,23 +2583,38 @@ class _DeviceHealthCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
+                  horizontal: AppSpacing.sm + 2,
+                  vertical: AppSpacing.xs,
                 ),
                 decoration: BoxDecoration(
-                  color: healthColor.withValues(alpha: 0.15),
-                  border: Border.all(color: healthColor.withValues(alpha: 0.5)),
+                  color: healthColor.withValues(alpha: 0.14),
+                  border: Border.all(
+                    color: healthColor.withValues(alpha: 0.45),
+                  ),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-                child: Text(
-                  isChattering
-                      ? '⚠️ Dội Xung'
-                      : '${healthPercent.toStringAsFixed(1)}% còn lại',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: healthColor,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isChattering) ...[
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 13,
+                        color: healthColor,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                    ],
+                    Text(
+                      isChattering
+                          ? 'Dội Xung'
+                          : '${healthPercent.toStringAsFixed(1)}% còn lại',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: healthColor,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -2051,7 +2628,7 @@ class _DeviceHealthCard extends StatelessWidget {
               Text(
                 'Tuổi thọ cơ học relay:',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.65),
+                  color: AppColors.onDarkMuted,
                 ),
               ),
               Text(
@@ -2059,7 +2636,7 @@ class _DeviceHealthCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: AppColors.onDark,
                 ),
               ),
             ],
@@ -2070,7 +2647,7 @@ class _DeviceHealthCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: (healthPercent / 100).clamp(0.0, 1.0),
               minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              backgroundColor: AppColors.onDark.withValues(alpha: 0.08),
               valueColor: AlwaysStoppedAnimation<Color>(healthColor),
             ),
           ),
@@ -2083,19 +2660,105 @@ class _DeviceHealthCard extends StatelessWidget {
               Text(
                 'Độ sẵn sàng (Uptime 7 ngày):',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.65),
+                  color: AppColors.onDarkMuted,
                 ),
               ),
-              Text(
-                '🟢 ${uptimePercent.toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.auroraMint,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.auroraMint,
+                      boxShadow: GlassTokens.glow(
+                        AppColors.auroraMint,
+                        intensity: 0.6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs + 2),
+                  Text(
+                    '${uptimePercent.toStringAsFixed(1)}%',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.auroraMint,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
+          if (uptimeInfo != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Bật ${uptimeInfo!.onHours.toStringAsFixed(1)}h / ${uptimeInfo!.totalHours.toStringAsFixed(0)}h theo dõi',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 11,
+                color: AppColors.onDarkMuted,
+              ),
+            ),
+          ],
+          if (timeline.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm + 4),
+            Text(
+              'Timeline hoạt động 24h hôm nay',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 11,
+                color: AppColors.onDarkMuted,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs + 2),
+            SizedBox(
+              height: 20,
+              child: Row(
+                children: [
+                  for (final pt in timeline.take(24))
+                    Expanded(
+                      child: Tooltip(
+                        message:
+                            '${pt.hour.toString().padLeft(2, '0')}:00 • ${pt.state}',
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            color:
+                                pt.state.toUpperCase() == 'ON' ||
+                                    pt.durationSeconds > 0
+                                ? AppColors.auroraMint
+                                : AppColors.onDark.withValues(alpha: 0.1),
+                            border: Border.all(
+                              color: AppColors.onDark.withValues(alpha: 0.08),
+                              width: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '00:00',
+                  style: TextStyle(fontSize: 9, color: AppColors.onDarkMuted),
+                ),
+                Text(
+                  '12:00',
+                  style: TextStyle(fontSize: 9, color: AppColors.onDarkMuted),
+                ),
+                Text(
+                  '23:00',
+                  style: TextStyle(fontSize: 9, color: AppColors.onDarkMuted),
+                ),
+              ],
+            ),
+          ],
 
           if (isChattering || isTripped) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -2153,8 +2816,6 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
   bool _isExporting = false;
   List<Map<String, dynamic>> _history = [];
 
-  static const Color _emerald = Color(0xFF10B981);
-
   @override
   void initState() {
     super.initState();
@@ -2179,17 +2840,24 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
     }
   }
 
-  Future<void> _handleExportExcel() async {
+  Future<void> _handleExport({required bool isExcel}) async {
     setState(() => _isExporting = true);
     try {
-      final path = await ref
-          .read(devicesControllerProvider.notifier)
-          .exportAuditExcel(widget.device.id, widget.device.name);
-      if (!mounted) return;
+      final notifier = ref.read(devicesControllerProvider.notifier);
+      final path = isExcel
+          ? await notifier.exportAuditExcel(
+              widget.device.id,
+              widget.device.name,
+            )
+          : await notifier.exportAuditCsv(widget.device.id, widget.device.name);
+      if (!mounted) {
+        return;
+      }
+      final label = isExcel ? 'Excel (.xlsx)' : 'CSV (.csv)';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.auroraMintOnLight,
           content: Row(
             children: [
               const Icon(
@@ -2200,7 +2868,7 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Đã xuất báo cáo Excel (.xlsx) thành công:\n$path',
+                  'Đã xuất báo cáo $label thành công:\n$path',
                   style: const TextStyle(fontSize: 12),
                 ),
               ),
@@ -2210,12 +2878,14 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
         ),
       );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.auroraError,
-          content: Text('Lỗi khi xuất báo cáo Excel: $e'),
+          content: Text('Lỗi khi xuất báo cáo: $e'),
         ),
       );
     } finally {
@@ -2241,12 +2911,12 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  color: AppColors.auroraAccent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.sm + 2),
                 ),
                 child: const Icon(
                   Icons.receipt_long_rounded,
-                  color: AppColors.primary,
+                  color: AppColors.auroraAccent,
                   size: 18,
                 ),
               ),
@@ -2261,10 +2931,11 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              // Nút Xuất Excel
+              const SizedBox(width: AppSpacing.xs),
               InkWell(
-                onTap: _isExporting ? null : _handleExportExcel,
+                onTap: _isExporting
+                    ? null
+                    : () => _handleExport(isExcel: false),
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -2272,8 +2943,48 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: _emerald.withValues(alpha: 0.15),
-                    border: Border.all(color: _emerald.withValues(alpha: 0.5)),
+                    color: AppColors.auroraAccent.withValues(alpha: 0.12),
+                    border: Border.all(
+                      color: AppColors.auroraAccent.withValues(alpha: 0.45),
+                    ),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.description_outlined,
+                        size: 13,
+                        color: AppColors.auroraAccent,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'CSV',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.auroraAccent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              // Nút Xuất Excel
+              InkWell(
+                onTap: _isExporting ? null : () => _handleExport(isExcel: true),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.auroraMint.withValues(alpha: 0.14),
+                    border: Border.all(
+                      color: AppColors.auroraMint.withValues(alpha: 0.45),
+                    ),
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                   child: Row(
@@ -2284,14 +2995,14 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                           dimension: 12,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: _emerald,
+                            color: AppColors.auroraMint,
                           ),
                         )
                       else
                         const Icon(
                           Icons.table_chart_rounded,
                           size: 14,
-                          color: _emerald,
+                          color: AppColors.auroraMint,
                         ),
                       const SizedBox(width: 4),
                       Text(
@@ -2299,7 +3010,7 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: _emerald,
+                          color: AppColors.auroraMint,
                         ),
                       ),
                     ],
@@ -2326,7 +3037,7 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                 child: Text(
                   'Chưa có lịch sử hoạt động',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white54,
+                    color: AppColors.onDarkMuted,
                   ),
                 ),
               ),
@@ -2352,25 +3063,25 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                 final (sourceLabel, sourceColor, sourceIcon) = switch (source) {
                   'APP' => (
                     'Bấm App',
-                    Colors.blueAccent,
+                    AppColors.auroraAccent,
                     Icons.touch_app_rounded,
                   ),
                   'MANUAL_OVERRIDE' => (
                     'Khóa tay 30p',
-                    Colors.amberAccent,
+                    AppColors.auroraWarning,
                     Icons.lock_clock_rounded,
                   ),
                   'AUTOMATION' => (
                     'Tự động hóa AI',
-                    Colors.purpleAccent,
+                    AppColors.orbViolet,
                     Icons.smart_toy_rounded,
                   ),
                   'VOICE' => (
                     'Giọng nói',
-                    Colors.orangeAccent,
+                    AppColors.orbTeal,
                     Icons.mic_rounded,
                   ),
-                  _ => ('Vật lý', Colors.blueGrey, Icons.power_rounded),
+                  _ => ('Vật lý', AppColors.onDarkMuted, Icons.power_rounded),
                 };
 
                 final prevMap = item['previousState'] as Map?;
@@ -2389,12 +3100,10 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: sourceColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: sourceColor.withValues(alpha: 0.6),
-                            blurRadius: 6,
-                          ),
-                        ],
+                        boxShadow: GlassTokens.glow(
+                          sourceColor,
+                          intensity: 0.45,
+                        ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -2409,7 +3118,7 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                                 style: const TextStyle(
                                   fontSize: 11,
                                   fontFamily: 'monospace',
-                                  color: Colors.white70,
+                                  color: AppColors.onDarkMuted,
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.sm),
@@ -2419,8 +3128,10 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: sourceColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
+                                  color: sourceColor.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.sm,
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -2453,14 +3164,18 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                                   vertical: 1,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white10,
-                                  borderRadius: BorderRadius.circular(4),
+                                  color: AppColors.onDark.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.sm,
+                                  ),
                                 ),
                                 child: Text(
                                   prevStr,
                                   style: const TextStyle(
                                     fontSize: 11,
-                                    color: Colors.white70,
+                                    color: AppColors.onDarkMuted,
                                   ),
                                 ),
                               ),
@@ -2469,7 +3184,7 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                                 child: Icon(
                                   Icons.arrow_forward_rounded,
                                   size: 12,
-                                  color: Colors.white38,
+                                  color: AppColors.onDarkFaint,
                                 ),
                               ),
                               Container(
@@ -2478,22 +3193,24 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
                                   vertical: 1,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.2,
+                                  color: AppColors.auroraAccent.withValues(
+                                    alpha: 0.18,
                                   ),
                                   border: Border.all(
-                                    color: AppColors.primary.withValues(
+                                    color: AppColors.auroraAccent.withValues(
                                       alpha: 0.4,
                                     ),
                                   ),
-                                  borderRadius: BorderRadius.circular(4),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.sm,
+                                  ),
                                 ),
                                 child: Text(
                                   newStr,
                                   style: const TextStyle(
                                     fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.auroraAccent,
                                   ),
                                 ),
                               ),

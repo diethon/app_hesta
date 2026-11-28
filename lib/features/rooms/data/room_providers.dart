@@ -4,9 +4,16 @@ import '../../../core/network/network_client.dart';
 import '../../authentication/data/auth_providers.dart' show kUseMockData;
 import '../../devices/data/device_providers.dart';
 import '../../devices/domain/device.dart';
-import '../domain/room.dart';
-
 import '../../home/data/home_providers.dart';
+import '../domain/room.dart';
+import 'room_repository.dart';
+
+final roomRepositoryProvider = Provider<RoomRepository>((ref) {
+  if (kUseMockData) {
+    return MockRoomRepository();
+  }
+  return ApiRoomRepository(ref.watch(cloudApiClientProvider));
+});
 
 /// Danh sách phòng theo `homeId` cụ thể (FutureProvider.family)
 final roomsForHomeProvider = FutureProvider.family
@@ -17,13 +24,13 @@ final roomsForHomeProvider = FutureProvider.family
 
       if (kUseMockData) {
         final devices = ref.watch(devicesControllerProvider).valueOrNull ?? [];
+        final repo = ref.watch(roomRepositoryProvider);
+        final baseRooms = repo is MockRoomRepository
+            ? repo.currentRooms
+            : const <Room>[];
         return [
-          _mockRoom('living-room', 'Phòng khách', 22, devices),
-          _mockRoom('bedroom', 'Phòng ngủ', 20, devices),
-          _mockRoom('kitchen', 'Nhà bếp', 24, devices),
-          _mockRoom('garage', 'Nhà để xe', 18, devices),
-          _mockRoom('bathroom', 'Phòng tắm', 23, devices),
-          _mockRoom('garden', 'Sân vườn', 21, devices),
+          for (final room in baseRooms)
+            _mockRoom(room.id, room.name, room.temperature, devices),
         ];
       }
 
@@ -72,13 +79,13 @@ final roomsProvider = Provider.autoDispose<List<Room>>((ref) {
   final devices = ref.watch(devicesControllerProvider).valueOrNull ?? [];
 
   if (kUseMockData) {
+    final repo = ref.watch(roomRepositoryProvider);
+    final baseRooms = repo is MockRoomRepository
+        ? repo.currentRooms
+        : const <Room>[];
     return [
-      _mockRoom('living-room', 'Living Room', 22, devices),
-      _mockRoom('bedroom', 'Bedroom', 20, devices),
-      _mockRoom('kitchen', 'Kitchen', 24, devices),
-      _mockRoom('garage', 'Garage', 18, devices),
-      _mockRoom('bathroom', 'Bathroom', 23, devices),
-      _mockRoom('garden', 'Garden', 21, devices),
+      for (final room in baseRooms)
+        _mockRoom(room.id, room.name, room.temperature, devices),
     ];
   }
 

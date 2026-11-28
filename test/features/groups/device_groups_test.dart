@@ -79,7 +79,16 @@ void main() {
         final updatedGroups = await repo.getGroups('home-mock-1');
         expect(updatedGroups.first.currentBrightness, 45);
 
-        // 4. Delete group
+        // 4. Update group (UC-GRP-03)
+        final updated = await repo.updateGroup(
+          groupId: created.id,
+          name: 'Nhóm Sân Vườn Mới',
+          deviceIds: ['dev-garden-1'],
+        );
+        expect(updated.name, 'Nhóm Sân Vườn Mới');
+        expect(updated.deviceCount, 1);
+
+        // 5. Delete group
         await repo.deleteGroup(created.id);
         final afterDelete = await repo.getGroups('home-mock-1');
         expect(afterDelete.length, 2);

@@ -109,7 +109,13 @@ class DeviceDto {
 
     String? acMode =
         currentState['mode']?.toString() ?? json['mode']?.toString();
-    String? acFan = currentState['fan']?.toString() ?? json['fan']?.toString();
+    String? acFan =
+        currentState['fan']?.toString() ??
+        currentState['fanSpeed']?.toString() ??
+        currentState['speed']?.toString() ??
+        json['fan']?.toString() ??
+        json['fanSpeed']?.toString() ??
+        json['speed']?.toString();
     bool? acSwing =
         currentState['swing'] == true ||
         currentState['swing'] == 'true' ||
@@ -288,6 +294,7 @@ class DeviceDto {
   static DeviceType _parseDeviceType(String raw) {
     final upper = raw.trim().toUpperCase();
     if (upper.contains('GATE') ||
+        upper.contains('ROLLING_DOOR') ||
         upper.contains('DOOR') ||
         upper.contains('CURTAIN')) {
       return DeviceType.lock;
@@ -303,7 +310,7 @@ class DeviceDto {
       'LIGHT' || 'LED' => DeviceType.light,
       'AC' || 'THERMOSTAT' || 'AIR_CONDITIONER' => DeviceType.thermostat,
       'LOCK' || 'DOOR' => DeviceType.lock,
-      'FAN' => DeviceType.fan,
+      'FAN' || 'SMART_FAN' => DeviceType.fan,
       'TV' || 'SMART_TV' => DeviceType.tv,
       'WATER_PUMP' || 'PUMP' || 'MOTOR' || 'WATERPUMP' => DeviceType.waterPump,
       'SENSOR' ||

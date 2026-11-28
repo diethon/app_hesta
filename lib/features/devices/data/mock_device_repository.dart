@@ -270,9 +270,43 @@ class MockDeviceRepository implements DeviceRepository {
   }
 
   @override
+  Future<Device> updateDeviceConfig(
+    String id, {
+    String? name,
+    String? roomId,
+    String? icon,
+    double? wattage,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    final index = _devices.indexWhere((d) => d.id == id);
+    if (index == -1) {
+      throw StateError('Device not found: $id');
+    }
+    final updated = _devices[index].copyWith(
+      name: (name != null && name.trim().isNotEmpty) ? name.trim() : null,
+      roomId: (roomId != null && roomId.isNotEmpty) ? roomId : null,
+      energyWatts: wattage,
+    );
+    _devices[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> removeDevice(String id) async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    final index = _devices.indexWhere((d) => d.id == id);
+    if (index == -1) {
+      throw StateError('Device not found: $id');
+    }
+    _devices.removeAt(index);
+  }
+
+  @override
   Future<Device> cancelDeviceAutomation(String id, {int minutes = 30}) async {
     final index = _devices.indexWhere((d) => d.id == id);
-    if (index == -1) throw StateError('Device not found: $id');
+    if (index == -1) {
+      throw StateError('Device not found: $id');
+    }
     final until = DateTime.now()
         .add(Duration(minutes: minutes))
         .toIso8601String();
@@ -285,9 +319,33 @@ class MockDeviceRepository implements DeviceRepository {
   }
 
   @override
+  Future<Device> extendDeviceAutomation(String id, {int minutes = 60}) async {
+    final index = _devices.indexWhere((d) => d.id == id);
+    if (index == -1) {
+      throw StateError('Device not found: $id');
+    }
+    final current = _devices[index];
+    final currentDt = current.manualOverrideUntil != null
+        ? DateTime.tryParse(current.manualOverrideUntil!)
+        : null;
+    final base = (currentDt != null && currentDt.isAfter(DateTime.now()))
+        ? currentDt
+        : DateTime.now();
+    final until = base.add(Duration(minutes: minutes)).toIso8601String();
+    final updated = current.copyWith(
+      manualOverrideUntil: until,
+      manualOverrideActive: true,
+    );
+    _devices[index] = updated;
+    return updated;
+  }
+
+  @override
   Future<Device> resumeDeviceAutomation(String id) async {
     final index = _devices.indexWhere((d) => d.id == id);
-    if (index == -1) throw StateError('Device not found: $id');
+    if (index == -1) {
+      throw StateError('Device not found: $id');
+    }
     final updated = _devices[index].copyWith(
       manualOverrideUntil: '',
       manualOverrideActive: false,
@@ -297,9 +355,35 @@ class MockDeviceRepository implements DeviceRepository {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> getDeviceOverrideHistory(String id) async {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    final now = DateTime.now();
+    return [
+      {
+        'action': 'CANCEL_AUTOMATION',
+        'source': 'APP',
+        'createdAt': now
+            .subtract(const Duration(minutes: 12))
+            .toIso8601String(),
+        'expiresAt': now.add(const Duration(minutes: 18)).toIso8601String(),
+        'durationMinutes': 30,
+      },
+      {
+        'action': 'RESUME',
+        'source': 'APP',
+        'createdAt': now.subtract(const Duration(hours: 4)).toIso8601String(),
+        'expiresAt': null,
+        'durationMinutes': 0,
+      },
+    ];
+  }
+
+  @override
   Future<Device> getDeviceHealth(String id) async {
     final index = _devices.indexWhere((d) => d.id == id);
-    if (index == -1) throw StateError('Device not found: $id');
+    if (index == -1) {
+      throw StateError('Device not found: $id');
+    }
     final updated = _devices[index].copyWith(
       switchCycles: 1450,
       maxRatedCycles: 100000,
@@ -310,6 +394,26 @@ class MockDeviceRepository implements DeviceRepository {
     );
     _devices[index] = updated;
     return updated;
+  }
+
+  @override
+  Future<DeviceUptimeInfo> getDeviceUptime(String id, {int days = 7}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    final points = List<UptimeTimelinePoint>.generate(24, (hour) {
+      final isOnHour = (hour >= 6 && hour <= 9) || (hour >= 17 && hour <= 22);
+      return UptimeTimelinePoint(
+        hour: hour,
+        state: isOnHour ? 'ON' : 'OFF',
+        durationSeconds: isOnHour ? 3600 : 0,
+      );
+    });
+    return DeviceUptimeInfo(
+      uptimePercent: 99.4,
+      totalHours: days * 24.0,
+      onHours: days * 10.0,
+      offHours: days * 14.0,
+      timelinePoints: points,
+    );
   }
 
   @override
@@ -364,12 +468,20 @@ class MockDeviceRepository implements DeviceRepository {
   }
 
   @override
-  Future<Device> updateDeviceWattage(String id, double wattage) async {
+  Future<String> exportDeviceAuditCsv(String id, String deviceName) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
-    final index = _devices.indexWhere((d) => d.id == id);
-    if (index == -1) throw StateError('Device not found: $id');
-    final updated = _devices[index].copyWith(energyWatts: wattage);
-    _devices[index] = updated;
-    return updated;
+    final sanitized = deviceName.replaceAll(RegExp(r'\s+'), '_');
+    try {
+      final file = File('/sdcard/Download/lich_su_${sanitized}_$id.csv');
+      await file.writeAsString('changedAt,source,previousState,newState\n');
+      return file.path;
+    } catch (_) {
+      return 'lich_su_${sanitized}_$id.csv';
+    }
+  }
+
+  @override
+  Future<Device> updateDeviceWattage(String id, double wattage) async {
+    return updateDeviceConfig(id, wattage: wattage);
   }
 }

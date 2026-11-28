@@ -5,6 +5,7 @@ export 'glass_card.dart';
 export 'glass_container.dart';
 export 'glass_filter_chip.dart';
 export 'glass_icon_tile.dart';
+export 'glass_modal.dart';
 export 'glass_segmented_control.dart';
 export 'glass_slider.dart';
 export 'glass_status_pill.dart';

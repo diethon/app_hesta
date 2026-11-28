@@ -100,7 +100,7 @@ class _LedRgbControlsState extends ConsumerState<LedRgbControls> {
   Widget build(BuildContext context) {
     final device = widget.device;
     final isOn = device.isOn;
-    final effectiveColor = isOn ? _currentColor : Colors.grey;
+    final effectiveColor = isOn ? _currentColor : AppColors.onDarkMuted;
     final rVal = (effectiveColor.r * 255.0).round() & 0xff;
     final gVal = (effectiveColor.g * 255.0).round() & 0xff;
     final bVal = (effectiveColor.b * 255.0).round() & 0xff;

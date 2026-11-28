@@ -83,13 +83,26 @@ class Device {
   bool get isGate {
     final raw = (rawType ?? '').toUpperCase();
     if (raw.contains('GATE') ||
+        raw.contains('ROLLING_DOOR') ||
         raw.contains('DOOR') ||
         raw.contains('CURTAIN')) {
       return true;
     }
     final n = name.toLowerCase();
     final i = id.toLowerCase();
-    return n.contains('cổng') || n.contains('gate') || i.contains('gate');
+    return n.contains('cổng') ||
+        n.contains('cửa cuốn') ||
+        n.contains('rèm') ||
+        n.contains('gate') ||
+        i.contains('gate');
+  }
+
+  String get apertureLabel {
+    final raw = (rawType ?? '').toUpperCase();
+    if (raw.contains('ROLLING_DOOR')) return 'cửa cuốn';
+    if (raw.contains('CURTAIN')) return 'rèm cửa';
+    if (raw == 'DOOR') return 'cửa';
+    return 'cổng';
   }
 
   /// Tên gọi tiếng Việt cho cổng / cửa / cửa cuốn / rèm (dùng trong nhãn nút).
@@ -162,6 +175,8 @@ class Device {
   }
 
   Device copyWith({
+    String? name,
+    String? roomId,
     DeviceStatus? status,
     bool? isOn,
     int? brightness,
@@ -192,8 +207,8 @@ class Device {
   }) {
     return Device(
       id: id,
-      name: name,
-      roomId: roomId,
+      name: name ?? this.name,
+      roomId: roomId ?? this.roomId,
       type: type,
       status: status ?? this.status,
       isOn: isOn ?? this.isOn,
@@ -222,6 +237,66 @@ class Device {
       uptimePercent: uptimePercent ?? this.uptimePercent,
       chatteringWarning: chatteringWarning ?? this.chatteringWarning,
       safetyTripped: safetyTripped ?? this.safetyTripped,
+    );
+  }
+}
+
+/// Điểm dữ liệu trạng thái theo từng giờ trong ngày (24h timeline).
+class UptimeTimelinePoint {
+  const UptimeTimelinePoint({
+    required this.hour,
+    required this.state,
+    required this.durationSeconds,
+  });
+
+  final int hour;
+  final String state;
+  final int durationSeconds;
+
+  factory UptimeTimelinePoint.fromJson(Map<String, dynamic> json) {
+    return UptimeTimelinePoint(
+      hour: (json['hour'] as num?)?.toInt() ?? 0,
+      state: (json['state'] ?? 'OFF').toString(),
+      durationSeconds: (json['durationSeconds'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// Thống kê độ sẵn sàng Uptime và timeline 24h của thiết bị (`UC-MON-02`).
+class DeviceUptimeInfo {
+  const DeviceUptimeInfo({
+    required this.uptimePercent,
+    required this.totalHours,
+    required this.onHours,
+    required this.offHours,
+    required this.timelinePoints,
+  });
+
+  final double uptimePercent;
+  final double totalHours;
+  final double onHours;
+  final double offHours;
+  final List<UptimeTimelinePoint> timelinePoints;
+
+  factory DeviceUptimeInfo.fromJson(Map<String, dynamic> json) {
+    final rawPoints = json['timelinePoints'];
+    final points = rawPoints is List
+        ? rawPoints
+              .whereType<Map>()
+              .map(
+                (item) => UptimeTimelinePoint.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList()
+        : const <UptimeTimelinePoint>[];
+
+    return DeviceUptimeInfo(
+      uptimePercent: (json['uptimePercent'] as num?)?.toDouble() ?? 0.0,
+      totalHours: (json['totalHours'] as num?)?.toDouble() ?? 0.0,
+      onHours: (json['onHours'] as num?)?.toDouble() ?? 0.0,
+      offHours: (json['offHours'] as num?)?.toDouble() ?? 0.0,
+      timelinePoints: points,
     );
   }
 }

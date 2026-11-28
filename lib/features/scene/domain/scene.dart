@@ -228,8 +228,9 @@ class SceneExecutionDetail {
 String? sceneRunMessage(Scene? scene, SceneExecution run) {
   final failed = run.resultDetail.where((r) => !r.success).toList();
   if (run.status == 'SUCCESS' ||
-      (run.resultDetail.isNotEmpty && failed.isEmpty))
+      (run.resultDetail.isNotEmpty && failed.isEmpty)) {
     return null;
+  }
   final name = scene?.name ?? 'Kịch bản';
   if (failed.isEmpty) return 'Không chạy được "$name"';
   String nameOf(String id) =>

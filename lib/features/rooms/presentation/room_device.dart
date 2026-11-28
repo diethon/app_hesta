@@ -10,9 +10,11 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/glass/glass.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../authentication/data/auth_providers.dart' show kUseMockData;
 import '../../devices/data/device_providers.dart';
 import '../../devices/domain/device.dart';
 import '../../devices/presentation/device_visuals.dart';
+import '../../home/data/home_providers.dart';
 import '../data/room_providers.dart';
 
 /// Nhóm filter map theo [DeviceType].
@@ -49,6 +51,7 @@ class _RoomDeviceScreenState extends ConsumerState<RoomDeviceScreen> {
   final _scrollController = ScrollController();
   double _parallax = 0;
   bool _precached = false;
+  bool _isSendingBatch = false;
 
   @override
   void initState() {
@@ -175,7 +178,8 @@ class _RoomDeviceScreenState extends ConsumerState<RoomDeviceScreen> {
                     actions: [
                       GlassIconButton(
                         icon: Icons.more_horiz_rounded,
-                        onTap: () {},
+                        tooltip: 'Quản lý phòng',
+                        onTap: () => _showRoomOptionsSheet(context, roomName),
                       ),
                     ],
                   ),
@@ -205,6 +209,112 @@ class _RoomDeviceScreenState extends ConsumerState<RoomDeviceScreen> {
                                 color: Colors.white.withValues(alpha: 0.7),
                               ),
                         ),
+                        if (roomDevices.isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          Opacity(
+                            opacity: _isSendingBatch ? 0.55 : 1,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GlassCard(
+                                    onTap: _isSendingBatch
+                                        ? null
+                                        : () => _executeRoomBatch(true),
+                                    radius: AppRadius.pill,
+                                    blur: GlassTokens.blurSm,
+                                    active: true,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.md,
+                                      vertical: AppSpacing.sm + 2,
+                                    ),
+                                    borderGradient: LinearGradient(
+                                      colors: [
+                                        AppColors.auroraMint.withValues(
+                                          alpha: 0.65,
+                                        ),
+                                        AppColors.auroraMint.withValues(
+                                          alpha: 0.16,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.power_rounded,
+                                          size: 16,
+                                          color: AppColors.auroraMint,
+                                        ),
+                                        const SizedBox(
+                                          width: AppSpacing.xs + 2,
+                                        ),
+                                        Text(
+                                          'Bật cả phòng',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium
+                                              ?.copyWith(
+                                                color: AppColors.auroraMint,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: GlassCard(
+                                    onTap: _isSendingBatch
+                                        ? null
+                                        : () => _executeRoomBatch(false),
+                                    radius: AppRadius.pill,
+                                    blur: GlassTokens.blurSm,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.md,
+                                      vertical: AppSpacing.sm + 2,
+                                    ),
+                                    borderGradient: LinearGradient(
+                                      colors: [
+                                        AppColors.auroraWarning.withValues(
+                                          alpha: 0.65,
+                                        ),
+                                        AppColors.auroraWarning.withValues(
+                                          alpha: 0.16,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.power_settings_new_rounded,
+                                          size: 16,
+                                          color: AppColors.auroraWarning,
+                                        ),
+                                        const SizedBox(
+                                          width: AppSpacing.xs + 2,
+                                        ),
+                                        Text(
+                                          'Tắt cả phòng',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium
+                                              ?.copyWith(
+                                                color: AppColors.auroraWarning,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -278,6 +388,315 @@ class _RoomDeviceScreenState extends ConsumerState<RoomDeviceScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _executeRoomBatch(bool turnOn) async {
+    setState(() => _isSendingBatch = true);
+    try {
+      final action = turnOn ? 'TURN_ON' : 'TURN_OFF';
+      final result = await ref
+          .read(roomRepositoryProvider)
+          .sendRoomCommand(roomId: widget.roomId, action: action);
+      if (kUseMockData) {
+        ref
+            .read(devicesControllerProvider.notifier)
+            .applyRoomPowerLocal(widget.roomId, turnOn);
+      } else {
+        await ref.read(devicesControllerProvider.notifier).refresh();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: result.isSuccess
+                ? AppColors.auroraMintOnLight
+                : AppColors.auroraWarning,
+            content: Text(
+              result.totalDevices == 0
+                  ? 'Phòng chưa có thiết bị khả dụng.'
+                  : '✓ ${result.successCount}/${result.totalDevices} thiết bị phản hồi',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraError,
+            content: Text('Không thể điều khiển phòng: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSendingBatch = false);
+      }
+    }
+  }
+
+  ThemeData _roomDarkTheme(BuildContext context) {
+    final theme = Theme.of(context);
+    if (theme.brightness == Brightness.dark) {
+      return theme;
+    }
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColors.auroraAccent,
+        brightness: Brightness.dark,
+        primary: AppColors.auroraAccent,
+      ),
+      textTheme: theme.textTheme.apply(
+        bodyColor: AppColors.onDark,
+        displayColor: AppColors.onDark,
+      ),
+      splashFactory: NoSplash.splashFactory,
+    );
+  }
+
+  void _showRoomOptionsSheet(BuildContext context, String currentName) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Theme(
+        data: _roomDarkTheme(ctx),
+        child: GlassBottomSheet(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GlassOptionTile(
+                icon: Icons.edit_rounded,
+                color: AppColors.auroraMint,
+                title: 'Đổi tên / Cập nhật phòng',
+                subtitle: 'Đổi tên hiển thị của phòng "$currentName"',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _showRenameRoomDialog(currentName);
+                },
+              ),
+              Divider(
+                height: 1,
+                color: GlassTokens.borderSolid(Brightness.dark),
+              ),
+              GlassOptionTile(
+                icon: Icons.delete_outline_rounded,
+                color: AppColors.auroraError,
+                titleColor: AppColors.auroraError,
+                title: 'Xóa phòng (Safe Delete)',
+                subtitle: 'Thiết bị bên trong vẫn được giữ lại',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _confirmDeleteRoom(currentName);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showRenameRoomDialog(String currentName) async {
+    final controller = TextEditingController(text: currentName);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => Theme(
+        data: _roomDarkTheme(dialogCtx),
+        child: GlassDialog(
+          icon: Icons.edit_rounded,
+          iconColor: AppColors.auroraMint,
+          title: 'Cập nhật phòng',
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 100,
+            style: const TextStyle(color: AppColors.onDark),
+            decoration: glassInputDecoration(
+              dialogCtx,
+              labelText: 'Tên phòng mới',
+              prefixIcon: const Icon(
+                Icons.meeting_room_rounded,
+                size: 20,
+                color: AppColors.auroraAccent,
+              ),
+            ),
+          ),
+          actions: [
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                foregroundColor: AppColors.onDarkMuted,
+                side: BorderSide(
+                  color: GlassTokens.borderSolid(Brightness.dark),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                backgroundColor: AppColors.auroraAccent,
+                foregroundColor: AppColors.auroraCanvasTop,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              onPressed: () {
+                if (controller.text.trim().isEmpty) {
+                  return;
+                }
+                Navigator.of(dialogCtx).pop(true);
+              },
+              child: const Text(
+                'Lưu',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    final newName = controller.text.trim();
+    controller.dispose();
+    if (confirmed != true || newName.isEmpty) {
+      return;
+    }
+
+    final homeId =
+        ref.read(currentHomeIdProvider) ?? (kUseMockData ? 'mock-home-1' : '');
+    if (homeId.isEmpty) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(roomRepositoryProvider)
+          .updateRoom(homeId: homeId, roomId: widget.roomId, name: newName);
+      ref.invalidate(roomsForHomeProvider(homeId));
+      ref.invalidate(remoteRoomsProvider);
+      ref.invalidate(roomsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraMintOnLight,
+            content: Text('Đã đổi tên phòng thành "$newName"'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraError,
+            content: Text('Không thể cập nhật phòng: $e'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteRoom(String currentName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => Theme(
+        data: _roomDarkTheme(dialogCtx),
+        child: GlassDialog(
+          icon: Icons.delete_outline_rounded,
+          iconColor: AppColors.auroraError,
+          title: 'Xóa phòng an toàn?',
+          content: Text(
+            'Bạn có chắc muốn xóa phòng "$currentName"?\n\nCác thiết bị trong phòng sẽ không bị xóa mà được chuyển sang trạng thái chưa gán phòng.',
+            style: Theme.of(dialogCtx).textTheme.bodyMedium?.copyWith(
+              color: AppColors.onDarkMuted,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                foregroundColor: AppColors.onDarkMuted,
+                side: BorderSide(
+                  color: GlassTokens.borderSolid(Brightness.dark),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              onPressed: () => Navigator.of(dialogCtx).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                backgroundColor: AppColors.auroraError,
+                foregroundColor: AppColors.auroraCanvasTop,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              onPressed: () => Navigator.of(dialogCtx).pop(true),
+              child: const Text(
+                'Xóa phòng',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    final homeId =
+        ref.read(currentHomeIdProvider) ?? (kUseMockData ? 'mock-home-1' : '');
+    if (homeId.isEmpty) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(roomRepositoryProvider)
+          .deleteRoom(homeId: homeId, roomId: widget.roomId);
+      ref
+          .read(devicesControllerProvider.notifier)
+          .detachRoomFromDevices(widget.roomId);
+      ref.invalidate(roomsForHomeProvider(homeId));
+      ref.invalidate(remoteRoomsProvider);
+      ref.invalidate(roomsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraMintOnLight,
+            content: Text('Đã xóa phòng "$currentName"'),
+          ),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.auroraError,
+            content: Text('Không thể xóa phòng: $e'),
+          ),
+        );
+      }
+    }
   }
 }
 

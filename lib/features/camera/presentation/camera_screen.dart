@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,7 +15,7 @@ import '../../../app/theme/glass_tokens.dart';
 import '../../../core/widgets/glass/glass.dart';
 import '../data/camera_providers.dart';
 import '../domain/fall_incident.dart';
-import 'widgets/emergency_sos_dialog.dart';
+import 'widgets/mjpeg_live_player.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
   const CameraScreen({super.key});
@@ -28,7 +30,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   bool _isRecording = false;
   bool _isMicOn = false;
   bool _isLightOn = false;
+  int _streamReloadSignal = 0;
   late final AnimationController _pulseCtrl;
+  late final ActiveFallController _fallController;
 
   static const _feeds = [
     _CameraFeed(
@@ -92,10 +96,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
+    _fallController = ref.read(activeFallControllerProvider.notifier);
+    Future.microtask(() {
+      _fallController.startAiHudPolling();
+      unawaited(_fallController.loadDemoVideos());
+    });
   }
 
   @override
   void dispose() {
+    _fallController.stopAiHudPolling();
     _pulseCtrl.dispose();
     super.dispose();
   }
@@ -105,34 +115,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final feed = _feeds[_selectedFeed];
-
-    ref.listen<ActiveFallState>(activeFallControllerProvider, (prev, next) {
-      if (next.hasActiveAlert && (prev == null || !prev.hasActiveAlert)) {
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => Consumer(
-            builder: (context, ref, _) {
-              final current = ref.watch(activeFallControllerProvider);
-              if (!current.hasActiveAlert) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (Navigator.of(ctx, rootNavigator: true).canPop()) {
-                    Navigator.of(ctx, rootNavigator: true).pop();
-                  }
-                });
-                return const SizedBox.shrink();
-              }
-              return EmergencySosDialog(
-                incident: current.incident!,
-                countdown: current.countdown,
-              );
-            },
-          ),
-        );
-      }
-    });
-
     final fallState = ref.watch(activeFallControllerProvider);
+    final liveStreamUrl = _selectedFeed == 0
+        ? _fallController.videoFeedUrl
+        : '';
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -170,6 +156,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                   feed: feed,
                   pulseAnimation: _pulseCtrl,
                   isRecording: _isRecording,
+                  streamUrl: liveStreamUrl,
+                  reloadSignal: _streamReloadSignal,
                 ),
                 const SizedBox(height: AppSpacing.md),
 
@@ -196,10 +184,29 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 // AI Vision HUD & Demo Trigger
                 _AiVisionHud(
                   aiStatus: fallState.aiStatus,
+                  demoVideos: fallState.demoVideos,
+                  isSelectingVideo: fallState.isSelectingVideo,
+                  onSelectVideo: (videoId) async {
+                    final ok = await _fallController.selectVideo(videoId);
+                    if (!context.mounted) {
+                      return;
+                    }
+                    setState(() {
+                      _selectedFeed = 0;
+                      _streamReloadSignal++;
+                    });
+                    if (!ok) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Đã gửi chuyển nguồn AI (kiểm tra kết nối Edge AI).',
+                          ),
+                        ),
+                      );
+                    }
+                  },
                   onTriggerDemo: () {
-                    ref
-                        .read(activeFallControllerProvider.notifier)
-                        .triggerDemoFall();
+                    unawaited(_fallController.triggerDemoFall());
                   },
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -298,16 +305,34 @@ class _MainFeedPlayer extends StatelessWidget {
     required this.feed,
     required this.pulseAnimation,
     required this.isRecording,
+    this.streamUrl = '',
+    this.reloadSignal = 0,
   });
 
   final _CameraFeed feed;
   final Animation<double> pulseAnimation;
   final bool isRecording;
+  final String streamUrl;
+  final int reloadSignal;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final timestamp = DateFormat('HH:mm:ss • dd/MM').format(DateTime.now());
+    final fallbackImage = CachedNetworkImage(
+      key: ValueKey(feed.imageUrl),
+      imageUrl: feed.imageUrl,
+      fit: BoxFit.cover,
+      placeholder: (_, __) => const ColoredBox(color: Colors.black),
+      errorWidget: (_, __, ___) => ColoredBox(
+        color: Colors.black,
+        child: Icon(
+          Icons.videocam_off_outlined,
+          color: Colors.white.withValues(alpha: 0.3),
+          size: 40,
+        ),
+      ),
+    );
 
     return GlassContainer(
       radius: AppRadius.hero,
@@ -320,20 +345,14 @@ class _MainFeedPlayer extends StatelessWidget {
           children: [
             AnimatedSwitcher(
               duration: GlassTokens.durationMed,
-              child: CachedNetworkImage(
-                key: ValueKey(feed.imageUrl),
-                imageUrl: feed.imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => const ColoredBox(color: Colors.black),
-                errorWidget: (_, __, ___) => ColoredBox(
-                  color: Colors.black,
-                  child: Icon(
-                    Icons.videocam_off_outlined,
-                    color: Colors.white.withValues(alpha: 0.3),
-                    size: 40,
-                  ),
-                ),
-              ),
+              child: streamUrl.isNotEmpty
+                  ? MjpegLivePlayer(
+                      key: ValueKey('mjpeg-$streamUrl'),
+                      streamUrl: streamUrl,
+                      reloadSignal: reloadSignal,
+                      fallback: fallbackImage,
+                    )
+                  : fallbackImage,
             ),
             // LIVE badge (kính).
             Positioned(
@@ -658,17 +677,32 @@ class _HistoryEvent {
 }
 
 class _AiVisionHud extends StatelessWidget {
-  const _AiVisionHud({required this.aiStatus, required this.onTriggerDemo});
+  const _AiVisionHud({
+    required this.aiStatus,
+    required this.onTriggerDemo,
+    this.demoVideos = const [],
+    this.isSelectingVideo = false,
+    this.onSelectVideo,
+  });
 
   final AiStatus? aiStatus;
   final VoidCallback onTriggerDemo;
+  final List<DemoVideoItem> demoVideos;
+  final bool isSelectingVideo;
+  final ValueChanged<String>? onSelectVideo;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accent = theme.colorScheme.primary;
+    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    final danger = isDark ? AppColors.auroraError : AppColors.error;
     final isOnline = aiStatus?.isOnline ?? true;
     final fps = aiStatus?.fps ?? 30;
     final stateStr = aiStatus?.state ?? 'STANDING';
+    final isFallen = stateStr == 'FALLEN';
+    final metrics = aiStatus?.metrics ?? const FallMetrics();
 
     return GlassCard(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -678,75 +712,176 @@ class _AiVisionHud extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 10,
-                height: 10,
+                width: 9,
+                height: 9,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isOnline ? AppColors.success : Colors.grey,
+                  color: isOnline
+                      ? mint
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.35),
                   boxShadow: isOnline
-                      ? [
-                          BoxShadow(
-                            color: AppColors.success.withValues(alpha: 0.6),
-                            blurRadius: 6,
-                            spreadRadius: 1,
-                          ),
-                        ]
+                      ? GlassTokens.glow(mint, intensity: 0.6)
                       : null,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   'YOLOv8-Pose AI Engine ($fps FPS)',
                   style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm + 2,
+                  vertical: AppSpacing.xs,
+                ),
                 decoration: BoxDecoration(
-                  color: stateStr == 'FALLEN'
-                      ? Colors.red.withValues(alpha: 0.2)
-                      : theme.colorScheme.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  color: (isFallen ? danger : accent).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: Border.all(
+                    color: (isFallen ? danger : accent).withValues(alpha: 0.35),
+                  ),
                 ),
                 child: Text(
-                  stateStr == 'FALLEN' ? 'NGHI VẤN NGÃ' : 'BÌNH THƯỜNG',
+                  isFallen ? 'NGHI VẤN NGÃ' : 'BÌNH THƯỜNG',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: stateStr == 'FALLEN'
-                        ? Colors.redAccent
-                        : theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
+                    color: isFallen ? danger : accent,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Hệ thống AI liên tục giám sát động học tư thế và phát hiện sự cố té ngã trong thời gian thực.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
+          const SizedBox(height: AppSpacing.sm + 4),
+          Row(
+            children: [
+              Expanded(
+                child: _HudMetricTile(
+                  label: 'Vận tốc chuẩn',
+                  value: metrics.vNorm.toStringAsFixed(2),
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _HudMetricTile(
+                  label: 'Gia tốc',
+                  value: '${metrics.accelG.toStringAsFixed(1)}G',
+                  color: AppColors.auroraWarning,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _HudMetricTile(
+                  label: 'Góc lưng',
+                  value: '${metrics.spineAngle.toStringAsFixed(0)}°',
+                  color: isFallen ? danger : mint,
+                ),
+              ),
+            ],
           ),
+          if (demoVideos.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 40,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                itemCount: demoVideos.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(width: AppSpacing.sm),
+                itemBuilder: (context, idx) {
+                  final video = demoVideos[idx];
+                  return GlassFilterChip(
+                    label: video.name,
+                    selected: video.active,
+                    onTap: () {
+                      if (!isSelectingVideo) {
+                        onSelectVideo?.call(video.id);
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.redAccent, width: 1.2),
+                minimumSize: const Size.fromHeight(46),
+                foregroundColor: danger,
+                backgroundColor: danger.withValues(alpha: 0.08),
+                side: BorderSide(
+                  color: danger.withValues(alpha: 0.55),
+                  width: 1.2,
+                ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
               ),
               onPressed: onTriggerDemo,
               icon: const Icon(Icons.bolt_rounded, size: 18),
               label: const Text(
                 'Bắn Sự Kiện Ngã Demo (Test SOS 30s)',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HudMetricTile extends StatelessWidget {
+  const _HudMetricTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: GlassTokens.fill(theme.brightness, active: false),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: GlassTokens.borderSolid(theme.brightness)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],

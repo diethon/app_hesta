@@ -59,87 +59,46 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(onboardingControllerProvider);
     final notifier = ref.read(onboardingControllerProvider.notifier);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          // Background soft ambient glow
-          Positioned(
-            top: -100,
-            right: -50,
-            width: 300,
-            height: 300,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: (isDark ? AppColors.auroraMint : AppColors.primary)
-                      .withValues(alpha: 0.12),
+    return AmbientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Column(
+          children: [
+            GlassAppBar(
+              centerTitle: false,
+              title: 'Thêm Thiết Bị Mới',
+              onBack: () {
+                if (state.step == OnboardingStep.completed) {
+                  ref.read(devicesControllerProvider.notifier).refresh();
+                  context.go('/home');
+                } else {
+                  context.pop();
+                }
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // Step Progress Indicator
+            _buildProgressHeader(state.step),
+
+            // Main Step Body
+            Expanded(
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    AppSpacing.sm,
+                    AppSpacing.screen,
+                    AppSpacing.lg,
+                  ),
+                  child: _buildStepContent(state, notifier),
                 ),
               ),
             ),
-          ),
-
-          SafeArea(
-            child: Column(
-              children: [
-                // Glass App Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screen,
-                    vertical: AppSpacing.sm,
-                  ),
-                  child: Row(
-                    children: [
-                      GlassIconButton(
-                        icon: Icons.arrow_back_ios_new_rounded,
-                        tooltip: 'Quay lại',
-                        onTap: () {
-                          if (state.step == OnboardingStep.completed) {
-                            ref
-                                .read(devicesControllerProvider.notifier)
-                                .refresh();
-                            context.go('/home');
-                          } else {
-                            context.pop();
-                          }
-                        },
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Text(
-                          'Thêm Thiết Bị Mới',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Step Progress Indicator
-                _buildProgressHeader(state.step),
-
-                // Main Step Body
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.screen,
-                      AppSpacing.sm,
-                      AppSpacing.screen,
-                      AppSpacing.lg,
-                    ),
-                    child: _buildStepContent(state, notifier),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -484,21 +443,13 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: _qrInputController,
-                decoration: InputDecoration(
+                decoration: glassInputDecoration(
+                  context,
                   hintText: 'syna://device/register?token=...',
                   prefixIcon: const Icon(Icons.qr_code_rounded, size: 20),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.clear_rounded, size: 18),
                     onPressed: () => _qrInputController.clear(),
-                  ),
-                  filled: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
                   ),
                 ),
               ),
@@ -506,6 +457,12 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   onPressed: state.isLoading
                       ? null
                       : () {
@@ -668,6 +625,9 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
   // =========================================================================
   Widget _buildBleStep(OnboardingState state, OnboardingController notifier) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accent = theme.colorScheme.primary;
+    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
     final targetDevice = state.selectedBleDevice;
 
     return Column(
@@ -679,16 +639,18 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
             children: [
               // Bluetooth radar icon
               Container(
-                width: 64,
-                height: 64,
+                width: 68,
+                height: 68,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.blue.withValues(alpha: 0.15),
+                  color: accent.withValues(alpha: 0.14),
+                  border: Border.all(color: accent.withValues(alpha: 0.28)),
+                  boxShadow: GlassTokens.glow(accent, intensity: 0.4),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.bluetooth_searching_rounded,
                   size: 32,
-                  color: Colors.blue,
+                  color: accent,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -717,12 +679,12 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.auroraMint.withValues(alpha: 0.15),
+                          color: mint.withValues(alpha: 0.14),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.memory_rounded,
-                          color: AppColors.auroraMint,
+                          color: mint,
                           size: 24,
                         ),
                       ),
@@ -755,6 +717,12 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                      ),
+                    ),
                     onPressed: state.isLoading
                         ? null
                         : () => notifier.connectBleDevice(targetDevice),
@@ -794,6 +762,12 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                      ),
+                    ),
                     onPressed: () => notifier.confirmDevice(),
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('Thử quét lại'),
@@ -863,14 +837,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
 
               TextField(
                 controller: _ssidController,
-                decoration: InputDecoration(
+                decoration: glassInputDecoration(
+                  context,
                   labelText: 'Tên mạng Wi-Fi (SSID)',
                   prefixIcon: const Icon(Icons.wifi_outlined, size: 20),
-                  filled: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    borderSide: BorderSide.none,
-                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -878,7 +848,8 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               TextField(
                 controller: _wifiPasswordController,
                 obscureText: _obscureWifiPassword,
-                decoration: InputDecoration(
+                decoration: glassInputDecoration(
+                  context,
                   labelText: 'Mật khẩu Wi-Fi',
                   prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
                   suffixIcon: IconButton(
@@ -893,11 +864,6 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                         _obscureWifiPassword = !_obscureWifiPassword;
                       });
                     },
-                  ),
-                  filled: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    borderSide: BorderSide.none,
                   ),
                 ),
               ),
@@ -932,6 +898,12 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   onPressed: state.isLoading
                       ? null
                       : () {
@@ -968,6 +940,11 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
     required bool isDone,
     bool isLoading = false,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final mint = isDark ? AppColors.auroraMint : AppColors.auroraMintOnLight;
+    final muted = theme.colorScheme.onSurface.withValues(alpha: 0.45);
+
     return Row(
       children: [
         if (isLoading)
@@ -981,7 +958,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
             size: 18,
-            color: isDone ? AppColors.auroraMint : Colors.grey,
+            color: isDone ? mint : muted,
           ),
         const SizedBox(width: 8),
         Text(
@@ -990,9 +967,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
             fontSize: 13,
             color: isDone
                 ? null
-                : (isLoading
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey),
+                : (isLoading ? theme.colorScheme.primary : muted),
             fontWeight: (isDone || isLoading)
                 ? FontWeight.w600
                 : FontWeight.normal,
@@ -1010,6 +985,7 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
     OnboardingController notifier,
   ) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final homesAsync = ref.watch(myHomesProvider);
     final homes = homesAsync.valueOrNull ?? [];
 
@@ -1044,6 +1020,13 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
 
     final isHomesLoading = homesAsync.isLoading;
     final isRoomsLoading = roomsAsync?.isLoading ?? false;
+    final dropdownBg = isDark
+        ? AppColors.auroraCanvasMid
+        : AppColors.surfaceContainerLowest;
+    final selectorFill = isDark
+        ? GlassTokens.fillDarkActive
+        : AppColors.surfaceContainerLow;
+    final selectorBorder = GlassTokens.borderSolid(theme.brightness);
 
     return Column(
       children: [
@@ -1080,14 +1063,10 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
                 controller: _deviceNameController,
                 onChanged: (val) =>
                     notifier.updateSelectedHomeAndRoom(customName: val),
-                decoration: InputDecoration(
+                decoration: glassInputDecoration(
+                  context,
                   hintText: 'VD: Đèn phòng khách',
                   prefixIcon: const Icon(Icons.edit_outlined, size: 20),
-                  filled: true,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    borderSide: BorderSide.none,
-                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -1135,14 +1114,16 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               ),
               const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  color: selectorFill,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: selectorBorder),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
+                    dropdownColor: dropdownBg,
                     value: selectedHomeId,
                     hint: Text(
                       isHomesLoading
@@ -1215,14 +1196,16 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               ),
               const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  color: selectorFill,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: selectorBorder),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
+                    dropdownColor: dropdownBg,
                     value: selectedRoomId,
                     hint: Text(
                       isRoomsLoading
@@ -1252,6 +1235,12 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   onPressed: state.isLoading
                       ? null
                       : () => notifier.claimDevice(),
@@ -1282,33 +1271,61 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
     final controller = TextEditingController();
     final created = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tạo ngôi nhà mới'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Tên nhà',
-            hintText: 'VD: Nhà riêng, Chung cư...',
+      builder: (ctx) {
+        final dialogTheme = Theme.of(ctx);
+        return GlassDialog(
+          icon: Icons.home_work_outlined,
+          title: 'Tạo ngôi nhà mới',
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: glassInputDecoration(
+              ctx,
+              labelText: 'Tên nhà',
+              hintText: 'VD: Nhà riêng, Chung cư...',
+              prefixIcon: const Icon(Icons.home_outlined, size: 20),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                Navigator.of(ctx).pop(name);
-              }
-            },
-            child: const Text('Tạo nhà'),
-          ),
-        ],
-      ),
+          actions: [
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                foregroundColor: dialogTheme.colorScheme.onSurface.withValues(
+                  alpha: 0.72,
+                ),
+                side: BorderSide(
+                  color: GlassTokens.borderSolid(dialogTheme.brightness),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              onPressed: () {
+                final name = controller.text.trim();
+                if (name.isNotEmpty) {
+                  Navigator.of(ctx).pop(name);
+                }
+              },
+              child: const Text(
+                'Tạo nhà',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        );
+      },
     );
+    controller.dispose();
 
     if (created != null && created.isNotEmpty) {
       final newHomeId = await notifier.createHome(created);
@@ -1326,33 +1343,61 @@ class _AddDeviceScreenState extends ConsumerState<AddDeviceScreen> {
     final controller = TextEditingController();
     final created = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Thêm phòng mới'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Tên phòng',
-            hintText: 'VD: Phòng khách, Phòng làm việc...',
+      builder: (ctx) {
+        final dialogTheme = Theme.of(ctx);
+        return GlassDialog(
+          icon: Icons.meeting_room_outlined,
+          title: 'Thêm phòng mới',
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: glassInputDecoration(
+              ctx,
+              labelText: 'Tên phòng',
+              hintText: 'VD: Phòng khách, Phòng làm việc...',
+              prefixIcon: const Icon(Icons.meeting_room_rounded, size: 20),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) {
-                Navigator.of(ctx).pop(name);
-              }
-            },
-            child: const Text('Thêm phòng'),
-          ),
-        ],
-      ),
+          actions: [
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                foregroundColor: dialogTheme.colorScheme.onSurface.withValues(
+                  alpha: 0.72,
+                ),
+                side: BorderSide(
+                  color: GlassTokens.borderSolid(dialogTheme.brightness),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+              ),
+              onPressed: () {
+                final name = controller.text.trim();
+                if (name.isNotEmpty) {
+                  Navigator.of(ctx).pop(name);
+                }
+              },
+              child: const Text(
+                'Thêm phòng',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        );
+      },
     );
+    controller.dispose();
 
     if (created != null && created.isNotEmpty) {
       await notifier.createRoom(homeId, created);

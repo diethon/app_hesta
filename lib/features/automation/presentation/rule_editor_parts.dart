@@ -21,12 +21,14 @@ IconData deviceIconFor(Device? d) {
   if (d == null) return Icons.power_settings_new_rounded;
   final t = deviceTypeCode(d);
   if (t.contains('RGB')) return Icons.palette_outlined;
-  if (t.contains('LIGHT') || t.contains('LED'))
+  if (t.contains('LIGHT') || t.contains('LED')) {
     return Icons.lightbulb_outline_rounded;
+  }
   if (t.contains('AC') || t.contains('AIR')) return Icons.ac_unit_rounded;
   if (t.contains('FAN')) return Icons.air_rounded;
-  if (t.contains('GATE') || t.contains('DOOR'))
+  if (t.contains('GATE') || t.contains('DOOR')) {
     return Icons.door_sliding_outlined;
+  }
   if (t.contains('CURTAIN')) return Icons.curtains_rounded;
   if (t.contains('SOCKET') || t.contains('PLUG')) return Icons.power_outlined;
   if (t.contains('CAMERA')) return Icons.videocam_outlined;
@@ -1232,8 +1234,9 @@ class _ActionStepCardState extends State<ActionStepCard> {
                 onChanged: (v) {
                   try {
                     final parsed = jsonDecode(v);
-                    if (parsed is! Map || parsed.isEmpty)
+                    if (parsed is! Map || parsed.isEmpty) {
                       throw const FormatException();
+                    }
                     setState(() => _jsonError = null);
                     widget.onChanged(
                       _a.copyWith(
@@ -2007,8 +2010,9 @@ class RuleSummaryCard extends StatelessWidget {
     } else {
       acts.add(const TextSpan(text: 'thì '));
       for (final (i, a) in actions.indexed) {
-        if (i > 0)
+        if (i > 0) {
           acts.add(TextSpan(text: i == actions.length - 1 ? ', rồi ' : ', '));
+        }
         final scene = scenes.where((s) => s.id == a.sceneId).firstOrNull;
         acts.add(
           TextSpan(

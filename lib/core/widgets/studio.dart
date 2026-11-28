@@ -409,16 +409,18 @@ String _describeParam(String key, dynamic value) {
   if (const {'r', 'g', 'b', 'hex', 'state'}.contains(k)) return '';
   if (k.contains('bright') || k == 'level') return 'Độ sáng $v%';
   if (k.contains('temp')) return 'Nhiệt độ $v°C';
-  if (k.contains('fan') || k.contains('speed'))
+  if (k.contains('fan') || k.contains('speed')) {
     return v is num ? 'Tốc độ $v%' : 'Tốc độ ${_fanName('$v')}';
+  }
   if (k.contains('position') || k.contains('percent')) return 'Mức $v%';
   if (k == 'mode') return 'Chế độ ${_modeName('$v')}';
   if (k.contains('color') || k == 'rgb') {
     return 'Màu ${_colorNames['$v'.toLowerCase()] ?? 'tuỳ chọn'}';
   }
   if (k == 'message' || k == 'title') return '“$v”';
-  if (k.endsWith('id') || k.endsWith('ids'))
+  if (k.endsWith('id') || k.endsWith('ids')) {
     return ''; // id nội bộ, không cho người dùng xem
+  }
   return k.isEmpty ? '$v' : '$key $v';
 }
 
@@ -441,8 +443,9 @@ String describeWhen(DateTime? t) {
       '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   if (diff.inMinutes < 1) return 'Vừa xong';
   if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';
-  if (diff.inHours < 24 && local.day == DateTime.now().day)
+  if (diff.inHours < 24 && local.day == DateTime.now().day) {
     return 'Hôm nay ${hm()}';
+  }
   if (diff.inDays < 2) return 'Hôm qua ${hm()}';
   return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')} ${hm()}';
 }

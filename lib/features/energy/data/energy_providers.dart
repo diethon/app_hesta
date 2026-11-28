@@ -24,3 +24,10 @@ final energyAnalyticsProvider = FutureProvider<EnergyAnalyticsModel>((
 
   return repo.getHomeEnergyAnalytics(homeId: homeId, period: period);
 });
+
+final demandResponseSettingsProvider =
+    FutureProvider.autoDispose<DemandResponseSettingsModel>((ref) async {
+      final repo = ref.watch(energyRepositoryProvider);
+      final homeId = ref.watch(currentHomeIdProvider);
+      return repo.getDemandResponseSettings(homeId: homeId);
+    });

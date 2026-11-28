@@ -175,3 +175,84 @@ class EnergyAnalyticsModel {
     'breakdown': breakdown.map((e) => e.toJson()).toList(),
   };
 }
+
+class DemandResponseSettingsModel {
+  const DemandResponseSettingsModel({
+    this.homeId,
+    required this.enabled,
+    required this.peakThresholdWatts,
+    required this.mode,
+  });
+
+  final String? homeId;
+  final bool enabled;
+  final double peakThresholdWatts;
+  final String mode;
+
+  factory DemandResponseSettingsModel.fromJson(Map<String, dynamic> json) {
+    return DemandResponseSettingsModel(
+      homeId: json['homeId']?.toString(),
+      enabled: json['enabled'] == true,
+      peakThresholdWatts:
+          (json['peakThresholdWatts'] as num?)?.toDouble() ?? 4000.0,
+      mode: (json['mode'] as String?) ?? 'AUTO_SHED',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    if (homeId != null) 'homeId': homeId,
+    'enabled': enabled,
+    'peakThresholdWatts': peakThresholdWatts,
+    'mode': mode,
+  };
+
+  DemandResponseSettingsModel copyWith({
+    String? homeId,
+    bool? enabled,
+    double? peakThresholdWatts,
+    String? mode,
+  }) {
+    return DemandResponseSettingsModel(
+      homeId: homeId ?? this.homeId,
+      enabled: enabled ?? this.enabled,
+      peakThresholdWatts: peakThresholdWatts ?? this.peakThresholdWatts,
+      mode: mode ?? this.mode,
+    );
+  }
+}
+
+class DemandResponseEvaluationModel {
+  const DemandResponseEvaluationModel({
+    required this.totalCurrentWatts,
+    required this.peakThresholdWatts,
+    required this.excessWatts,
+    required this.status,
+    required this.sheddedDevices,
+    required this.wattsSaved,
+    required this.message,
+  });
+
+  final double totalCurrentWatts;
+  final double peakThresholdWatts;
+  final double excessWatts;
+  final String status;
+  final List<String> sheddedDevices;
+  final double wattsSaved;
+  final String message;
+
+  factory DemandResponseEvaluationModel.fromJson(Map<String, dynamic> json) {
+    final rawShed = json['sheddedDevices'];
+    return DemandResponseEvaluationModel(
+      totalCurrentWatts: (json['totalCurrentWatts'] as num?)?.toDouble() ?? 0.0,
+      peakThresholdWatts:
+          (json['peakThresholdWatts'] as num?)?.toDouble() ?? 4000.0,
+      excessWatts: (json['excessWatts'] as num?)?.toDouble() ?? 0.0,
+      status: (json['status'] as String?) ?? 'NORMAL',
+      sheddedDevices: rawShed is List
+          ? rawShed.map((e) => e.toString()).toList()
+          : const <String>[],
+      wattsSaved: (json['wattsSaved'] as num?)?.toDouble() ?? 0.0,
+      message: (json['message'] as String?) ?? '',
+    );
+  }
+}

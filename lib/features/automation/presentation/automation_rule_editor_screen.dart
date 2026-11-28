@@ -412,8 +412,9 @@ class _AutomationRuleEditorScreenState
       title: 'Chỉ khi từ thiết bị',
       selectedId: current.deviceId,
     );
-    if (d != null)
+    if (d != null) {
       setState(() => _conditions[0] = current.copyWith(deviceId: d.id));
+    }
   }
 
   void _moveAction(int from, int to) => setState(() {
@@ -490,12 +491,13 @@ class _AutomationRuleEditorScreenState
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         showStudioSnack(
           context,
           'Không nhân bản được: ${_reason(e)}',
           success: false,
         );
+      }
     }
   }
 
@@ -553,12 +555,13 @@ class _AutomationRuleEditorScreenState
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         showStudioSnack(
           context,
           'Lưu quy tắc thất bại: ${_reason(e)}',
           success: false,
         );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }

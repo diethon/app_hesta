@@ -81,5 +81,32 @@ void main() {
         expect(afterDismiss.isEmpty, isTrue);
       },
     );
+
+    test(
+      'MockCameraRepository handles acknowledge, resolve and demo video selection',
+      () async {
+        final repo = MockCameraRepository();
+        await repo.triggerDemoFall();
+        final active = await repo.getActiveIncidents(null);
+        expect(active, hasLength(1));
+
+        await repo.acknowledgeIncident(active.first.id);
+        final acked = await repo.getActiveIncidents(null);
+        expect(acked.single.state, 'ACKNOWLEDGED');
+
+        await repo.resolveIncident(active.first.id);
+        final afterResolve = await repo.getActiveIncidents(null);
+        expect(afterResolve, isEmpty);
+
+        final videos = await repo.getDemoVideos();
+        expect(videos, isNotEmpty);
+        expect(await repo.selectDemoVideo(videos.last.id), isTrue);
+        final updatedVideos = await repo.getDemoVideos();
+        expect(
+          updatedVideos.firstWhere((v) => v.id == videos.last.id).active,
+          isTrue,
+        );
+      },
+    );
   });
 }
