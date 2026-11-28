@@ -76,6 +76,16 @@ class ProfileScreen extends ConsumerWidget {
                   title: l10n.groupSecurity,
                   items: [
                     _SettingsItem(
+                      icon: Icons.shield_outlined,
+                      label: 'Trung tâm an ninh',
+                      onTap: () => context.push('/security'),
+                    ),
+                    _SettingsItem(
+                      icon: Icons.build_circle_outlined,
+                      label: 'Bảo trì thiết bị',
+                      onTap: () => context.push('/maintenance'),
+                    ),
+                    _SettingsItem(
                       icon: Icons.privacy_tip_outlined,
                       label: l10n.privacy,
                       onTap: () {},
