@@ -17,11 +17,15 @@ import '../../features/devices/presentation/device_detail_screen.dart';
 import '../../features/groups/presentation/device_groups_screen.dart';
 import '../../features/energy/presentation/energy_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/maintenance/presentation/create_maintenance_screen.dart';
+import '../../features/maintenance/presentation/maintenance_detail_screen.dart';
+import '../../features/maintenance/presentation/maintenance_list_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/rooms/presentation/room_device.dart';
 import '../../features/rooms/presentation/rooms_screen.dart';
+import '../../features/security/presentation/security_center_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import 'shell_scaffold.dart';
@@ -81,6 +85,39 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'recommendations',
         path: '/recommendations',
         builder: (context, state) => const RecommendationsScreen(),
+      ),
+      GoRoute(
+        name: 'security-center',
+        path: '/security',
+        builder: (context, state) => SecurityCenterScreen(
+          initialTab: state.uri.queryParameters['tab'] == 'anomalies' ? 1 : 0,
+        ),
+      ),
+      GoRoute(
+        name: 'maintenance',
+        path: '/maintenance',
+        builder: (context, state) => const MaintenanceListScreen(),
+        routes: [
+          GoRoute(
+            name: 'maintenance-new',
+            path: 'new',
+            builder: (context, state) {
+              final query = state.uri.queryParameters;
+              return CreateMaintenanceScreen(
+                initialDeviceId: query['deviceId'],
+                initialAnomalyId: query['anomalyId'],
+                initialNote: query['note'],
+              );
+            },
+          ),
+          GoRoute(
+            name: 'maintenance-detail',
+            path: ':ticketId',
+            builder: (context, state) => MaintenanceDetailScreen(
+              ticketId: state.pathParameters['ticketId']!,
+            ),
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
