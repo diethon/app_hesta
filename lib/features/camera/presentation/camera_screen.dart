@@ -116,7 +116,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final theme = Theme.of(context);
     final feed = _feeds[_selectedFeed];
     final fallState = ref.watch(activeFallControllerProvider);
-    final liveStreamUrl = _selectedFeed == 0 ? _fallController.videoFeedUrl : '';
+    final liveStreamUrl = _selectedFeed == 0
+        ? _fallController.videoFeedUrl
+        : '';
 
     return Scaffold(
       backgroundColor: Colors.transparent,

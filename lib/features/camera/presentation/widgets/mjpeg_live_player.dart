@@ -71,8 +71,7 @@ class _MjpegLivePlayerState extends State<MjpegLivePlayer> {
   }
 
   Future<void> _startStream(Uri uri) async {
-    final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 2);
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 2);
     _client = client;
 
     try {
@@ -104,7 +103,8 @@ class _MjpegLivePlayerState extends State<MjpegLivePlayer> {
 
           int searchFrom = 0;
           while (true) {
-            final start = soiIndex ?? _findMarker(buffer, searchFrom, 0xFF, 0xD8);
+            final start =
+                soiIndex ?? _findMarker(buffer, searchFrom, 0xFF, 0xD8);
             if (start == null) {
               if (buffer.length > 1) {
                 final lastByte = buffer.last;

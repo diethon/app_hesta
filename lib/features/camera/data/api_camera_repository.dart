@@ -38,7 +38,9 @@ class ApiCameraRepository implements CameraRepository {
       if (body is List) {
         return body
             .whereType<Map>()
-            .map((json) => FallIncident.fromJson(Map<String, dynamic>.from(json)))
+            .map(
+              (json) => FallIncident.fromJson(Map<String, dynamic>.from(json)),
+            )
             .toList();
       }
       return const <FallIncident>[];

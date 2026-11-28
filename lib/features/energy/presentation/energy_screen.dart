@@ -759,24 +759,26 @@ class _EnergyChartCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: (timeSeries.length <= 7
-                    ? timeSeries
-                    : [
-                        for (int i = 0; i < 6; i++)
-                          timeSeries[((i * (timeSeries.length - 1)) / 5).round()],
-                      ])
-                .map(
-                  (pt) => Text(
-                    pt.label,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 10,
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.55,
+            children:
+                (timeSeries.length <= 7
+                        ? timeSeries
+                        : [
+                            for (int i = 0; i < 6; i++)
+                              timeSeries[((i * (timeSeries.length - 1)) / 5)
+                                  .round()],
+                          ])
+                    .map(
+                      (pt) => Text(
+                        pt.label,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.55,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                )
-                .toList(),
+                    )
+                    .toList(),
           ),
         ],
       ),
@@ -1313,14 +1315,8 @@ class _DemandResponseSectionState
             spacing: AppSpacing.xs + 2,
             runSpacing: AppSpacing.xs + 2,
             children: [
-              _DrPriorityBadge(
-                label: '1. Khẩn cấp (Cấm ngắt)',
-                color: danger,
-              ),
-              _DrPriorityBadge(
-                label: '2. Cốt lõi (24/7)',
-                color: accent,
-              ),
+              _DrPriorityBadge(label: '1. Khẩn cấp (Cấm ngắt)', color: danger),
+              _DrPriorityBadge(label: '2. Cốt lõi (24/7)', color: accent),
               const _DrPriorityBadge(
                 label: '3. Tiện nghi (Đợt 2)',
                 color: AppColors.auroraWarning,

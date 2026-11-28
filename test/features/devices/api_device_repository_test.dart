@@ -57,7 +57,8 @@ void main() {
             'status': 'SUCCESS',
           },
         };
-      } else if (request.method == 'PUT' && path.startsWith('/api/v1/devices/')) {
+      } else if (request.method == 'PUT' &&
+          path.startsWith('/api/v1/devices/')) {
         lastUpdateBody =
             jsonDecode(await utf8.decoder.bind(request).join())
                 as Map<String, dynamic>;
@@ -158,28 +159,31 @@ void main() {
     });
   });
 
-  test('updateDeviceConfig, removeDevice, extendDeviceAutomation, getDeviceUptime', () async {
-    final id = _deviceHestaJson['id']! as String;
-    final updated = await repository.updateDeviceConfig(
-      id,
-      name: 'Đèn Trần Mới',
-      roomId: 'room-new-1',
-    );
-    expect(updated.name, 'Đèn Trần Mới');
-    expect(updated.roomId, 'room-new-1');
-    expect(lastUpdateBody?['name'], 'Đèn Trần Mới');
+  test(
+    'updateDeviceConfig, removeDevice, extendDeviceAutomation, getDeviceUptime',
+    () async {
+      final id = _deviceHestaJson['id']! as String;
+      final updated = await repository.updateDeviceConfig(
+        id,
+        name: 'Đèn Trần Mới',
+        roomId: 'room-new-1',
+      );
+      expect(updated.name, 'Đèn Trần Mới');
+      expect(updated.roomId, 'room-new-1');
+      expect(lastUpdateBody?['name'], 'Đèn Trần Mới');
 
-    final extended = await repository.extendDeviceAutomation(id, minutes: 60);
-    expect(extended.manualOverrideActive, isTrue);
-    expect(extended.manualOverrideUntil, '2030-01-01T12:00:00Z');
+      final extended = await repository.extendDeviceAutomation(id, minutes: 60);
+      expect(extended.manualOverrideActive, isTrue);
+      expect(extended.manualOverrideUntil, '2030-01-01T12:00:00Z');
 
-    final uptime = await repository.getDeviceUptime(id, days: 7);
-    expect(uptime.uptimePercent, 95.5);
-    expect(uptime.timelinePoints, hasLength(2));
+      final uptime = await repository.getDeviceUptime(id, days: 7);
+      expect(uptime.uptimePercent, 95.5);
+      expect(uptime.timelinePoints, hasLength(2));
 
-    await repository.removeDevice(id);
-    expect(deletedCalled, isTrue);
-  });
+      await repository.removeDevice(id);
+      expect(deletedCalled, isTrue);
+    },
+  );
 
   group('deviceCommandToRequestBody', () {
     test('một field đơn lẻ dùng action chuyên biệt', () {

@@ -243,8 +243,7 @@ class DemandResponseEvaluationModel {
   factory DemandResponseEvaluationModel.fromJson(Map<String, dynamic> json) {
     final rawShed = json['sheddedDevices'];
     return DemandResponseEvaluationModel(
-      totalCurrentWatts:
-          (json['totalCurrentWatts'] as num?)?.toDouble() ?? 0.0,
+      totalCurrentWatts: (json['totalCurrentWatts'] as num?)?.toDouble() ?? 0.0,
       peakThresholdWatts:
           (json['peakThresholdWatts'] as num?)?.toDouble() ?? 4000.0,
       excessWatts: (json['excessWatts'] as num?)?.toDouble() ?? 0.0,

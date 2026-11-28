@@ -362,7 +362,9 @@ class MockDeviceRepository implements DeviceRepository {
       {
         'action': 'CANCEL_AUTOMATION',
         'source': 'APP',
-        'createdAt': now.subtract(const Duration(minutes: 12)).toIso8601String(),
+        'createdAt': now
+            .subtract(const Duration(minutes: 12))
+            .toIso8601String(),
         'expiresAt': now.add(const Duration(minutes: 18)).toIso8601String(),
         'durationMinutes': 30,
       },

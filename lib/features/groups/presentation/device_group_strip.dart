@@ -195,7 +195,9 @@ class _CompactGroupCard extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: danger.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: danger.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: danger.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Text(
                         'Tắt hết',

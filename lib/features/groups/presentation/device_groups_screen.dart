@@ -106,7 +106,8 @@ class _DeviceGroupsScreenState extends ConsumerState<DeviceGroupsScreen> {
                         ],
                       ),
                       const SizedBox(height: AppSpacing.lg),
-                      for (final group in groups) _DeviceGroupCard(group: group),
+                      for (final group in groups)
+                        _DeviceGroupCard(group: group),
                     ]),
                   ),
                 ),

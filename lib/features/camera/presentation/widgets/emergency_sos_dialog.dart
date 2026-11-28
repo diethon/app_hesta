@@ -255,8 +255,7 @@ class EmergencySosDialog extends ConsumerWidget {
                       ),
                       _MetricItem(
                         label: 'Gia tốc',
-                        value:
-                            '${incident.metrics.accelG.toStringAsFixed(1)}G',
+                        value: '${incident.metrics.accelG.toStringAsFixed(1)}G',
                         color: AppColors.auroraError,
                       ),
                       _MetricItem(

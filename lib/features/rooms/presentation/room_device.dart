@@ -179,8 +179,7 @@ class _RoomDeviceScreenState extends ConsumerState<RoomDeviceScreen> {
                       GlassIconButton(
                         icon: Icons.more_horiz_rounded,
                         tooltip: 'Quản lý phòng',
-                        onTap: () =>
-                            _showRoomOptionsSheet(context, roomName),
+                        onTap: () => _showRoomOptionsSheet(context, roomName),
                       ),
                     ],
                   ),
@@ -247,7 +246,9 @@ class _RoomDeviceScreenState extends ConsumerState<RoomDeviceScreen> {
                                           size: 16,
                                           color: AppColors.auroraMint,
                                         ),
-                                        const SizedBox(width: AppSpacing.xs + 2),
+                                        const SizedBox(
+                                          width: AppSpacing.xs + 2,
+                                        ),
                                         Text(
                                           'Bật cả phòng',
                                           style: Theme.of(context)
@@ -293,7 +294,9 @@ class _RoomDeviceScreenState extends ConsumerState<RoomDeviceScreen> {
                                           size: 16,
                                           color: AppColors.auroraWarning,
                                         ),
-                                        const SizedBox(width: AppSpacing.xs + 2),
+                                        const SizedBox(
+                                          width: AppSpacing.xs + 2,
+                                        ),
                                         Text(
                                           'Tắt cả phòng',
                                           style: Theme.of(context)

@@ -217,7 +217,8 @@ class _DeviceDetailScaffold extends ConsumerWidget {
     );
   }
 
-  ThemeData _forcedDarkTheme(BuildContext context) => _darkOverlayTheme(context);
+  ThemeData _forcedDarkTheme(BuildContext context) =>
+      _darkOverlayTheme(context);
 }
 
 ThemeData _darkOverlayTheme(BuildContext context) {
@@ -590,11 +591,7 @@ void _showEditDeviceConfigSheet(
   ).whenComplete(nameController.dispose);
 }
 
-void _confirmRemoveDevice(
-  BuildContext context,
-  WidgetRef ref,
-  Device device,
-) {
+void _confirmRemoveDevice(BuildContext context, WidgetRef ref, Device device) {
   showDialog<void>(
     context: context,
     builder: (dialogCtx) => Theme(
@@ -615,9 +612,7 @@ void _confirmRemoveDevice(
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(44),
               foregroundColor: AppColors.onDarkMuted,
-              side: BorderSide(
-                color: GlassTokens.borderSolid(Brightness.dark),
-              ),
+              side: BorderSide(color: GlassTokens.borderSolid(Brightness.dark)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
@@ -905,12 +900,12 @@ class _StatusBlock extends StatelessWidget {
       final gateLabel = isOpening
           ? 'Đang mở $targetName...'
           : (isClosing
-              ? 'Đang đóng $targetName...'
-              : (isStopped
-                  ? 'Đã tạm dừng'
-                  : (isClosed
-                      ? 'Đã đóng $targetName'
-                      : (isOpen ? 'Đã mở $targetName' : 'Sẵn sàng'))));
+                ? 'Đang đóng $targetName...'
+                : (isStopped
+                      ? 'Đã tạm dừng'
+                      : (isClosed
+                            ? 'Đã đóng $targetName'
+                            : (isOpen ? 'Đã mở $targetName' : 'Sẵn sàng'))));
 
       final gateColor = (isOpening || isClosing || isStopped)
           ? AppColors.auroraWarning
@@ -1307,10 +1302,7 @@ class _GateControlsState extends ConsumerState<_GateControls> {
       } else {
         _armTransitLock();
       }
-      controller.updateDevice(
-        device.id,
-        DeviceCommand(gateAction: action),
-      );
+      controller.updateDevice(device.id, DeviceCommand(gateAction: action));
     }
 
     return Column(
@@ -1342,26 +1334,26 @@ class _GateControlsState extends ConsumerState<_GateControls> {
                           offline
                               ? 'Thiết bị ngoại tuyến'
                               : (isOpening
-                                  ? 'Đang mở $targetName...'
-                                  : (isClosing
-                                      ? 'Đang đóng $targetName...'
-                                      : (_transitLocked
-                                          ? 'Đang vận hành motor...'
-                                          : (isStopped
-                                              ? 'Đã dừng $targetName'
-                                              : (isClosed
-                                                  ? 'Đã đóng $targetName hoàn toàn'
-                                                  : (isOpen
-                                                      ? 'Đã mở $targetName hoàn toàn'
-                                                      : 'Sẵn sàng điều khiển')))))),
+                                    ? 'Đang mở $targetName...'
+                                    : (isClosing
+                                          ? 'Đang đóng $targetName...'
+                                          : (_transitLocked
+                                                ? 'Đang vận hành motor...'
+                                                : (isStopped
+                                                      ? 'Đã dừng $targetName'
+                                                      : (isClosed
+                                                            ? 'Đã đóng $targetName hoàn toàn'
+                                                            : (isOpen
+                                                                  ? 'Đã mở $targetName hoàn toàn'
+                                                                  : 'Sẵn sàng điều khiển')))))),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: offline
                                 ? AppColors.auroraError
                                 : (isMoving
-                                    ? AppColors.auroraWarning
-                                    : (isClosed
-                                        ? AppColors.auroraMint
-                                        : AppColors.orbTeal)),
+                                      ? AppColors.auroraWarning
+                                      : (isClosed
+                                            ? AppColors.auroraMint
+                                            : AppColors.orbTeal)),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -1373,10 +1365,9 @@ class _GateControlsState extends ConsumerState<_GateControls> {
                     height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: (isClosed
-                              ? AppColors.auroraMint
-                              : AppColors.orbTeal)
-                          .withValues(alpha: 0.15),
+                      color:
+                          (isClosed ? AppColors.auroraMint : AppColors.orbTeal)
+                              .withValues(alpha: 0.15),
                       boxShadow: GlassTokens.glow(
                         isClosed ? AppColors.auroraMint : AppColors.orbTeal,
                         intensity: 0.35,
@@ -1442,8 +1433,8 @@ class _GateControlsState extends ConsumerState<_GateControls> {
             label: isMoving
                 ? 'Kéo để DỪNG $targetName'
                 : (isClosed
-                    ? 'Kéo để MỞ $targetName'
-                    : 'Kéo để ĐÓNG $targetName'),
+                      ? 'Kéo để MỞ $targetName'
+                      : 'Kéo để ĐÓNG $targetName'),
             icon: isMoving
                 ? Icons.stop_circle_outlined
                 : (isClosed ? Icons.lock_open_rounded : Icons.lock_rounded),
@@ -2264,9 +2255,7 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
-                      isOverride
-                          ? device.formattedOverrideTime
-                          : 'Tự động AI',
+                      isOverride ? device.formattedOverrideTime : 'Tự động AI',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -2408,10 +2397,7 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
               ),
               onPressed: () => _showOverrideHistorySheet(context, device.id),
               icon: const Icon(Icons.history_rounded, size: 16),
-              label: const Text(
-                'Lịch sử khóa',
-                style: TextStyle(fontSize: 12),
-              ),
+              label: const Text('Lịch sử khóa', style: TextStyle(fontSize: 12)),
             ),
           ),
         ],
@@ -2458,7 +2444,9 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
                       final items = snapshot.data ?? const [];
                       if (items.isEmpty) {
                         return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                          padding: EdgeInsets.symmetric(
+                            vertical: AppSpacing.lg,
+                          ),
                           child: Center(
                             child: Text(
                               'Chưa có lịch sử khóa ưu tiên nào.',
@@ -2486,8 +2474,9 @@ class _ManualOverrideCardState extends ConsumerState<_ManualOverrideCard> {
                                     .toString();
                             final dt = DateTime.tryParse(rawTime);
                             final timeText = dt != null
-                                ? DateFormat('HH:mm • dd/MM')
-                                      .format(dt.toLocal())
+                                ? DateFormat(
+                                    'HH:mm • dd/MM',
+                                  ).format(dt.toLocal())
                                 : rawTime;
                             final isResume = action.contains('RESUME');
                             return ListTile(
@@ -2551,7 +2540,8 @@ class _DeviceHealthCard extends StatelessWidget {
         uptimeInfo?.uptimePercent ?? device.uptimePercent ?? 99.4;
     final isChattering = device.chatteringWarning == true;
     final isTripped = device.safetyTripped == true;
-    final timeline = uptimeInfo?.timelinePoints ?? const <UptimeTimelinePoint>[];
+    final timeline =
+        uptimeInfo?.timelinePoints ?? const <UptimeTimelinePoint>[];
 
     final healthColor = isChattering || isTripped
         ? AppColors.auroraError
@@ -2598,7 +2588,9 @@ class _DeviceHealthCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: healthColor.withValues(alpha: 0.14),
-                  border: Border.all(color: healthColor.withValues(alpha: 0.45)),
+                  border: Border.all(
+                    color: healthColor.withValues(alpha: 0.45),
+                  ),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Row(
@@ -2857,10 +2849,7 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
               widget.device.id,
               widget.device.name,
             )
-          : await notifier.exportAuditCsv(
-              widget.device.id,
-              widget.device.name,
-            );
+          : await notifier.exportAuditCsv(widget.device.id, widget.device.name);
       if (!mounted) {
         return;
       }
@@ -2984,9 +2973,7 @@ class _AuditHistorySectionState extends ConsumerState<_AuditHistorySection> {
               const SizedBox(width: 6),
               // Nút Xuất Excel
               InkWell(
-                onTap: _isExporting
-                    ? null
-                    : () => _handleExport(isExcel: true),
+                onTap: _isExporting ? null : () => _handleExport(isExcel: true),
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: Container(
                   padding: const EdgeInsets.symmetric(

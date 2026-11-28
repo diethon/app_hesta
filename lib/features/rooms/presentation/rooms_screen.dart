@@ -97,7 +97,10 @@ class RoomsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showCreateRoomDialog(BuildContext context, WidgetRef ref) async {
+  Future<void> _showCreateRoomDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final nameController = TextEditingController();
     String selectedIcon = 'default';
     const iconOptions = <(String, String, IconData)>[
@@ -162,7 +165,10 @@ class RoomsScreen extends ConsumerWidget {
                     sheetCtx,
                     labelText: 'Tên phòng',
                     hintText: 'VD: Phòng khách, Phòng làm việc...',
-                    prefixIcon: const Icon(Icons.meeting_room_rounded, size: 20),
+                    prefixIcon: const Icon(
+                      Icons.meeting_room_rounded,
+                      size: 20,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -200,7 +206,9 @@ class RoomsScreen extends ConsumerWidget {
                           foregroundColor: sheetTheme.colorScheme.onSurface
                               .withValues(alpha: 0.72),
                           side: BorderSide(
-                            color: GlassTokens.borderSolid(sheetTheme.brightness),
+                            color: GlassTokens.borderSolid(
+                              sheetTheme.brightness,
+                            ),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(AppRadius.lg),

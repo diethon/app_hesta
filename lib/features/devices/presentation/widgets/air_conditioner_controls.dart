@@ -179,7 +179,9 @@ class _AirConditionerControlsState
     final isTimerActive = device.timerEnabled ?? false;
     final timerHour = device.timerHour ?? 0;
     final timerHalfHour = device.timerHalfHour ?? false;
-    final activeAccent = isOn ? _modeAccent(currentMode) : AppColors.onDarkMuted;
+    final activeAccent = isOn
+        ? _modeAccent(currentMode)
+        : AppColors.onDarkMuted;
 
     return Column(
       children: [
